@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "mackerel"
+display_name = "Cavala-azul"
+rarity = "Comum"
+min_weight = 0.7
+max_weight = 2.1
+value_per_kg = 26.0
+difficulty = 0.4
+description = "Rápida e inquieta, percorre a baía em cardumes. Alternar esforço e descanso mantém a linha inteira."
+color = Color(0.16, 0.52, 0.64, 1)
+habitat = "Baía e correntes costeiras"
+regions = PackedStringArray("coast")
+encounter_weight = 3.0

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "seabass"
+display_name = "Robalo-dourado"
+rarity = "Incomum"
+min_weight = 1.2
+max_weight = 4.5
+value_per_kg = 32.0
+difficulty = 0.68
+description = "Caçador discreto das pedras costeiras. Quando fisgado, testa a paciência de quem segura a vara."
+color = Color(0.72, 0.69, 0.42, 1)
+habitat = "Costões da Costa de Farol"
+regions = PackedStringArray("coast")
+encounter_weight = 1.0

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "sardine"
+display_name = "Sardinha-prateada"
+rarity = "Comum"
+min_weight = 0.18
+max_weight = 0.65
+value_per_kg = 38.0
+difficulty = 0.15
+description = "Pequenos clarões de prata acompanham a maré. Abundante junto ao cais e excelente para a primeira pescaria."
+color = Color(0.62, 0.85, 0.88, 1)
+habitat = "Águas rasas da Costa de Farol"
+regions = PackedStringArray("coast")
+encounter_weight = 6.0
