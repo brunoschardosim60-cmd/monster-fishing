@@ -1,0 +1,47 @@
+{
+	"checks": 32,
+	"failures": 0,
+	"gpu": "AMD Radeon RX 580 2048SP",
+	"limitations": "Short rendered smoke observations; other applications active. Not a sustained benchmark.",
+	"renderer": "forward_plus",
+	"samples": [
+		{
+			"draw_calls": 248.0,
+			"fps_engine_monitor": 60.0,
+			"objects": 1070.0,
+			"physics_ms": 1.09,
+			"primitives": 1145974.0,
+			"process_ms": 11.585,
+			"scene": "pier_idle"
+		},
+		{
+			"draw_calls": 224.0,
+			"fps_engine_monitor": 59.0,
+			"objects": 953.0,
+			"physics_ms": 0.611,
+			"primitives": 1010152.0,
+			"process_ms": 21.482,
+			"scene": "boat_ocean"
+		},
+		{
+			"draw_calls": 507.0,
+			"fps_engine_monitor": 60.0,
+			"objects": 1323.0,
+			"physics_ms": 0.894,
+			"primitives": 1270690.0,
+			"process_ms": 15.338,
+			"scene": "village"
+		},
+		{
+			"draw_calls": 48.0,
+			"fps_engine_monitor": 60.0,
+			"objects": 48.0,
+			"physics_ms": 0.613,
+			"primitives": 873176.0,
+			"process_ms": 16.716,
+			"scene": "ocean_close"
+		}
+	],
+	"viewport": "[P: (0.0, 0.0), S: (1440.0, 900.0)]",
+	"visible_window": true
+}

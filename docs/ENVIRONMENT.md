@@ -9,6 +9,6 @@
 - Página de origem: https://godotengine.org/download/windows/
 - URL: https://downloads.godotengine.org/?flavor=stable&platform=windows.64&slug=win64.exe.zip&version=4.7.2
 - Execução confirmou versão `4.7.2.stable.official.ed1daf0bf`.
-- Compatibility/OpenGL, MSAA 2x, resolução base 1440×900 / janela 1280×800. Escolha conservadora para este hardware; medir o desempenho real antes de migrar para efeitos mais pesados.
+- Perfil original: Compatibility/OpenGL, MSAA 2x, resolução base 1440×900 / janela 1280×800. Após a atualização visual, Forward+/Vulkan é o padrão; `Jogar leve.cmd` mantém Compatibility. As medições atuais estão em `visual-benchmark.json` e `TESTS.md`.
 
 O executável standalone exportado e os export templates não foram necessários. Jogar.cmd usa o motor portátil para executar o projeto diretamente.

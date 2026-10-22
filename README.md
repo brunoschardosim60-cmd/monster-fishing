@@ -1,4 +1,4 @@
-# Monster Fishing — Fase 1
+# Monster Fishing — Fase 1, atualização visual
 
 Um protótipo 3D jogável de pescaria e exploração, construído em Godot 4.7.2 e GDScript. A Costa do Farol é uma pequena ilha com mercado, cabana cenográfica, cais e um barco pilotável, cercada por um oceano animado e ilhotas no horizonte.
 
@@ -14,6 +14,8 @@ Um protótipo 3D jogável de pescaria e exploração, construído em Godot 4.7.2
 8. Perto do balcão, pressione **E** para vender o cesto e receber moedas.
 
 Também é possível pescar diretamente do cais. Se perder a direção, **Esc → Voltar em segurança ao cais** recupera jogador e barco sem perder as capturas da sessão.
+
+**Jogar.cmd** usa agora Forward+ (Vulkan), com reflexos de tela, oclusão ambiente e a nova água. **Jogar leve.cmd** usa Compatibility/OpenGL, preservando as ondas, texturas e jogabilidade com iluminação simplificada. Veja as capturas reais e os resultados em [docs/VISUAL_UPGRADE.md](docs/VISUAL_UPGRADE.md).
 
 ## Controles
 
@@ -34,7 +36,7 @@ Também é possível pescar diretamente do cais. Se perder a direção, **Esc �
 
 **Abrir editor.cmd** abre o projeto na versão portátil do Godot disponível em `tools/godot/`. Também é possível importar `project.godot` pelo gerenciador do Godot 4.7.2. O projeto não depende de rede, login, plugins pagos ou pacotes externos durante o jogo.
 
-A pasta `tools/` contém o motor oficial, não é versionada pelo Git. Em outro computador, baixe a edição Standard portátil Windows x86_64 em https://godotengine.org/download/windows/ e coloque os executáveis nessa pasta ou abra o projeto por uma instalação compatível.
+A pasta `tools/` contém o motor oficial, que não é versionado pelo Git. O gerador original de texturas `tools/generate_materials.py` é a exceção versionada. Em outro computador, baixe a edição Standard portátil Windows x86_64 em https://godotengine.org/download/windows/ e coloque os executáveis nessa pasta ou abra o projeto por uma instalação compatível.
 
 ## Entrega desta fase
 
@@ -52,7 +54,7 @@ A pasta `tools/` contém o motor oficial, não é versionada pelo Git. Em outro 
 
 Esta entrega encerra a Fase 1. Não é o mundo aberto completo. **O cesto e as moedas são mantidos apenas durante a sessão; sair fecha esse progresso.** Não há ainda salvamento entre sessões, loja, melhorias, fome, cozinha funcional, entrada na cabana, clima dinâmico, ciclo temporal, sonar, criaturas lendárias ou outras regiões jogáveis. A luz de fim de tarde é fixa. As ilhotas distantes são cenográficas. O desembarque ocorre no cais inicial; não há natação. Existe um limite de navegação da baía.
 
-Os modelos originais e as animações procedurais são uma direção visual de protótipo, organizados para substituição por modelos e animações de produção. A água usa reflexão simplificada de céu e luz, sem simulação física de fluidos nem reflexo completo da cena.
+Os modelos e as animações continuam originais e procedurais, agora com superfícies suaves, articulações, detalhes construtivos e materiais texturizados. O mar tem ondas geométricas, espuma, normais animadas, refração por profundidade e reflexos de céu/luz; Forward+ acrescenta SSR. Não há simulação de fluidos nem reflexão completa de objetos fora da tela. O balanço acompanha as ondas visualmente, enquanto a navegação mantém o controle e as colisões existentes.
 
 ## Estrutura
 

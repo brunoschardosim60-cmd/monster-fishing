@@ -1,5 +1,19 @@
 # Testes da Fase 1
 
+## Atualização visual de 21/10/2026
+
+Após a água, relevo, iluminação, personagem e barco novos: **108 verificações técnicas aprovadas** (24 pesca, 15 mundo, 43 integração, 18 atracação e 8 contratos da água). Os logs finais não apresentam erros de script, shader ou vazamentos de recursos. `Testar.cmd` inclui todos esses testes.
+
+O contrato da água verifica balanço do casco, distância da superfície, colisor nivelado, personagem acompanhando o assento, câmera acima da água, isca sobre a onda e sincronização/pausa do relógio usado pelo shader. As regras de pesca e venda continuam cobertas pela integração.
+
+**32 verificações gráficas aprovadas em Forward+ e outras 32 em Compatibility**, com dez capturas por perfil: título, cais, pesca, captura, navegação, vila, barco de perto, oceano de perto, personagem e esteira. Foi feita inspeção visual dessas capturas. As saídas ficam respectivamente em `tests/output/visual/` e `tests/output/compatibility/`.
+
+Medição após aquecimento, com alvo de renderização fixo de **1440×900**, MSAA 2x, TAA, 600 quadros por vista e limite de 60 FPS, na **RX 580 2048SP**: cais, vila e barco em **59,79 FPS** de média cada. P95 de intervalo entre quadros: **17,32–17,42 ms**; maior P99 das três vistas: **17,93 ms**. Aproximadamente 30 segundos medidos no total. Outros aplicativos estavam abertos; não é uma garantia universal de desempenho. Amostras completas estão em `visual-benchmark.json`. As métricas curtas em `visual-performance.json` não substituem essa medição.
+
+Foram corrigidos durante a validação: orientação das faces dos membros, erro de tipagem na construção da malha, exagero no veio da madeira, repetição das ondas, ajuste de altura da posição sentada, custo de peças individuais e configuração de TAA exclusiva de Forward+. O teste gráfico isola suas ações das teclas físicas para não receber comandos acidentais enquanto executa.
+
+As seções abaixo registram a validação anterior da Fase 1. O resultado visual atual está documentado em `VISUAL_UPGRADE.md`.
+
 Execução confirmada em 21/10/2026 com Godot 4.7.2 estável para Windows, usando o motor real em modo headless. Os testes não exigem bibliotecas externas.
 
 ## Integração da cena principal

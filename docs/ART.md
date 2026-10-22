@@ -1,9 +1,9 @@
-# Direção visual — Fase 1
+# Direção visual — Costa do Farol
 
 Uma enseada atlântica fictícia, em uma tarde dourada. Verde de pinheiro, azul-petróleo, madeira gasta e laranja queimado. Formas simples compostas em objetos reconhecíveis: casas com telhados, chaminés e janelas, barracas de pescado, árvores ramificadas, rochas irregulares, cais de tábuas e farol no horizonte.
 
-Os modelos são originais, gerados localmente por GDScript. Nenhum modelo, textura, som ou imagem de outro jogo foi utilizado. `geometry.gd` concentra os auxiliares substituíveis por modelos glTF em etapas futuras. Materiais de cores sólidas e geometria facetada são uma escolha estilística provisória, não arte final de produção.
+Os modelos são originais, gerados localmente por GDScript. Nenhum modelo, textura, som ou imagem de outro jogo foi utilizado. A atualização visual substitui as cores sólidas e volumes facetados por texturas PBR, superfícies suaves, árvores ramificadas, arbustos com folhas e relva instanciada. O barco tem casco interpolado e interior; o pescador usa boné, mochila, colete e botas, com articulações em cotovelos e joelhos. As referências enviadas pelo usuário orientam ondas, relevo, vestuário e atmosfera; não foram incorporadas como texturas.
 
-O oceano usa ondas e normais analíticas, espuma costeira e reflexo ambiental do céu. Funciona no renderizador Compatibility e não depende de texturas de tela ou profundidade. Não há reflexão planar, refração, simulação hidrodinâmica nem ondas que atingem a embarcação fisicamente nesta fase.
+O oceano combina cinco ondas direcionais com curvatura de fase, atenuadas dentro do porto, e normais em duas escalas. Usa profundidade da cena para absorção, refração e espuma de contato. Cristas recebem espuma e variação de cor. Barco, boias e isca acompanham a mesma altura visual. Forward+ acrescenta SSR, SSAO e glow moderado. Compatibility mantém água, geometria e materiais com iluminação simplificada. O céu possui nuvens procedurais e sol alinhado à luz direcional. ACES, sombras e neblina completam a atmosfera. Não há simulação de fluidos, arrebentação com spray ou reflexo completo de objetos fora da tela.
 
 As ilhotas e o farol criam escala e orientação no horizonte. A ilha principal tem colisão e uma área plana para circulação; as ilhotas ainda não contêm atividades. Casas são fachadas nesta fase. Gaivotas e boias possuem animação procedural econômica. Horário e iluminação permanecem fixos: o ciclo de dia e noite pertence à Fase 3.
