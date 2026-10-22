@@ -1,0 +1,21 @@
+{
+  "source": "survivalist.glb",
+  "source_had_rig": false,
+  "figures_in_source": 3,
+  "selected": "central figure cropped spatially from the merged mesh",
+  "vertices": 19324,
+  "triangles": 16380,
+  "bones": 17,
+  "animations": [
+    "Fish",
+    "Hold",
+    "Idle",
+    "Run",
+    "Steer",
+    "Swim",
+    "Walk"
+  ],
+  "weights": "authored regional two-bone envelopes",
+  "unweighted_vertices_before_accessory_assignment": 19324,
+  "height_m": 1.82
+}

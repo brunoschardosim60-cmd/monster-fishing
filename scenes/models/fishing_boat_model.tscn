@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/assets/external_model.gd" id="1"]
+
+[node name="TripoFishingBoat" type="Node3D"]
+script = ExtResource("1")
+asset_path = "res://assets/boats/fishing_boat.glb"
+length_m = 8.5
+heading_degrees = -90.0
+waterline_m = 0.62
+
+[node name="Helm" type="Marker3D" parent="."]
+position = Vector3(0, 1.12, 1.25)
+
+[node name="DeckCenter" type="Marker3D" parent="."]
+position = Vector3(0, 1.12, 2.4)
+
+[node name="BoardPort" type="Marker3D" parent="."]
+position = Vector3(-1.6, 1.12, 2.4)

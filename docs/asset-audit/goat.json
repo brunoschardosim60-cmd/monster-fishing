@@ -1,0 +1,28 @@
+{
+  "source": "goat 3d model (1).glb",
+  "sha256": "33ea439061de914d41b887ea31abf678e52fdca9f9855e108ed37b60b14a22b9",
+  "parts": 1,
+  "triangles_before": 1957950,
+  "armatures": [],
+  "actions": [],
+  "ratio": 0.018,
+  "textured": true,
+  "triangles_after": 35242,
+  "parts_detail_blender_z_up": [
+    {
+      "name": "tripo_node_847fcc41-e286-48b5-947a-4598315e16c7",
+      "triangles": 35242,
+      "min": [
+        -0.4899830222129822,
+        -0.17233288288116455,
+        -0.00013895033043809235
+      ],
+      "max": [
+        0.48992887139320374,
+        0.17268192768096924,
+        0.9355611205101013
+      ]
+    }
+  ],
+  "export_bytes": 4073616
+}

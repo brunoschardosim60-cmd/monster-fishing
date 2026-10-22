@@ -1,0 +1,26 @@
+[
+  {
+    "source_part": "tripo_part_3",
+    "variant": 0,
+    "triangles": 1420,
+    "cut_fraction": 0.48
+  },
+  {
+    "source_part": "tripo_part_5",
+    "variant": 1,
+    "triangles": 650,
+    "cut_fraction": 0.48
+  },
+  {
+    "source_part": "tripo_part_6",
+    "variant": 2,
+    "triangles": 1518,
+    "cut_fraction": 0.48
+  },
+  {
+    "source_part": "tripo_part_9",
+    "variant": 3,
+    "triangles": 1507,
+    "cut_fraction": 0.48
+  }
+]

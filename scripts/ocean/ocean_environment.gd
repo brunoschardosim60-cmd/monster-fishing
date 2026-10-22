@@ -19,10 +19,17 @@ var thunder_delay: float=-1.
 var underwater: bool=false
 var cold: float=0.
 var strike_position:=Vector3.ZERO
+var seabed: MeshInstance3D
+var hour: float=16.6
+var day_length_seconds: float=1800.
+var daylight: float=1.
+var cycle_enabled: bool=true
+var moon: DirectionalLight3D
 
 func _ready() -> void:
 	process_physics_priority=-30
 	Waves.reset()
+	moon=DirectionalLight3D.new();moon.light_color=Color("7ca5d2");moon.light_energy=.14;add_child(moon)
 	effects=Effects.new(); effects.name="WaterInteractions"; add_child(effects)
 	_make_rain(); _make_seabed(); _make_ice()
 	for island: Vector4 in Waves.ISLANDS:
@@ -55,6 +62,7 @@ func _make_seabed() -> void:
 	mat.set_shader_parameter("sand_tex",load("res://assets/textures/sand_color.png"))
 	mat.set_shader_parameter("noise_tex",load("res://assets/textures/foam_noise.png"))
 	var floor_mesh:=G.mesh_node(self,plane,mat,Vector3.ZERO)
+	seabed=floor_mesh
 	floor_mesh.custom_aabb=AABB(Vector3(-320,-200,-320),Vector3(640,201,640))
 	floor_mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
@@ -63,7 +71,7 @@ func _make_ice() -> void:
 	mat.roughness=.28; mat.metallic=.12
 	var rng:=RandomNumberGenerator.new(); rng.seed=419
 	for i: int in 11:
-		var at:=Vector3(72.+float(i%4)*8.+rng.randf_range(-2,2),0,-126.-float(i/4)*8.)
+		var at:=Vector3(578.+float(i%4)*12.+rng.randf_range(-2,2),0,-606.-float(i/4)*12.)
 		if Waves.coast(Vector2(at.x,at.z)).x<2.: continue
 		var floe:=Node3D.new(); add_child(floe); floe.position=at
 		var st:=SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -87,16 +95,21 @@ func is_ice(at: Vector3) -> bool:
 	return false
 
 func _physics_process(delta: float) -> void:
+	if cycle_enabled: hour=fposmod(hour+delta*24./day_length_seconds,24.)
 	weather.advance(delta)
 	Waves.advance(delta,weather.wind,weather.energy,weather.rain,Vector2.from_angle(weather.heading))
 	Waves.bind(world.ocean_material)
 	var camera:=get_viewport().get_camera_3d()
 	if camera==null: return
 	var p:=camera.global_position
-	cold=1.-smoothstep(15.,60.,Vector2(p.x,p.z).distance_to(Vector2(115,-150)))
+	Waves.ocean_center=Vector2(snappedf(p.x,2.),snappedf(p.z,2.))
+	world.water_root.position=Vector3(Waves.ocean_center.x,0,Waves.ocean_center.y)
+	seabed.position=world.water_root.position
+	Waves.bind(world.ocean_material)
+	cold=1.-smoothstep(60.,300.,Vector2(p.x,p.z).distance_to(Vector2(790,-640)))
 	underwater=p.y<Waves.height_at(p)-.08
 	rain_particles.global_position=p+Vector3(0,8,0)
-	rain_particles.emitting=weather.rain>.03 and not underwater
+	rain_particles.emitting=weather.rain>.03 and not underwater and not world.village.indoors(p)
 	rain_particles.color=Color(1,1,1,weather.rain*.6)
 	rain_particles.gravity=Vector3(Waves.direction.x*weather.wind*8.,-4,Waves.direction.y*weather.wind*8.)
 	flash_clock-=delta; flash_remaining=maxf(0.,flash_remaining-delta)
@@ -125,10 +138,18 @@ func _physics_process(delta: float) -> void:
 func _update_lighting(delta: float) -> void:
 	light_clock+=delta
 	var flash:=flash_remaining/.18
-	world.sun.light_energy=lerpf(1.25,.23,weather.cloud)+flash*3.
-	world.sun.light_color=Color("ffd4a0").lerp(Color("a9bfd2"),weather.cloud*.85)
+	var angle: float=(hour-6.)/24.*TAU
+	var elevation:=sin(angle)
+	daylight=smoothstep(-.16,.22,elevation)
+	world.sun.rotation=Vector3(-asin(elevation),angle*.6+1.3,0)
+	world.sun.light_energy=daylight*lerpf(1.65,.23,weather.cloud)+flash*3.
+	world.sun.light_color=Color("ffbd80").lerp(Color("fff0ce"),smoothstep(.12,.6,elevation)).lerp(Color("a9bfd2"),weather.cloud*.85)
+	moon.rotation=Vector3(-asin(-elevation),angle*.6+1.3+PI,0);moon.light_energy=(1.-daylight)*.25*(1.-weather.cloud*.7)
+	world.sky_material.set_shader_parameter("sun_direction",world.sun.global_basis.z.normalized())
+	world.sky_material.set_shader_parameter("moon_direction",moon.global_basis.z.normalized())
+	world.environment.ambient_light_energy=lerpf(.22,.55,daylight)
 	world.environment.fog_density=.055 if underwater else weather.fog+cold*.012
-	world.environment.fog_light_color=Color("0a5460") if underwater else Color("7c9da8").lerp(Color("425967"),weather.cloud)
+	world.environment.fog_light_color=Color("0a5460") if underwater else Color("182d43").lerp(Color("7c9da8").lerp(Color("425967"),weather.cloud),daylight)
 	world.environment.fog_sky_affect=1. if underwater else .04+weather.rain*.45
 	world.environment.tonemap_exposure=.72 if underwater else .95
 	world.sky_material.set_shader_parameter("lightning",flash)

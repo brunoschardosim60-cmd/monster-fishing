@@ -42,6 +42,7 @@ func run() -> void:
 	# Reach the side of the docking area through real acceleration and braking.
 	game.boat.set_occupied(true)
 	game.player.set_boating(true)
+	game.boat.position.z=-28.5 # Clear the longer imported hull from the finger before turning.
 	game.boat.rotation.y = -PI / 2
 	Input.action_press("move_forward")
 	for frame: int in range(240):
@@ -67,7 +68,7 @@ func run() -> void:
 	check(game.player.in_boat, "the launch can be boarded again immediately after mooring")
 	# A legal water position near a distant island, with the normal cast aimed
 	# at its emerged sloping beach. Test the real main-scene cast validation.
-	game.boat.position = Vector3(-95, 0, -66.5)
+	game.boat.position = Vector3(-690, 0, -369)
 	game.boat.rotation.y = 0
 	game.boat.speed = 0
 	await frames(8)
@@ -78,7 +79,7 @@ func run() -> void:
 	check(game.world.is_land(target), "distant island beach is recognised as land")
 	game.fish_action()
 	check(game.fishing.state == 0, "a cast onto the distant island cannot start fishing")
-	for center: Vector3 in [Vector3(0,0,18),Vector3(-95,0,-95),Vector3(115,0,-150),Vector3(35,0,-265)]:
+	for center: Vector3 in [Vector3(0,0,230),Vector3(-690,0,-510),Vector3(790,0,-640),Vector3(20,0,-1340)]:
 		check(game.world.is_land(center), "is_land includes island " + str(center))
 	# Maximum upward mouse angle must not put the third-person camera beneath
 	# the ocean; first-person sky observation should remain available.

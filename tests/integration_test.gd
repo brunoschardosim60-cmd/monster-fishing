@@ -84,6 +84,8 @@ func _catch_one(seed_value: int) -> bool:
 			break
 	var captured: bool = game.fishing.state == Fishing.State.CAUGHT
 	_check(captured, "reeling with tension relief lands a fish")
+	_check(not game.pending_catch.is_empty() and game.inventory.count()==before,"caught fish waits in hand for a disposition")
+	await _tap_key(KEY_G)
 	_check(game.inventory.count() == before + 1, "main scene credits exactly one captured fish")
 	game.fishing.advance(3.0)
 	game.fishing.set_process(true)
@@ -182,8 +184,9 @@ func _run() -> void:
 	await _frames(65)
 	Input.action_release("move_forward")
 	await _frames(20)
-	_check(game.player.global_position.z > -22.0 and game.player.global_position.y > 1.0, "walking into water triggers safe recovery")
-	_check(game.inventory.money == before_recovery, "water recovery preserves earned money")
+	_check(game.player.global_position.z < -26.0 and game.player.swimming, "walking into water starts swimming without forcing harbor return")
+	_check(game.inventory.money == before_recovery, "swimming preserves earned money")
+	game.return_to_harbor();await _frames(12)
 	# Verify recovery also retains an unsold fish, through another real capture.
 	await _catch_one(2257)
 	var recovered_catches: int = game.inventory.count()

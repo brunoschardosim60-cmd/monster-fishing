@@ -27,8 +27,9 @@ func _run() -> void:
 	game.player.controls_enabled=false
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
 	game.audio.stop_all()
+	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=16.6
 	await _frames(240)
-	for stage: int in 4:
+	for stage: int in 6:
 		if stage==1:
 			game.player.yaw=PI
 		elif stage==2:
@@ -39,6 +40,11 @@ func _run() -> void:
 		elif stage==3:
 			game.world.ocean.weather.settle(3)
 			game.boat.global_position=Vector3(20,0,-80)
+		elif stage==4:
+			game.player.set_boating(false);game.boat.set_occupied(false)
+			game.world.ocean.weather.settle(1);game.player.global_position=Vector3(-55,30,220);game.player.yaw=PI
+		elif stage==5:
+			game.world.ocean.hour=23.;game.player.global_position=Vector3(0,1.55,8);game.player.yaw=PI
 		await _frames(90)
 		var times: Array[float]=[]
 		var last:=Time.get_ticks_usec()
@@ -50,7 +56,7 @@ func _run() -> void:
 		var total:=0.
 		for dt: float in times: total+=dt
 		times.sort()
-		var report:={"scene":["pier","village","boat","storm"][stage],"frames":600,"fps_mean":600000./total,"frame_ms_p50":times[300],"frame_ms_p95":times[570],"frame_ms_p99":times[594],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"video_memory_mb":Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)/1048576.}
+		var report:={"scene":["pier","village","boat","storm","forest","night_village"][stage],"frames":600,"fps_mean":600000./total,"frame_ms_p50":times[300],"frame_ms_p95":times[570],"frame_ms_p99":times[594],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"video_memory_mb":Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)/1048576.}
 		reports.append(report)
 		print(JSON.stringify(report))
 	var file:=FileAccess.open("res://tests/output/visual/benchmark.json",FileAccess.WRITE)

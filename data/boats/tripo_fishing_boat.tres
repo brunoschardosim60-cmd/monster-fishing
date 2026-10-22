@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BoatHydrodynamics" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/boats/boat_hydrodynamics.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+mass_kg = 4200.0
+waterline_length = 8.1
+beam = 3.65
+draft_offset = 0.1
+heave_stiffness = 155000.0
+damping_ratio = 0.95
+angular_response = 3.8
+maximum_tilt = 0.32
+storm_drag = 0.13

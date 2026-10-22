@@ -2,7 +2,7 @@ extends RefCounted
 ## Wind responds first; the swell retains its energy after a front passes.
 enum State { CALM, BREEZE, ROUGH, STORM, AFTERMATH }
 const LABELS := ["MAR CALMO", "BRISA", "MAR AGITADO", "TEMPESTADE", "ONDULAÇÃO RESIDUAL"]
-const PRESETS := [Vector4(.09,0.,.18,.0018), Vector4(.32,0.,.32,.0023), Vector4(.68,.35,.72,.004), Vector4(1.,1.,1.,.009), Vector4(.22,.08,.42,.003)]
+const PRESETS := [Vector4(.09,0.,.18,.0004), Vector4(.32,0.,.32,.00065), Vector4(.68,.35,.72,.002), Vector4(1.,1.,1.,.006), Vector4(.22,.08,.42,.0012)]
 const DURATIONS := [100.,150.,100.,85.,130.]
 var state: int = State.BREEZE
 var automatic: bool = true
@@ -11,7 +11,7 @@ var clock: float = 0.
 var wind: float = .32
 var rain: float = 0.
 var cloud: float = .32
-var fog: float = .0023
+var fog: float = .00065
 var energy: float = .40
 var heading: float = .45
 

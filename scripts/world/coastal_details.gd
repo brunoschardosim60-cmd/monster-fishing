@@ -2,6 +2,16 @@ extends RefCounted
 const G = preload("res://scripts/world/geometry.gd")
 const M = preload("res://scripts/visuals/materials.gd")
 static var foliage_material: StandardMaterial3D
+static var pine_material: StandardMaterial3D
+
+static func pine_leaves_material() -> StandardMaterial3D:
+	if pine_material==null:
+		pine_material=leaves_material().duplicate()
+		pine_material.albedo_texture=load("res://assets/textures/pine_frond.png")
+		pine_material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		pine_material.alpha_scissor_threshold=.4
+		pine_material.texture_filter=BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return pine_material
 
 static func leaves_material() -> StandardMaterial3D:
 	if foliage_material==null:
@@ -32,16 +42,19 @@ static func pine(parent: Node3D, pos: Vector3, scale_value: float, rng: RandomNu
 			for tuft: int in range(13):
 				var center := start.lerp(end,rng.randf_range(.36,1.14))
 				center += Vector3(rng.randf_range(-.38,.38),rng.randf_range(-.2,.3),rng.randf_range(-.38,.38))
-				var color := Color("364a28").lerp(Color("6b7742"),rng.randf()*.7)
-				for needle: int in range(6):
+				var color := Color("749d5b").lerp(Color("b9c383"),rng.randf()*.7)
+				for needle: int in range(3):
 					var a := rng.randf()*TAU
-					var tip := center+Vector3(cos(a)*.38,rng.randf_range(.05,.32),sin(a)*.38)
-					var side := Vector3(-sin(a),.15,cos(a))*.075
-					for point: Vector3 in [center-side,tip,center+side]:
+					var forward := Vector3(cos(a),rng.randf_range(.12,.5),sin(a))*.62
+					var side := Vector3(-sin(a),.15,cos(a))*.3
+					var points: Array[Vector3]=[center-side,center+side,center+forward+side,center+forward-side]
+					var uv: Array[Vector2]=[Vector2(0,1),Vector2(1,1),Vector2(1,0),Vector2(0,0)]
+					for index: int in [0,2,1,0,3,2]:
 						leaves.set_color(color)
-						leaves.set_normal(Vector3.UP.lerp((point-center).normalized(),.25).normalized())
-						leaves.add_vertex(point)
-	G.mesh_node(tree,leaves.commit(),leaves_material(),Vector3.ZERO)
+						leaves.set_normal(Vector3.UP)
+						leaves.set_uv(uv[index])
+						leaves.add_vertex(points[index])
+	G.mesh_node(tree,leaves.commit(),pine_leaves_material(),Vector3.ZERO)
 	var body := StaticBody3D.new()
 	body.collision_layer=1
 	body.collision_mask=0

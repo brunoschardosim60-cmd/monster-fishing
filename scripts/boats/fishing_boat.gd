@@ -7,6 +7,9 @@ const G = preload("res://scripts/world/geometry.gd")
 ## Horizontal collision controller plus a damped, four-point waterline sampler.
 @export var hydrodynamics: Resource=preload("res://data/boats/coastal_launch.tres")
 var water_effects: Node3D
+var imported_model: Node3D
+var bucket: Marker3D
+var integrity: float=1.
 var trail: MeshInstance3D
 var heave_velocity: float=0.
 var impact_cooldown: float=0.
@@ -30,11 +33,12 @@ func _ready() -> void:
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(2.05, 1.0, 4.8)
+	box.size = Vector3(3.65, 1.0, 8.1) if ResourceLoader.exists("res://assets/boats/fishing_boat.glb") else Vector3(2.05, 1.0, 4.8)
 	shape.shape = box
 	shape.position.y = 0.5
 	add_child(shape)
 	_build_visual()
+	_build_bucket()
 	trail=preload("res://scripts/ocean/wake_trail.gd").new()
 	add_child(trail)
 
@@ -47,7 +51,7 @@ func _physics_process(delta: float) -> void:
 		steering = Input.get_axis("move_left", "move_right")
 	if throttle > 0.0:
 		var exposure:=Waves.exposure(Vector2(global_position.x,global_position.z))
-		var limit: float=max_speed*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)
+		var limit: float=max_speed*(.55+.45*integrity)*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)
 		speed = move_toward(speed, limit, 2.7 * delta)
 	elif throttle < 0.0:
 		speed = move_toward(speed, -3.2, (5.5 if speed > 0.2 else 1.8) * delta)
@@ -59,14 +63,12 @@ func _physics_process(delta: float) -> void:
 	velocity.y = 0.0
 	move_and_slide()
 	if get_slide_collision_count() > 0:
+		if absf(speed)>2.: integrity=maxf(.15,integrity-absf(speed)*delta*.003)
 		speed = move_toward(speed, 0.0, 9.0 * delta)
 	position.y = 0.0
-	var flat_position := Vector2(position.x, position.z)
-	if flat_position.length() > 178.0:
-		var boundary := flat_position.normalized() * 177.8
-		position.x = boundary.x
-		position.z = boundary.y
-		speed = minf(speed, 0.0)
+	var wrapped:=preload("res://scripts/world/archipelago_layout.gd").wrapped(global_position)
+	if wrapped.distance_to(global_position)>100.:
+		global_position=wrapped;trail.clear_trail()
 	wake_strength = clampf(absf(speed) / max_speed, 0.0, 1.0)
 	trail.advance(global_position,global_basis,speed,delta)
 	impact_cooldown=maxf(0.,impact_cooldown-delta)
@@ -102,6 +104,7 @@ func set_occupied(value: bool) -> void:
 	occupied = value
 
 func seat_position() -> Vector3:
+	if imported_model!=null: return imported_model.get_node("Helm").global_position
 	return _hull.to_global(Vector3(0.0, 0.95, 0.5)) if is_instance_valid(_hull) else to_global(Vector3(0.0,0.95,0.5))
 
 func reset_to_dock() -> void:
@@ -113,6 +116,8 @@ func reset_to_dock() -> void:
 	if trail!=null: trail.clear_trail()
 
 func _build_visual() -> void:
+	if ResourceLoader.exists("res://assets/boats/fishing_boat.glb"):
+		_build_external_visual(); return
 	_hull = Node3D.new()
 	_hull.name = "HandcraftedLaunch"
 	add_child(_hull)
@@ -241,6 +246,20 @@ func _build_visual() -> void:
 	# Fixed fittings share draws in hull space; the whole assembly still rocks.
 	preload("res://scripts/world/static_batch.gd").build(_hull,[_propeller])
 
+func _build_external_visual() -> void:
+	hydrodynamics=preload("res://data/boats/tripo_fishing_boat.tres").duplicate()
+	_hull=Node3D.new(); _hull.name="WaveFollowingHull"; add_child(_hull)
+	imported_model=preload("res://scenes/models/fishing_boat_model.tscn").instantiate(); _hull.add_child(imported_model)
+	_propeller=Node3D.new(); _hull.add_child(_propeller)
+	var metal:=Materials.surface("paint",Color("253e43"),3.,false)
+	G.cylinder(_hull,Vector3(0,1.55,.85),.06,.85,metal)
+	var wheel:=TorusMesh.new(); wheel.inner_radius=.16; wheel.outer_radius=.2
+	var wheel_node:=G.mesh_node(_hull,wheel,metal,Vector3(0,1.96,.85));wheel_node.rotation.x=PI*.3
+	_wake_material=ShaderMaterial.new();_wake_material.shader=preload("res://assets/shaders/wake.gdshader")
+	_wake_material.set_shader_parameter("foam_tex",load("res://assets/textures/foam_noise.png"))
+	_foam_left=_make_wake(Vector3(-1.8,0,3.9));_foam_right=_make_wake(Vector3(1.8,0,3.9))
+	_foam_left.rotation.y=-.18;_foam_right.rotation.y=.18
+
 func _make_wake(at: Vector3) -> MeshInstance3D:
 	var mesh:=PlaneMesh.new()
 	mesh.size=Vector2(.85,2.4)
@@ -249,6 +268,19 @@ func _make_wake(at: Vector3) -> MeshInstance3D:
 	var instance:=G.mesh_node(self,mesh,_wake_material,at)
 	instance.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return instance
+
+func _build_bucket() -> void:
+	var at:=Vector3(1.,1.12,2.55) if imported_model!=null else Vector3(-.65,.48,1.4)
+	var metal:=Materials.surface("paint",Color("9faea3"),2.,false)
+	metal.metallic=.55;metal.roughness=.32;metal.cull_mode=BaseMaterial3D.CULL_DISABLED
+	var shell:=CylinderMesh.new();shell.top_radius=.26;shell.bottom_radius=.21;shell.height=.43;shell.radial_segments=24;shell.cap_top=false
+	G.mesh_node(_hull,shell,metal,at+Vector3.UP*.215)
+	G.cylinder(_hull,at+Vector3.UP*.05,.2,.02,G.material(Color("213f43")),.2,24)
+	var rim:=TorusMesh.new();rim.inner_radius=.245;rim.outer_radius=.27;rim.rings=24;rim.ring_segments=8
+	G.mesh_node(_hull,rim,metal,at+Vector3.UP*.43)
+	for side: float in [-1.,1.]:G.beam(_hull,at+Vector3(side*.255,.35,0),at+Vector3(side*.2,.7,0),.012,metal)
+	G.beam(_hull,at+Vector3(-.2,.7,0),at+Vector3(.2,.7,0),.014,metal)
+	bucket=Marker3D.new();bucket.position=at+Vector3.UP*.24;_hull.add_child(bucket)
 
 func _smooth_outline(control: PackedVector2Array) -> PackedVector2Array:
 	var result:=PackedVector2Array()

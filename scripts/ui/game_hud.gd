@@ -4,6 +4,14 @@ signal resume_requested
 signal return_requested
 signal quit_requested
 signal weather_selected(index: int)
+signal time_selected(hour: float)
+signal service_action(id: String)
+signal service_closed
+const SERVICE_NAMES: Dictionary={"gear":"loja de pesca","workshop":"oficina naval","cabin":"sua cabana","inn":"pousada","storage":"armazém","market":"mercado de peixes"}
+var service_open: bool=false
+var service_panel: PanelContainer
+var service_message: Label
+var map_view: Control
 var sea_label: Label
 var weather_picker: OptionButton
 
@@ -65,7 +73,7 @@ func _ready() -> void:
 	compass.offset_bottom = 65
 	compass.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hud_controls.append(compass)
-	var controls := _label(root, "WASD  mover     SHIFT  correr     E  interagir     ESPAÇO / CLIQUE  pescar     F  câmera     TAB  capturas     ESC  pausa", 14, CREAM)
+	var controls := _label(root, "WASD mover · SHIFT correr · E interagir/sair · R convés · ESPAÇO pescar · G guardar · X soltar · F câmera · M mapa · J diário · TAB capturas · ESC pausa", 13, CREAM)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	controls.offset_left = 30
 	controls.offset_right = -30
@@ -88,6 +96,7 @@ func _ready() -> void:
 	toast.offset_right = 460
 	toast.offset_bottom = 158
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	hud_controls.append(toast)
 	fishing_box = _panel(root, Vector2.ZERO, Vector2(480, 184))
 	fishing_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -116,7 +125,44 @@ func _ready() -> void:
 	_label(ledger_content, "Venda suas capturas no mercado da ilha.\nTAB  fechar", 14, SEA)
 	ledger.hide()
 	_make_overlay()
+	map_view=preload("res://scripts/ui/world_map.gd").new();root.add_child(map_view)
 	_set_hud(false)
+
+func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D) -> void:
+	if service_panel!=null:service_panel.free()
+	service_open=true
+	service_panel=_panel(root,Vector2(450,180),Vector2(550,480));service_panel.mouse_filter=Control.MOUSE_FILTER_STOP
+	var box:=_vbox(service_panel)
+	_label(box,str(SERVICE_NAMES.get(id,id)).to_upper(),25,GOLD)
+	_label(box,"%d moedas · %d iscas · %d materiais\nCasco: %d%% · Capturas no armazém: %d"%[inventory.money,inventory.bait,inventory.materials,int(boat.integrity*100.),inventory.stored_catches.size()],16,CREAM)
+	var catalog: Dictionary=preload("res://scripts/inventory/harbor_economy.gd").CATALOG
+	for key: String in catalog:
+		var item: Dictionary=catalog[key]
+		if item.service!=id:continue
+		var button:=_button(box,"%s  —  %d moedas"%[item.title,item.price]);button.custom_minimum_size.x=500.;button.add_theme_font_size_override("font_size",14)
+		button.pressed.connect(func() -> void: service_action.emit(key))
+	var actions: Dictionary={}
+	if id=="market":actions={"sell":"Vender todas as capturas · %d moedas"%inventory.total_value()}
+	if id in ["cabin","inn"]:actions={"rest":"Descansar até 08:00"}
+	if id in ["cabin","storage"]:actions.merge({"store":"Guardar capturas no armazém","withdraw":"Retirar capturas do armazém"})
+	for key: String in actions:
+		var button:=_button(box,actions[key]);button.pressed.connect(func() -> void:service_action.emit(key))
+	service_message=_label(box,"",15,SEA);service_message.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;service_message.custom_minimum_size.x=500.
+	_button(box,"Fechar  ·  E / ESC").pressed.connect(close_service)
+
+func close_service() -> void:
+	service_open=false
+	if service_panel!=null:service_panel.queue_free();service_panel=null
+	service_closed.emit()
+
+func show_encyclopedia(entries: Dictionary,discoveries: Dictionary) -> void:
+	ledger.visible=not ledger.visible
+	var content:="ENCICLOPÉDIA\n"
+	for data: Dictionary in entries.values():content+="%s · %s\n%d registros · recorde %.2f kg · %d devolvidos\n"%[data.name,data.rarity,data.count,data.record,data.released]
+	if entries.is_empty():content+="Pesque e guarde ou devolva um peixe para registrá-lo.\n"
+	content+="\nLOCAIS DESCOBERTOS\n"
+	for place: String in discoveries.values():content+=place+"\n"
+	ledger_text.text=content
 
 func _make_overlay() -> void:
 	overlay = ColorRect.new()
@@ -128,7 +174,7 @@ func _make_overlay() -> void:
 	content.size = Vector2(620, 550)
 	content.add_theme_constant_override("separation", 20)
 	overlay.add_child(content)
-	_label(content, "UMA PEQUENA ILHA. UM OCEANO DE HISTÓRIAS.", 14, SEA)
+	_label(content, "VILA DA AURORA. UM OCEANO DE HISTÓRIAS.", 14, SEA)
 	overlay_title = _label(content, "Monster\nFishing", 76, CREAM)
 	var serif := SystemFont.new()
 	serif.font_names = PackedStringArray(["Georgia", "DejaVu Serif"])
@@ -143,7 +189,7 @@ func _make_overlay() -> void:
 	return_button.hide()
 	quit_button = _button(content, "Sair do jogo")
 	quit_button.pressed.connect(func() -> void: quit_requested.emit())
-	var build_label := _label(overlay, "FASE 1  •  PROTÓTIPO JOGÁVEL     /     COSTA DO FAROL", 13, SEA)
+	var build_label := _label(overlay, "ARQUIPÉLAGO DA AURORA  /  EXPLORAÇÃO, PESCA E VIDA NO PORTO", 13, SEA)
 	build_label.position = Vector2(100, 820)
 	var weather_panel:=_panel(overlay,Vector2(930,200),Vector2(395,220))
 	var weather_box:=_vbox(weather_panel)
@@ -154,6 +200,11 @@ func _make_overlay() -> void:
 	weather_box.add_child(weather_picker)
 	weather_picker.item_selected.connect(func(index: int) -> void: weather_selected.emit(index-1))
 	_label(weather_box,"O tempo muda aos poucos.\nO mar leva mais tempo para se acalmar.\n\nEscolha também pelo menu de pausa.",15,CREAM)
+	_label(weather_box,"HORÁRIO",16,GOLD)
+	var time_picker:=OptionButton.new()
+	for text: String in ["Fim de tarde","Amanhecer","Manhã","Meio-dia","Noite"]:time_picker.add_item(text)
+	time_picker.custom_minimum_size=Vector2(325,40);weather_box.add_child(time_picker)
+	time_picker.item_selected.connect(func(index: int) -> void:time_selected.emit([16.6,6.5,9.,12.,23.][index]))
 
 func begin_play() -> void:
 	started = true
@@ -164,7 +215,7 @@ func show_pause() -> void:
 	ledger.hide()
 	overlay_title.text = "O mar\npode esperar."
 	overlay_title.add_theme_font_size_override("font_size", 58)
-	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nWASD  caminhar / pilotar     •     Mouse  olhar\nE  embarcar / desembarcar / vender     •     F  câmera\nESPAÇO ou clique  lançar / fisgar / recolher\nBotão direito  cancelar a pesca     •     TAB  capturas\n\nDesembarque junto à ponta do cais."
+	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nWASD caminhar / pilotar / nadar  ·  Mouse olhar\nE interagir / embarcar / sair  ·  R convés / leme\nESPAÇO lançar / fisgar / recolher  ·  Botão direito cancelar\nG guardar peixe  ·  X devolver  ·  F câmera\nM mapa  ·  J enciclopédia  ·  TAB capturas"
 	play_button.text = "CONTINUAR  →"
 	return_button.show()
 	overlay.show()

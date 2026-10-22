@@ -34,6 +34,8 @@ static func build(world: Node3D, dynamic_roots: Array[Node3D]) -> void:
 		world.add_child(batch)
 
 static func _collect(node: Node, excluded: Array[Node3D], output: Array[MeshInstance3D]) -> void:
+	if node is Skeleton3D:return
+	if node is Node3D and not node.visible:return
 	if node is Node3D and node in excluded:
 		return
 	if node is MeshInstance3D:

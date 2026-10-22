@@ -47,14 +47,14 @@ void fragment() {
 	float shallow=exp(-min(thickness,bottom_depth)*.23);
 	float foam_noise=texture(foam_tex,p*.18+sea_time*vec2(-.02,.04)).r;
 	foam_noise=mix(foam_noise,texture(foam_tex,p*.85+sea_time*vec2(-.015,.025)).r,.3);
-	float shore=(1.-smoothstep(.08,.85,thickness))*smoothstep(.24,.68,foam_noise);
+	float shore=(1.-smoothstep(.08,.85,thickness))*smoothstep(.35,.72,foam_noise)*(.45+.55*pow(.5+.5*sin(coast.x*.85-sea_time*1.15),2.));
 	float breaker=pow(.5+.5*sin(coast.x*.85-sea_time*1.15),5.);
 	float surf=(1.-smoothstep(.4,4.,abs(coast.x)))*breaker*smoothstep(.25,.64,foam_noise)*(.4+swell_energy);
 	float whitecap=smoothstep(.3+swell_energy*.8,.65+swell_energy*1.05,crest)*smoothstep(.4,.67,foam_noise)*wind_strength*exposure;
 	float foam=clamp(shore+surf+whitecap,0.,.96);
 	float crest_scattering=smoothstep(-.15,.6,crest)*.20;
 	vec3 col=mix(deep_color,shallow_color,shallow*.75+crest_scattering);
-	float cold=1.-smoothstep(15.,60.,length(p-vec2(115,-150)));
+	float cold=1.-smoothstep(60.,300.,length(p-vec2(790,-640)));
 	col=mix(col,col*vec3(.55,.7,.85),cold*.75+rain_strength*.22);
 	vec2 distortion=wn.xz*.018*min(thickness,2.);
 	vec3 refract_color=textureLod(screen_tex,clamp(SCREEN_UV+distortion,vec2(.001),vec2(.999)),0.).rgb;

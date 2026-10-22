@@ -12,6 +12,11 @@ var sun: DirectionalLight3D
 var ocean: Node3D
 var terrain_materials: Array[ShaderMaterial]=[]
 var shore_rocks: Array[Vector3]=[]
+const Layout=preload("res://scripts/world/archipelago_layout.gd")
+var region: Node3D
+var village: Node3D
+var water_root: Node3D
+var life: Node3D
 
 var rng := RandomNumberGenerator.new()
 var gulls: Array[Node3D] = []
@@ -36,45 +41,35 @@ func _ready() -> void:
 	rock = Materials.surface("granite", Color("a5aaa3"), 1.2)
 	_make_lighting()
 	_make_ocean()
-	_make_island(Vector3(0, 0, 18), Vector2(29, 32), true)
-	_make_island(Vector3(-95, 0, -95), Vector2(20, 24), false)
-	_make_island(Vector3(115, 0, -150), Vector2(29, 34), false)
-	_make_island(Vector3(35, 0, -265), Vector2(32, 30), false)
+	region=preload("res://scripts/world/island_region.gd").new();region.world=self;region.name="AuroraIsland";add_child(region)
+	for i: int in range(4,Layout.LOBES.size()):
+		var island:=Layout.LOBES[i]
+		_make_island(Vector3(island.x,0,island.y),Vector2(island.z,island.w),false)
 	_make_dock()
-	_make_cabin(Vector3(-12, 1.25, 7), -0.15, true)
-	_make_cabin(Vector3(13, 1.25, 16), 0.18, false)
-	_make_market()
-	_make_foliage()
-	_make_lighthouse(Vector3(-97, _island_height(-2,1,Vector2(-2./20.,1./24.).length(),false), -94))
-	_make_wildlife()
+	village=preload("res://scripts/world/harbor_village.gd").new();village.world=self;village.name="VilaDaAurora";add_child(village)
+	_make_lighthouse(Vector3(-65,Layout.height(Vector2(-65,490)),490))
 	_make_sign()
-	Details.dress_harbor(self, rng, wood, dark_wood, rock)
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
 		_make_buoy(p)
 	var dynamic_roots: Array[Node3D] = []
 	dynamic_roots.append_array(gulls)
 	dynamic_roots.append_array(buoys)
+	dynamic_roots.append(region);dynamic_roots.append(village)
 	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
 	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
+	life=preload("res://scripts/world/coastal_life.gd").new();life.world=self;life.name="CoastalLife";add_child(life)
 
 func safe_spawn() -> Vector3:
 	return Vector3(0.0, 1.55, -17.0)
 
 func is_land(pos: Vector3) -> bool:
 	if ocean!=null and ocean.is_ice(pos): return true
-	# The same footprints as the four visible islands, including scenic shores.
-	var islands: Array[Vector4] = [
-		Vector4(0, 18, 29, 32), Vector4(-95, -95, 20, 24),
-		Vector4(115, -150, 29, 34), Vector4(35, -265, 32, 30),
-	]
-	for island: Vector4 in islands:
-		var radius := Vector2((pos.x - island.x) / island.z, (pos.z - island.y) / island.w).length()
-		if radius < 0.98:
-			return true
+	if Layout.coast(Vector2(pos.x,pos.z)).x< -1.5: return true
 	return absf(pos.x) < 1.8 and pos.z > -26.5 and pos.z < -7.0
 
 func _make_lighting() -> void:
+	get_viewport().use_occlusion_culling=true
 	var env_node := WorldEnvironment.new()
 	var env := Environment.new()
 	environment=env
@@ -101,7 +96,7 @@ func _make_lighting() -> void:
 		env.ssao_radius = 1.6
 		env.ssao_intensity = 1.5
 		env.ssr_enabled = true
-		env.ssr_max_steps = 32
+		env.ssr_max_steps = 20
 		env.glow_enabled = true
 		env.glow_intensity = 0.35
 		env.glow_bloom = 0.0
@@ -128,26 +123,27 @@ func _make_lighting() -> void:
 	sky_mat.set_shader_parameter("sun_direction", sun.global_basis.z.normalized())
 
 func _make_ocean() -> void:
+	water_root=Node3D.new();water_root.name="FollowingOceanGrid";add_child(water_root)
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(480, 480)
-	plane.subdivide_width = 640
-	plane.subdivide_depth = 640
+	plane.subdivide_width = 480
+	plane.subdivide_depth = 480
 	var mat := ShaderMaterial.new()
 	mat.shader = OCEAN
 	ocean_material = mat
 	mat.set_shader_parameter("normal_tex", load("res://assets/textures/water_normal.png"))
 	mat.set_shader_parameter("foam_tex", load("res://assets/textures/foam_noise.png"))
-	var water := G.mesh_node(self, plane, mat, Vector3.ZERO)
+	var water := G.mesh_node(water_root, plane, mat, Vector3.ZERO)
 	water.name = "Ocean"
 	water.custom_aabb=AABB(Vector3(-240,-8,-240),Vector3(480,16,480))
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Four coarse horizon strips avoid doubling the fine mesh under the bay.
-	for data: Vector4 in [Vector4(0,-1320,4800,2160),Vector4(0,1320,4800,2160),Vector4(-1320,0,2160,480),Vector4(1320,0,2160,480)]:
+	for data: Vector4 in [Vector4(0,-6120,24000,11760),Vector4(0,6120,24000,11760),Vector4(-6120,0,11760,480),Vector4(6120,0,11760,480)]:
 		var far_mesh := PlaneMesh.new()
 		far_mesh.size = Vector2(data.z, data.w)
 		far_mesh.subdivide_width = 32
 		far_mesh.subdivide_depth = 32
-		var far_water := G.mesh_node(self, far_mesh, mat, Vector3(data.x,0,data.y))
+		var far_water := G.mesh_node(water_root, far_mesh, mat, Vector3(data.x,0,data.y))
 		far_water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
@@ -228,14 +224,11 @@ func _island_height(x: float,z: float,radius: float,playable: bool) -> float:
 	return h
 
 func home_surface_height(x: float,z: float) -> float:
-	var local_z:=z-18.
-	var angle:=atan2(local_z/32.,x/29.)
-	var edge:=1.+sin(angle*5.)*.025+cos(angle*9.)*.016
-	var radius:=Vector2(x/29.,local_z/32.).length()/edge
-	return _island_height(x,local_z,radius,true)
+	return Layout.height(Vector2(x,z))
 
 func _make_dock() -> void:
 	G.box(self, Vector3(0, 1.2, -17), Vector3(3.6, 0.3, 18), dark_wood, true)
+	G.box(self,Vector3(0,1.2,-5),Vector3(3.6,.3,6),dark_wood,true)
 	for i: int in range(45):
 		var plank := G.box(self, Vector3(0, 1.365, -8.2 - i * 0.4), Vector3(3.6, 0.055, 0.37), wood if i % 3 else cream)
 		plank.material_override = wood
@@ -342,15 +335,8 @@ func _make_market() -> void:
 	for i: int in range(4):
 		var fish := G.sphere(stall, Vector3(-1.25 + i * 0.3, 1.4, -0.1), Vector3(0.12, 0.1, 0.3), G.material(Color("8caaa4")))
 		fish.rotation.y = 0.25
-	# Vendor, intentionally a replaceable stylised procedural character.
-	G.cylinder(stall, Vector3(0.7, 1.32, 1.0), 0.3, 0.95, teal, 0.4)
-	G.sphere(stall, Vector3(0.7, 2.08, 1.0), Vector3(0.23, 0.29, 0.23), G.material(Color("bb8e67")))
-	G.cylinder(stall, Vector3(0.7, 2.32, 1.0), 0.38, 0.07, cream)
-	G.cylinder(stall, Vector3(0.7, 2.43, 1.0), 0.23, 0.2, cream, 0.18)
-	for x: float in [0.32, 1.08]:
-		G.beam(stall, Vector3(x, 1.65, 0.98), Vector3(x, 1.15, 0.5), 0.1, teal)
-	for x: float in [0.53, 0.87]:
-		G.cylinder(stall, Vector3(x, 0.53, 1), 0.13, 0.9, dark_wood)
+	var vendor=preload("res://scripts/player/imported_angler.gd").new()
+	vendor.position=Vector3(6.7,1.25,-1.5);add_child(vendor)
 	_make_barrel(Vector3(8.7, 1.25, -2.4))
 	_make_barrel(Vector3(9.2, 1.25, -1.3))
 

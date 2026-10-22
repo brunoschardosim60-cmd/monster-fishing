@@ -27,6 +27,10 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var last_catch: Dictionary = {}
 var last_message: String = "A baía está tranquila. Escolha um lugar para pescar."
 var region_current: String = "coast"
+var rod_bonus: float=0.
+var line_bonus: float=0.
+var bait_bonus: float=0.
+var hook_bonus: float=0.
 
 var _wait_duration: float = 4.0
 var _reeling: bool = false
@@ -64,7 +68,7 @@ func start_cast(region: String = "coast") -> bool:
 	bite_time_remaining = 0.0
 	_reeling = false
 	_slack_time = 0.0
-	_wait_duration = rng.randf_range(3.0, 5.8)
+	_wait_duration = rng.randf_range(3.0, 5.8)*(1.-bait_bonus)
 	_fight_phase = rng.randf_range(0.0, TAU)
 	_change_state(State.CASTING)
 	_message("Lançando a linha…")
@@ -125,8 +129,8 @@ func _update_fight(delta: float) -> void:
 	var tug: float = 0.5 + 0.5 * sin(state_time * 2.2 + _fight_phase)
 	if _reeling:
 		_slack_time = 0.0
-		tension += delta * (0.19 + difficulty * 0.09 + tug * 0.06)
-		progress += delta * (0.155 - difficulty * 0.045)
+		tension += delta * (0.19 + difficulty * 0.09 + tug * 0.06)*(1.-line_bonus)
+		progress += delta * (0.155 - difficulty * 0.045)*(1.+rod_bonus+hook_bonus)
 	else:
 		_slack_time += delta
 		tension -= delta * 0.37

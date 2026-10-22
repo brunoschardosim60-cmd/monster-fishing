@@ -14,3 +14,7 @@ extends Resource
 @export var habitat: String = "Costa de Farol"
 @export var regions: PackedStringArray = PackedStringArray(["coast"])
 @export_range(0.01, 10.0) var encounter_weight: float = 1.0
+@export var visual_scene: PackedScene
+@export var swim_speed: float=1.5
+@export var capture_allowed: bool=true
+@export var preferred_depth: Vector2=Vector2(0,30)

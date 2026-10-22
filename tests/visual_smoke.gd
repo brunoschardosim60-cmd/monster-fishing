@@ -110,11 +110,13 @@ func _run() -> void:
 		game.fishing.advance(0.02)
 		if game.fishing.state != Fishing.State.REELING:
 			break
-	_check(game.fishing.state == Fishing.State.CAUGHT and game.inventory.count() == 1, "real catch credited to live inventory")
+	_check(game.fishing.state == Fishing.State.CAUGHT and game.inventory.count() == 0 and not game.pending_catch.is_empty(), "real catch waits in hand for disposition")
 	_check(game.catch_display.visible and game.catch_display.get_child_count() > 0, "real 3D catch display is visible")
 	await _frames(10)
 	_hud_bounds("capture toast", game.hud.toast)
 	await _capture("04_catch_model")
+	game.finish_catch(false)
+	_check(game.inventory.count()==1,"keeping real catch credits inventory")
 	game.fishing.advance(6.0)
 	await _frames(240)
 	game.player.global_position = Vector3(0.0, 1.55, -23.0)

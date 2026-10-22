@@ -4,6 +4,7 @@ extends Node3D
 var remaining: float = 0.0
 var fish_root: Node3D
 var _elapsed: float = 0.0
+var held: bool=false
 
 func _ready() -> void:
 	visible = false
@@ -29,6 +30,10 @@ func show_catch(data: Dictionary) -> void:
 	visible = true
 
 func _process(delta: float) -> void:
+	if held:
+		_elapsed+=delta
+		if fish_root!=null: fish_root.rotation.z=sin(_elapsed*7.)*.035
+		return
 	if remaining <= 0.0:
 		return
 	remaining = maxf(0.0, remaining - delta)

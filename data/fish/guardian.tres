@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=3 format=3]
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/models/dragon_model.tscn" id="2"]
+[resource]
+script = ExtResource("1")
+id = "island_guardian"
+display_name = "Guardião da Vigia"
+rarity = "Lendária"
+description = "Uma criatura repousa entre as ruínas da ilha. Pode ser observada, mas não capturada com a vara."
+habitat = "Ruínas da Vigia"
+visual_scene = ExtResource("2")
+capture_allowed = false

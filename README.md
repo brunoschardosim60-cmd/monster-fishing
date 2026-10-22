@@ -1,63 +1,49 @@
-# Monster Fishing — Fase 1, atualização visual
+# Monster Fishing — Arquipélago da Aurora
 
-Um protótipo 3D jogável de pescaria e exploração, construído em Godot 4.7.2 e GDScript. A Costa do Farol é uma pequena ilha com mercado, cabana cenográfica, cais e um barco pilotável, cercada por um oceano animado e ilhotas no horizonte.
+Jogo de pesca e exploração em Godot 4.7.2. Esta versão amplia a costa inicial para uma ilha de aproximadamente 500 × 570 metros, com vila, interiores acessíveis, trilhas, praia, mirante, gruta e ruínas. O mar navegável ocupa 4,4 × 4,4 km e conecta as bordas opostas.
 
-## Jogar no Windows
+## Jogar
 
-1. Dê dois cliques em **Jogar.cmd** nesta pasta.
-2. Clique em **Começar a explorar**.
-3. Caminhe até a ponta do cais. O barco Aurora está à direita. Pressione **E** para embarcar.
-4. Acelere com **W**, vire com **A/D** e freie com **S**. Pare para pescar.
-5. Pressione **Espaço** para lançar. Aguarde **MORDIDA** e pressione novamente para fisgar.
-6. Segure **Espaço** ou o botão esquerdo para recolher. Solte para aliviar a tensão, antes de chegar a 100%. Repita até completar a captura.
-7. Volte devagar ao lado direito da ponta do cais e pressione **E**. O barco é amarrado ao berço. Caminhe pela passarela em direção à ilha; o mercado fica à direita.
-8. Perto do balcão, pressione **E** para vender o cesto e receber moedas.
+Abra **Jogar.cmd** e clique em **Começar a explorar**. O barco fica à direita da ponta do cais. **Jogar leve.cmd** usa OpenGL/Compatibility, com iluminação e reflexos simplificados. **Abrir editor.cmd** abre o projeto no Godot portátil em tools/godot/.
 
-Também é possível pescar diretamente do cais. Se perder a direção, **Esc → Voltar em segurança ao cais** recupera jogador e barco sem perder as capturas da sessão.
-
-**Jogar.cmd** usa agora Forward+ (Vulkan), com reflexos de tela, oclusão ambiente e a nova água. **Jogar leve.cmd** usa Compatibility/OpenGL, preservando as ondas, texturas e jogabilidade com iluminação simplificada. Veja as capturas reais e os resultados em [docs/VISUAL_UPGRADE.md](docs/VISUAL_UPGRADE.md).
-
-## Controles
-
-| Tecla | Ação |
+| Controle | Ação |
 |---|---|
-| WASD | Caminhar / pilotar |
-| Mouse | Olhar ao redor |
-| Shift | Correr |
-| E | Embarcar, desembarcar no cais ou vender no mercado |
-| Espaço / botão esquerdo | Lançar, fisgar e segurar para recolher |
-| Botão direito | Cancelar pesca |
-| F | Alternar primeira / terceira pessoa |
-| Tab | Abrir caderno de capturas |
-| Esc | Pausar / continuar |
-| Setas esquerda / direita | Girar câmera pelo teclado |
+| WASD / Mouse | Caminhar, nadar ou pilotar / olhar |
+| Shift | Correr / nadar mais rápido |
+| E | Interagir, embarcar ou desembarcar, inclusive em mar aberto |
+| R | Alternar leme e caminhada no convés |
+| Espaço / botão esquerdo | Lançar, fisgar e recolher; solte para aliviar tensão |
+| Botão direito | Cancelar a pesca |
+| G / X | Guardar o peixe que está na mão / devolvê-lo ao mar |
+| F | Primeira / terceira pessoa |
+| M / Z | Abrir mapa / mudar sua escala |
+| J / Tab | Enciclopédia e descobertas / capturas |
+| Esc | Pausa, retorno seguro, clima e horário |
 
-## Abrir e desenvolver
+Pesque olhando para água livre a partir de praias, cais, rochas ou do barco parado. Quando capturar, escolha **G** ou **X**; a captura só entra no inventário ao guardar. Na água, aproxime-se do barco e pressione **E** para subir. O barco continua desacelerando quando você passa ao convés.
 
-**Abrir editor.cmd** abre o projeto na versão portátil do Godot disponível em `tools/godot/`. Também é possível importar `project.godot` pelo gerenciador do Godot 4.7.2. O projeto não depende de rede, login, plugins pagos ou pacotes externos durante o jogo.
+Na vila, entre pelas portas abertas e use **E** perto do centro do estabelecimento. A loja vende iscas, vara, linha e anzol; a oficina vende melhoria de motor e repara o casco. O mercado compra capturas, o armazém guarda/retira peixes e a cabana permite descansar. As compras usam as moedas e modificam os sistemas reais de pesca e navegação.
 
-A pasta `tools/` contém o motor oficial, que não é versionado pelo Git. O gerador original de texturas `tools/generate_materials.py` é a exceção versionada. Em outro computador, baixe a edição Standard portátil Windows x86_64 em https://godotengine.org/download/windows/ e coloque os executáveis nessa pasta ou abra o projeto por uma instalação compatível.
+## Mundo e modelos
 
-## Entrega desta fase
+- 14 prédios acessíveis, seis serviços, moradores caminhando, iluminação noturna, fumaça e aves.
+- Trilhas até o farol, mirante, ruínas, gruta e praia; descobertas dão moedas e materiais uma única vez por sessão.
+- Ondas geométricas e normais finas, profundidade, espuma, refração, reflexos, abrigo no porto, esteira persistente e flutuação compartilhada entre CPU/GPU.
+- Ciclo de dia/noite, sol, lua, estrelas, nuvens, chuva, relâmpagos, trovão e ondulação residual.
+- Modelos reais fornecidos pelo usuário: barco pesqueiro pilotável, rebocador atracado, personagem, cabra, dragão e arquitetura derivada do porto. As versões otimizadas ficam em assets/; os originais em Downloads não foram alterados.
 
-- Personagem composto e articulado, câmera com SpringArm, caminhada e corrida.
-- Barco com casco original, aceleração, freio/ré, direção, balanço e esteira.
-- Ilha com colisão, cais, vegetação, pedras, estruturas, farol e aves animadas.
-- Oceano com ondas, variação de cor e reflexos de iluminação; céu e atmosfera de fim de tarde.
-- Pesca com espera, janela de reação, disputa de tensão, perda de peixe e captura.
-- Sardinha, cavala e robalo em Resources configuráveis.
-- Cesto, peso/valor/data da captura e venda com recompensa em moedas.
-- Interface contextual, pausa, câmera alternativa e recuperação segura.
-- Áudio de ondas e sinais sintetizados originalmente.
+Veja [a entrega, testes e capturas atuais](docs/ARCHIPELAGO.md) e [o contrato de integração de assets](assets/README.md).
 
-## Limites explícitos
+## Testar
 
-Esta entrega encerra a Fase 1. Não é o mundo aberto completo. **O cesto e as moedas são mantidos apenas durante a sessão; sair fecha esse progresso.** Não há ainda salvamento entre sessões, loja, melhorias, fome, cozinha funcional, entrada na cabana, clima dinâmico, ciclo temporal, sonar, criaturas lendárias ou outras regiões jogáveis. A luz de fim de tarde é fixa. As ilhotas distantes são cenográficas. O desembarque ocorre no cais inicial; não há natação. Existe um limite de navegação da baía.
+**Testar.cmd** executa pesca, integração, terreno, água, atracação, caminhada pelos interiores/trilhas e uma volta completa de barco ao redor da ilha. **Testar arquipelago visual.cmd** gera imagens no Godot e mede seis cenários em 1440×900. **Testar oceano visual.cmd** percorre os cenários marítimos. Saídas temporárias: tests/output/; evidências versionadas: docs/archipelago-audit/.
 
-Os modelos e as animações continuam originais e procedurais, agora com superfícies suaves, articulações, detalhes construtivos e materiais texturizados. O mar tem ondas geométricas, espuma, normais animadas, refração por profundidade e reflexos de céu/luz; Forward+ acrescenta SSR. Não há simulação de fluidos nem reflexão completa de objetos fora da tela. O balanço acompanha as ondas visualmente, enquanto a navegação mantém o controle e as colisões existentes.
+O projeto funciona localmente, sem serviço Tripo em execução. O Blender é necessário apenas para refazer a preparação dos modelos, usando os scripts em scripts/pipeline/. O Godot portátil não é versionado; em outra máquina use uma instalação Standard compatível.
 
-## Estrutura
+## Limites desta etapa
 
-`scripts/main.gd` conecta os sistemas. `scripts/player/`, `boats/`, `fishing/`, `inventory/`, `world/`, `ui/` e `audio/` separam responsabilidades. `data/fish/` contém o conteúdo configurável. `scenes/main/main.tscn` é a entrada. `tests/` contém regressões executáveis. `docs/` registra arquitetura, arte, ambiente e testes.
+O progresso ainda é mantido **somente durante a sessão**. O mundo usa conexão entre bordas de um mapa plano; não é um planeta esférico. A ilha inicial concentra o conteúdo: as três ilhas distantes ainda são bases para futuras regiões, sem vilas completas. Dragão e cabra chegaram sem rig; o dragão é uma descoberta não capturável, com movimento respiratório simples, e a cabra é estática. O personagem recebeu rig e sete animações básicas locais, que ainda comportam refinamento artístico.
 
-Execute **Testar.cmd** para os testes técnicos. A inspeção gráfica e seus limites são registrados em `docs/TESTS.md`.
+O GLB do porto não tinha interiores caminháveis. Seus telhados foram separados e reaproveitados sobre salas com portas e colisões próprias; a cena completa também está disponível e aparece como maquete na oficina. A vila combina esses módulos com construção procedural. O resultado é uma etapa jogável ampliada; não equivale ao acabamento final das imagens conceituais.
+
+Documentos de fases anteriores em docs/ são históricos. Para o estado atual, use docs/ARCHIPELAGO.md.

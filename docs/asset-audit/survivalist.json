@@ -1,0 +1,28 @@
+{
+  "source": "survivalist character 3d model.zip",
+  "sha256": "e97aa79c19b7d6d575830d1be856d5ba0a93f2a4bb0efc9e21d1a2a1b1e63378",
+  "parts": 1,
+  "triangles_before": 28358,
+  "armatures": [],
+  "actions": [],
+  "ratio": 1.0,
+  "textured": true,
+  "triangles_after": 28358,
+  "parts_detail_blender_z_up": [
+    {
+      "name": "tripo_158f2923_15c7_409e_9301_6892413a0dd1",
+      "triangles": 28358,
+      "min": [
+        -0.499755859375,
+        -0.12426753342151642,
+        -9.381937893238046e-09
+      ],
+      "max": [
+        0.499755859375,
+        0.1242675706744194,
+        0.53759765625
+      ]
+    }
+  ],
+  "export_bytes": 2739728
+}

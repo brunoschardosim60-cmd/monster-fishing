@@ -22,10 +22,10 @@ func _run() -> void:
 	check(weather.energy<.3,"residual energy eventually dissipates")
 	Waves.reset(); Waves.advance(0.,1.,.9,1.,Vector2(.9,.43).normalized())
 	check(Waves.exposure(Vector2(0,-20))<Waves.exposure(Vector2(20,-100))*.5,"port receives less than half the open-water wind exposure")
-	check(Waves.exposure(Vector2(35,20))<Waves.exposure(Vector2(-35,20)),"lee protection changes with the coast normal and wind direction")
-	check(Waves.depth_at(Vector2(29,18))<Waves.depth_at(Vector2(60,-70)),"bathymetry deepens away from the island")
+	check(Waves.exposure(Vector2(235,230))<Waves.exposure(Vector2(-235,230)),"lee protection changes with the coast normal and wind direction")
+	check(Waves.depth_at(Vector2(220,230))<Waves.depth_at(Vector2(350,-200)),"bathymetry deepens away from the island")
 	check(absf(Waves.height_at(Vector3(0,0,18)))<.0001,"wave displacement vanishes inside land")
-	check(Waves.channel_at(Vector2(84,-136))>.99 and Waves.channel_at(Vector2(30,-100))==0.,"authored ice passage guides local ripples without changing open water")
+	check(Waves.channel_at(Vector2(604,-626))>.99 and Waves.channel_at(Vector2(30,-100))==0.,"authored ice passage guides local ripples without changing open water")
 	if DisplayServer.get_name()!="headless":
 		var probe:=SubViewport.new(); probe.size=Vector2i(16,16); probe.disable_3d=true
 		probe.render_target_update_mode=SubViewport.UPDATE_ALWAYS; root.add_child(probe)
@@ -34,14 +34,15 @@ func _run() -> void:
 		var maximum:=0.; var shelter_error:=0.
 		for state: int in 5:
 			weather.settle(state)
+			Waves.ocean_center=[Vector2.ZERO,Vector2(-120,250),Vector2(580,-620),Vector2(400,-350),Vector2(-680,-500)][state]
 			Waves.advance(3.7,weather.wind,weather.energy,weather.rain,Vector2.from_angle(weather.heading)); Waves.bind(mat)
 			for i: int in 3: await process_frame
 			await RenderingServer.frame_post_draw
 			var image:=probe.get_texture().get_image()
 			for y: int in 16:
 				for x: int in 16:
-					var p:=Vector3(-140.+x*18.,0,-160.+y*24.)
-					if x==15 and y<8: p=Vector3(84.+float(y%3-1)*3.,0,-136.+floorf(float(y)/3.)*4.)
+					var p:=Vector3(Waves.ocean_center.x-140.+x*18.,0,Waves.ocean_center.y-160.+y*24.)
+					if x==15 and y<8: p=Vector3(604.+float(y%3-1)*3.,0,-626.+floorf(float(y)/3.)*4.)
 					var color:=image.get_pixel(x,y)
 					var decoded: float=(roundf(color.r*255.)*256.+roundf(color.g*255.))/4096.-8.
 					maximum=maxf(maximum,absf(decoded-Waves.height_at(p)))
@@ -58,13 +59,20 @@ func _run() -> void:
 	var floe: Vector3=game.world.ocean.ice_footprints[0]
 	check(game.world.is_land(Vector3(floe.x,0,floe.y)),"fishing rejects the solid surface of an ice floe")
 	for i: int in 90: await physics_frame
-	var max_tilt:=0.; var max_gap: float=0.
+	var max_tilt:=0.; var max_gap: float=0.;var max_buoyancy_lag: float=0.
 	for i: int in 720:
 		await physics_frame
 		max_tilt=maxf(max_tilt,maxf(absf(game.boat._hull.rotation.x),absf(game.boat._hull.rotation.z)))
 		max_gap=maxf(max_gap,absf(game.boat._hull.position.y-Waves.height_at(game.boat.global_position)))
+		var hull: Node3D=game.boat;var hydro: Resource=game.boat.hydrodynamics
+		var sample: float=Waves.height_at(hull.position)*.5-hydro.draft_offset
+		for offset: Vector3 in [hull.basis.x*hydro.beam*.5,-hull.basis.x*hydro.beam*.5,hull.basis.z*hydro.waterline_length*.5,-hull.basis.z*hydro.waterline_length*.5]:sample+=Waves.height_at(hull.position+offset)*.125
+		max_buoyancy_lag=maxf(max_buoyancy_lag,absf(game.boat._hull.position.y-sample))
 	check(max_tilt>.05 and max_tilt<=.381,"storm pitch/roll follows water and stays within the vessel limit")
-	check(max_gap<.6,"storm hull remains near the sampled surface (max %.3f m)"%max_gap)
+	# The imported hull is 8.1 m long and spans several short crests. Its
+	# waterline follows the four-point buoyancy plane, not a single crest.
+	check(max_gap<.8,"storm centre stays within freeboard allowance (max %.3f m)"%max_gap)
+	check(max_buoyancy_lag<.32,"heave tracks four-point buoyancy plane (max lag %.3f m)"%max_buoyancy_lag)
 	var trail: Node=game.boat.trail
 	for i: int in 80: trail.advance(Vector3(i*.8,0,-70),Basis(Vector3.UP,float(i)*.01),8.,.13)
 	var count: int=trail.samples.size(); var stationary: Vector3=trail.samples[40].p

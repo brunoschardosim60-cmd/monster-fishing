@@ -31,7 +31,8 @@ func run() -> void:
 			check((hit.normal as Vector3).y > 0.9,"Upward terrain normal at " + str(pos))
 			check((hit.position as Vector3).y >= 1.2,"Safe ground height at " + str(pos))
 	var water_query := PhysicsRayQueryParameters3D.create(Vector3(4,5,-23),Vector3(4,-5,-23),1)
-	check(physics.intersect_ray(water_query).is_empty(),"Boat berth is clear of land collision")
+	var bottom: Dictionary=physics.intersect_ray(water_query)
+	check(bottom.is_empty() or bottom.position.y< -1.,"Boat berth has clearance above the underwater shelf")
 	var walker := CharacterBody3D.new()
 	var collision := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
@@ -63,4 +64,5 @@ func run() -> void:
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://tests/output/coast-from-pier.png")
 	print("WORLD_SMOKE_FAILURES=" + str(failures))
+	world.life.birdsong.stop();world.queue_free();await process_frame;OS.delay_msec(100)
 	quit(failures)

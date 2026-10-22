@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/assets/external_model.gd" id="1"]
+[node name="TugboatModel" type="Node3D"]
+script = ExtResource("1")
+asset_path = "res://assets/boats/tugboat.glb"
+length_m = 11.0
+heading_degrees = -90.0
+waterline_m = 0.75

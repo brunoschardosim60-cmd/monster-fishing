@@ -5,6 +5,8 @@ const LIFETIME:=12.
 var samples: Array[Dictionary]=[]
 var clock: float=0.
 var accumulator: float=0.
+var stern_offset: float=3.9
+var half_width: float=1.65
 var trail_mesh:=ImmediateMesh.new()
 var mat:=ShaderMaterial.new()
 
@@ -14,7 +16,7 @@ func _ready() -> void:
 	mat.set_shader_parameter("foam_tex",load("res://assets/textures/foam_noise.png"))
 	mat.set_shader_parameter("trail",true); mat.set_shader_parameter("strength",1.)
 	material_override=mat; cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	custom_aabb=AABB(Vector3(-200,-8,-200),Vector3(400,16,400))
+	custom_aabb=AABB(Vector3(-2400,-8,-2400),Vector3(4800,16,4800))
 
 func clear_trail() -> void:
 	samples.clear(); trail_mesh.clear_surfaces()
@@ -24,7 +26,7 @@ func advance(at: Vector3, basis: Basis, speed: float, delta: float) -> void:
 	if samples.size()>0 and at.distance_to(samples[-1].p)>20.: clear_trail()
 	if absf(speed)>1. and accumulator>=.12:
 		accumulator=0.
-		samples.append({"p":at+basis.z*2.1,"side":basis.x,"born":clock,"strength":clampf(absf(speed)/8.,0.,1.)})
+		samples.append({"p":at+basis.z*stern_offset,"side":basis.x,"born":clock,"strength":clampf(absf(speed)/8.,0.,1.)})
 	while not samples.is_empty() and (clock-samples[0].born>LIFETIME or samples.size()>102): samples.pop_front()
 	Waves.bind(mat); trail_mesh.clear_surfaces()
 	if samples.size()<2: return
@@ -33,7 +35,7 @@ func advance(at: Vector3, basis: Basis, speed: float, delta: float) -> void:
 		for s: Dictionary in samples:
 			var age: float=clock-s.born
 			var width:=.55+age*.19
-			var center: Vector3=s.p+s.side*side*(1.05+age*.37)
+			var center: Vector3=s.p+s.side*side*(half_width+age*.37)
 			for edge: int in 2:
 				trail_mesh.surface_set_color(Color(1,1,1,pow(1.-age/LIFETIME,1.5)*s.strength))
 				trail_mesh.surface_set_uv(Vector2(float(edge),s.born*.35))

@@ -14,6 +14,8 @@ void fragment(){
 	float grass=smoothstep(.35,.62,COLOR.g-COLOR.r+.48+n*.13);
 	vec3 sand=texture(sand_color,wp.xz*.48).rgb;
 	vec3 turf=mix(vec3(.095,.135,.058),vec3(.25,.29,.115),n);
+	float detail=texture(noise_tex,wp.xz*2.6).r;
+	turf*=mix(.55,1.25,detail)*mix(.8,1.2,texture(sand_color,wp.xz*1.8).r);
 	float wash=.12+.1*sin(sea_time*1.15-wp.x*.12-wp.z*.14);
 	float wet=max(wet_weather*.45,1.-smoothstep(wash,wash+.8,wp.y));
 	ALBEDO=mix(sand,turf,grass)*mix(1.,.52,wet);
@@ -23,7 +25,7 @@ void fragment(){
 	vec3 stone=texture(rock_tex,wp.zy*.22).rgb*weights.x+texture(rock_tex,wp.xz*.22).rgb*weights.y+texture(rock_tex,wp.xy*.22).rgb*weights.z;
 	float cliff=smoothstep(.07,.40,1.-normalize(wn).y)*smoothstep(1.6,3.,wp.y);
 	ALBEDO=mix(ALBEDO,stone*mix(vec3(.9,.94,.9),vec3(1.2,1.1,.94),n),cliff);
-	float frost=(1.-smoothstep(26.,40.,length(wp.xz-vec2(115,-150))))*smoothstep(3.,9.,wp.y)*smoothstep(.35,.8,wn.y);
+	float frost=(1.-smoothstep(120.,200.,length(wp.xz-vec2(790,-640))))*smoothstep(12.,28.,wp.y)*smoothstep(.35,.8,wn.y);
 	ALBEDO=mix(ALBEDO,vec3(.72,.82,.84),frost*.92);
 	NORMAL_MAP=mix(NORMAL_MAP,texture(rock_normal,wp.xz*.3).rgb,cliff);
 	NORMAL_MAP_DEPTH=.18;

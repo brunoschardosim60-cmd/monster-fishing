@@ -5,6 +5,7 @@ const Sculpt = preload("res://scripts/visuals/sculpt.gd")
 const Materials = preload("res://scripts/visuals/materials.gd")
 
 var seated: bool = false
+var holding_fish: bool=false
 var _phase: float = 0.0
 var _body: Node3D
 var _left_leg: Node3D
@@ -37,11 +38,16 @@ func update_animation(speed: float, fishing: bool, delta: float) -> void:
 	_body.position.y = (-0.78 if seated else absf(sin(_phase)) * stride * 0.045)
 	_rod.rotation.x = lerpf(_rod.rotation.x, -0.22 if fishing else 0.22, delta * 6.0)
 	_rod.visible = not seated or fishing
+	if holding_fish:
+		_left_arm.rotation.x=1.1;_elbows[0].rotation.x=.55;_rod.visible=false
 
 func rod_tip() -> Vector3:
 	if is_instance_valid(_tip):
 		return _tip.global_position
 	return to_global(Vector3(0.35, 2.3, -1.1))
+
+func catch_hand_transform() -> Transform3D:
+	return _elbows[0].global_transform*Transform3D(Basis.IDENTITY,Vector3(0,-.30,0))
 
 func _build_visual() -> void:
 	_body = Node3D.new()
@@ -131,6 +137,13 @@ func _build_visual() -> void:
 	_tip = Marker3D.new()
 	_tip.position = Vector3(0.0, 1.70, -1.72)
 	_rod.add_child(_tip)
+	# Spool, crank and line guides are actual fittings on the rod.
+	var reel:=CylinderMesh.new();reel.top_radius=.055;reel.bottom_radius=.055;reel.height=.06;reel.radial_segments=20
+	var spool:=MeshInstance3D.new();spool.mesh=reel;spool.material_override=thread;spool.rotation.z=PI*.5;spool.position=Vector3(.06,.12,-.05);_rod.add_child(spool)
+	_beam(_rod,Vector3(.09,.12,-.05),Vector3(.14,.16,-.05),.015,rod_material)
+	for t: float in [.25,.48,.72,.92]:
+		var guide:=MeshInstance3D.new();var ring:=TorusMesh.new();ring.inner_radius=.012;ring.outer_radius=.018;ring.rings=12;ring.ring_segments=6
+		guide.mesh=ring;guide.material_override=thread;guide.position=Vector3(0,.26,-.2).lerp(_tip.position,t);guide.rotation.x=-.7;_rod.add_child(guide)
 	# Merge only fixed torso/head pieces, retaining every articulated joint.
 	preload("res://scripts/world/static_batch.gd").build(_body,[_left_leg,_right_leg,_left_arm,_right_arm])
 

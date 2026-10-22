@@ -1,6 +1,8 @@
 extends RefCounted
 ## CPU companion of ocean_common.gdshaderinc. Every surface uses these parameters.
-const ISLANDS := [Vector4(0,18,29,32), Vector4(-95,-95,20,24), Vector4(115,-150,29,34), Vector4(35,-265,32,30)]
+const Layout=preload("res://scripts/world/archipelago_layout.gd")
+const ISLANDS = Layout.LOBES
+static var ocean_center:=Vector2.ZERO
 const LENGTHS := [64.,39.,23.,13.,7.1,4.7,3.1,2.0]
 const WEIGHTS := [.48,.33,.25,.21,.12,.075,.043,.025]
 static var time: float = 0.0
@@ -13,6 +15,7 @@ static var phases := PackedFloat32Array([0.,1.8,4.1,.7,3.3,5.,2.,4.5])
 
 static func reset() -> void:
 	time=0.; wind=.32; energy=.40; rain=0.
+	ocean_center=Vector2.ZERO
 	direction=Vector2(.9,.43).normalized()
 	phases=PackedFloat32Array([0.,1.8,4.1,.7,3.3,5.,2.,4.5])
 	advance(0.,wind,energy,rain,direction)
@@ -29,15 +32,7 @@ static func advance(delta: float, w: float, e: float, r: float, d: Vector2) -> v
 		waves.append(Vector4(heading.x*k,heading.y*k,amp,phases[i]))
 
 static func coast(p: Vector2) -> Vector4:
-	var nearest:=10000.; var second:=10000.; var normal:=Vector2.UP
-	for island: Vector4 in ISLANDS:
-		var q:=(p-Vector2(island.x,island.y))/Vector2(island.z,island.w)
-		var dist:=(q.length()-1.)*minf(island.z,island.w)
-		if dist<nearest:
-			second=nearest; nearest=dist
-			normal=Vector2(q.x/island.z,q.y/island.w).normalized()
-		elif dist<second: second=dist
-	return Vector4(nearest,normal.x,normal.y,second)
+	return Layout.coast(p)
 
 static func exposure(p: Vector2) -> float:
 	var c:=coast(p)
@@ -51,7 +46,7 @@ static func depth_at(p: Vector2) -> float:
 
 static func channel_at(p: Vector2) -> float:
 	# Passage between the northern island's shelf and the floating ice field.
-	return 1.-smoothstep(.25,1.,Vector2((p.x-84.)/6.,(p.y+136.)/17.).length())
+	return 1.-smoothstep(.25,1.,Vector2((p.x-604.)/12.,(p.y+626.)/34.).length())
 
 static func height_at(p: Vector3) -> float:
 	if waves.is_empty(): advance(0.,wind,energy,rain,direction)
@@ -60,7 +55,7 @@ static func height_at(p: Vector3) -> float:
 	var shore:=smoothstep(-1.3,6.,c.x)
 	var exposed:=exposure(v)
 	var channel:=channel_at(v)
-	var lod:=1.-smoothstep(185.,240.,maxf(absf(p.x),absf(p.z)))
+	var lod:=1.-smoothstep(185.,240.,maxf(absf(p.x-ocean_center.x),absf(p.z-ocean_center.y)))
 	var h:=0.
 	for i: int in 8:
 		var w:=waves[i]
@@ -73,6 +68,7 @@ static func height_at(p: Vector3) -> float:
 static func bind(mat: ShaderMaterial) -> void:
 	if waves.is_empty(): advance(0.,wind,energy,rain,direction)
 	mat.set_shader_parameter("sea_time",time)
+	mat.set_shader_parameter("ocean_center",ocean_center)
 	mat.set_shader_parameter("wave_data",waves)
 	mat.set_shader_parameter("wind_direction",direction)
 	mat.set_shader_parameter("wind_strength",wind)
