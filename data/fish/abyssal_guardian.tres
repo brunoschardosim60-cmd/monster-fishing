@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=3 format=3]
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/models/abyssal_guardian_model.tscn" id="2"]
+[resource]
+script = ExtResource("1")
+id = "abyssal_guardian"
+display_name = "Vigia Abissal"
+rarity = "Lendária"
+habitat = "Mar aberto a sudeste da Aurora"
+description = "Reage ao ruído das embarcações. Aproxime-se devagar e observe com V."
+visual_scene = ExtResource("2")
+capture_allowed = false
+swim_speed = 1.8

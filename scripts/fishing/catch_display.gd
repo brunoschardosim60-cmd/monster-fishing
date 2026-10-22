@@ -23,7 +23,10 @@ func show_catch(data: Dictionary) -> void:
 	elif species == "seabass":
 		size_factor = 1.12
 	fish_root.scale = Vector3.ONE * size_factor
-	_build_fish(body_color, species)
+	if species in ["mackerel","tuna","lanternfish"]:
+		var imported:=preload("res://scripts/creatures/marine_visual.gd").new();imported.species=species;imported.face_forward=false;fish_root.add_child(imported)
+		if species=="tuna":fish_root.scale=Vector3.ONE*1.1
+	else:_build_fish(body_color, species)
 	remaining = 4.0
 	_elapsed = 0.0
 	rotation.y = -0.45

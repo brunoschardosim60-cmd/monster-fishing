@@ -6,7 +6,7 @@ signal changed
 
 var catches: Array[Dictionary] = []
 var money: int = 0
-var equipment: Dictionary={"rod":0,"line":0,"hook":0,"engine":0}
+var equipment: Dictionary={"rod":0,"line":0,"hook":0,"engine":0,"reel":0,"searchlight":0,"hull":0}
 var bait: int=0
 var materials: int=0
 var stored_catches: Array[Dictionary]=[]
@@ -16,6 +16,7 @@ func record(data: Dictionary,released: bool=false) -> void:
 	var key: String=str(data.get("species_id",data.get("id","unknown")))
 	var entry: Dictionary=encyclopedia.get(key,{"name":data.get("name",key),"count":0,"released":0,"record":0.,"rarity":data.get("rarity","Comum")})
 	entry.count+=1;entry.released+=1 if released else 0;entry.record=maxf(float(entry.record),float(data.get("weight",0.)))
+	entry["observation"]=bool(data.get("observation",false))
 	encyclopedia[key]=entry;changed.emit()
 
 func add_catch(catch_data: Dictionary) -> bool:

@@ -7,6 +7,7 @@ signal weather_selected(index: int)
 signal time_selected(hour: float)
 signal service_action(id: String)
 signal service_closed
+signal graphics_changed(level: int,scale_value: float,sync: bool)
 const SERVICE_NAMES: Dictionary={"gear":"loja de pesca","workshop":"oficina naval","cabin":"sua cabana","inn":"pousada","storage":"armazém","market":"mercado de peixes"}
 var service_open: bool=false
 var service_panel: PanelContainer
@@ -14,6 +15,11 @@ var service_message: Label
 var map_view: Control
 var sea_label: Label
 var weather_picker: OptionButton
+var graphics_panel: PanelContainer
+var quality_picker: OptionButton
+var resolution_slider: HSlider
+var resolution_label: Label
+var vsync_button: CheckButton
 
 const INK := Color("071d2b")
 const CREAM := Color("e4edf1")
@@ -73,7 +79,7 @@ func _ready() -> void:
 	compass.offset_bottom = 65
 	compass.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hud_controls.append(compass)
-	var controls := _label(root, "WASD mover · SHIFT correr · E interagir/sair · R convés · ESPAÇO pescar · G guardar · X soltar · F câmera · M mapa · J diário · TAB capturas · ESC pausa", 13, CREAM)
+	var controls := _label(root, "WASD mover · SHIFT correr · ESPAÇO pular · CLIQUE/Q pescar · E interagir · R convés · L luzes · G guardar · X soltar · M mapa · ESC pausa", 12, CREAM)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	controls.offset_left = 30
 	controls.offset_right = -30
@@ -129,6 +135,7 @@ func _ready() -> void:
 	_set_hud(false)
 
 func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D) -> void:
+	id=id.replace("_oldport","")
 	if service_panel!=null:service_panel.free()
 	service_open=true
 	service_panel=_panel(root,Vector2(450,180),Vector2(550,480));service_panel.mouse_filter=Control.MOUSE_FILTER_STOP
@@ -158,7 +165,9 @@ func close_service() -> void:
 func show_encyclopedia(entries: Dictionary,discoveries: Dictionary) -> void:
 	ledger.visible=not ledger.visible
 	var content:="ENCICLOPÉDIA\n"
-	for data: Dictionary in entries.values():content+="%s · %s\n%d registros · recorde %.2f kg · %d devolvidos\n"%[data.name,data.rarity,data.count,data.record,data.released]
+	for data: Dictionary in entries.values():
+		if data.get("observation",false):content+="%s · %s\nCriatura observada · não capturável\n"%[data.name,data.rarity]
+		else:content+="%s · %s\n%d registros · recorde %.2f kg · %d devolvidos\n"%[data.name,data.rarity,data.count,data.record,data.released]
 	if entries.is_empty():content+="Pesque e guarde ou devolva um peixe para registrá-lo.\n"
 	content+="\nLOCAIS DESCOBERTOS\n"
 	for place: String in discoveries.values():content+=place+"\n"
@@ -191,7 +200,10 @@ func _make_overlay() -> void:
 	quit_button.pressed.connect(func() -> void: quit_requested.emit())
 	var build_label := _label(overlay, "ARQUIPÉLAGO DA AURORA  /  EXPLORAÇÃO, PESCA E VIDA NO PORTO", 13, SEA)
 	build_label.position = Vector2(100, 820)
-	var weather_panel:=_panel(overlay,Vector2(930,200),Vector2(395,220))
+	var weather_panel:=_panel(overlay,Vector2.ZERO,Vector2(395,530))
+	graphics_panel=weather_panel
+	weather_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	weather_panel.offset_left=-425;weather_panel.offset_right=-30;weather_panel.offset_top=90;weather_panel.offset_bottom=660
 	var weather_box:=_vbox(weather_panel)
 	_label(weather_box,"CONDIÇÕES DO MAR",18,GOLD)
 	weather_picker=OptionButton.new()
@@ -199,12 +211,31 @@ func _make_overlay() -> void:
 	weather_picker.custom_minimum_size=Vector2(325,44)
 	weather_box.add_child(weather_picker)
 	weather_picker.item_selected.connect(func(index: int) -> void: weather_selected.emit(index-1))
-	_label(weather_box,"O tempo muda aos poucos.\nO mar leva mais tempo para se acalmar.\n\nEscolha também pelo menu de pausa.",15,CREAM)
+	_label(weather_box,"Vento e ondas mudam gradualmente.",14,CREAM)
 	_label(weather_box,"HORÁRIO",16,GOLD)
 	var time_picker:=OptionButton.new()
 	for text: String in ["Fim de tarde","Amanhecer","Manhã","Meio-dia","Noite"]:time_picker.add_item(text)
 	time_picker.custom_minimum_size=Vector2(325,40);weather_box.add_child(time_picker)
 	time_picker.item_selected.connect(func(index: int) -> void:time_selected.emit([16.6,6.5,9.,12.,23.][index]))
+	_label(weather_box,"QUALIDADE GRÁFICA",18,GOLD)
+	quality_picker=OptionButton.new()
+	for label: String in ["Baixa","Equilibrada","Alta","Ultra"]:quality_picker.add_item(label)
+	quality_picker.custom_minimum_size=Vector2(325,40);weather_box.add_child(quality_picker);quality_picker.select(2)
+	quality_picker.item_selected.connect(func(_i: int) -> void:_graphics_changed())
+	resolution_label=_label(weather_box,"Resolução 3D: 100%",15,CREAM)
+	resolution_slider=HSlider.new();resolution_slider.min_value=50;resolution_slider.max_value=150;resolution_slider.step=5;resolution_slider.value=100;resolution_slider.custom_minimum_size=Vector2(325,30);weather_box.add_child(resolution_slider)
+	resolution_slider.value_changed.connect(func(_v: float) -> void:_graphics_changed())
+	vsync_button=CheckButton.new();vsync_button.text="Sincronização vertical";vsync_button.button_pressed=true;weather_box.add_child(vsync_button)
+	vsync_button.toggled.connect(func(_v: bool) -> void:_graphics_changed())
+	_label(weather_box,"Alta/Ultra: vegetação mais distante,\nsombras completas e luz indireta.\nAjustes aplicados e salvos na hora.",14,CREAM)
+
+func _graphics_changed() -> void:
+	resolution_label.text="Resolução 3D: %d%%"%int(resolution_slider.value)
+	graphics_changed.emit(quality_picker.selected,resolution_slider.value/100.,vsync_button.button_pressed)
+
+func configure_graphics(settings: RefCounted) -> void:
+	quality_picker.select(settings.quality);resolution_slider.set_value_no_signal(settings.render_scale*100.);vsync_button.set_pressed_no_signal(settings.vsync)
+	resolution_label.text="Resolução 3D: %d%%"%int(resolution_slider.value)
 
 func begin_play() -> void:
 	started = true
@@ -215,7 +246,7 @@ func show_pause() -> void:
 	ledger.hide()
 	overlay_title.text = "O mar\npode esperar."
 	overlay_title.add_theme_font_size_override("font_size", 58)
-	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nWASD caminhar / pilotar / nadar  ·  Mouse olhar\nE interagir / embarcar / sair  ·  R convés / leme\nESPAÇO lançar / fisgar / recolher  ·  Botão direito cancelar\nG guardar peixe  ·  X devolver  ·  F câmera\nM mapa  ·  J enciclopédia  ·  TAB capturas"
+	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas"
 	play_button.text = "CONTINUAR  →"
 	return_button.show()
 	overlay.show()
@@ -247,10 +278,10 @@ func update_fishing(state: int, tension: float, progress: float, bite_left: floa
 			fishing_hint.text = "Aguarde a mordida. Não precisa segurar o botão."
 		3:
 			fishing_title.text = "MORDIDA!   %.1f s" % bite_left
-			fishing_hint.text = "CLIQUE ou ESPAÇO agora para fisgar!"
+			fishing_hint.text = "CLIQUE ou Q agora para fisgar!"
 		4:
 			fishing_title.text = "TRAGA O PEIXE ATÉ VOCÊ"
-			fishing_hint.text = "Segure CLIQUE / ESPAÇO. Solte para aliviar a tensão."
+			fishing_hint.text = "Segure CLIQUE / Q. Solte para aliviar a tensão."
 	progress_bar.visible = state == 4
 	tension_bar.visible = state == 4
 	tension_label.visible = state == 4

@@ -1,0 +1,48 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+PASS: main scene starts with player on a safe surface
+PASS: W walks the actual character along the pier
+PASS: pier collision supports walking without water recovery
+PASS: E boards when the player reaches the boat
+PASS: W accelerates and moves the boat across the ocean
+PASS: casting is blocked while the boat is moving fast
+PASS: blocked cast cannot start fishing or grant a fish
+PASS: A steers the moving boat left
+PASS: D steers the moving boat right
+PASS: S brakes the boat
+PASS: stationary boat permits casting
+PASS: sailing beyond the harbor updates the travel objective
+PASS: fish action casts from the stationary boat or pier
+PASS: line reaches a bite through casting and waiting
+PASS: fish action hooks the bite
+PASS: reeling with tension relief lands a fish
+PASS: caught fish waits in hand for a disposition
+PASS: main scene credits exactly one captured fish
+PASS: capture has a positive sale value in the live inventory
+PASS: safe harbor return resets boat and disembarks
+PASS: return to harbor preserves the catch and its value
+PASS: player walks back to the boarding gap
+PASS: boat remains boardable after harbor return
+PASS: E disembarks at the dock while stopped
+PASS: WASD walks from the dock onto the island
+PASS: WASD reaches the market without teleporting
+PASS: market is reachable on solid ground
+PASS: E sells the catch and credits its exact value
+PASS: successful sale completes the first-trip objective
+PASS: a second sale cannot duplicate money
+PASS: F switches into first person
+PASS: F restores third person
+PASS: Escape pauses through the actual input event path
+PASS: movement remains stopped while paused
+PASS: Escape resumes through the actual input event path
+PASS: player can walk to the end of the pier
+PASS: walking into water starts swimming without forcing harbor return
+PASS: swimming preserves earned money
+PASS: fish action casts from the stationary boat or pier
+PASS: line reaches a bite through casting and waiting
+PASS: fish action hooks the bite
+PASS: reeling with tension relief lands a fish
+PASS: caught fish waits in hand for a disposition
+PASS: main scene credits exactly one captured fish
+PASS: safe recovery retains unsold fish
+INTEGRATION TESTS: PASS (45 checks, 0 failures)

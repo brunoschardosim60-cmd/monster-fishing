@@ -31,7 +31,7 @@ func advance(at: Vector3, basis: Basis, speed: float, delta: float) -> void:
 	Waves.bind(mat); trail_mesh.clear_surfaces()
 	if samples.size()<2: return
 	for side: float in [-1.,1.]:
-		trail_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+		trail_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP,mat)
 		for s: Dictionary in samples:
 			var age: float=clock-s.born
 			var width:=.55+age*.19

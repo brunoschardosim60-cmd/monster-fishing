@@ -13,6 +13,7 @@ var moored: Array[Node3D]=[]
 var elapsed: float=0.
 var discovered: Dictionary={}
 var guardian: Node3D
+var old_harbor: Node3D
 
 func _ready() -> void:
 	var wood:=M.surface("weathered_wood",Color("b3a181"),1.5)
@@ -33,7 +34,7 @@ func _ready() -> void:
 		G.box(self,Vector3(x,1.2,-18),Vector3(3.4,.3,21.),wood,true)
 		for z: int in range(-28,-6,4):
 			for side: float in [-1.,1.]:G.cylinder(self,Vector3(x+side*1.5,.2,z),.15,3.4,wood)
-	_make_streets(M.surface("sand",Color("c2b59a"),1.))
+	_make_streets(M.surface("cobblestone",Color("c7c1ad"),.35))
 	# Street furniture follows the frontage and routes; the walking lanes stay clear.
 	for p: Vector2 in [Vector2(-5,-6),Vector2(5,12),Vector2(-5,34),Vector2(5,56),Vector2(-32,10),Vector2(35,33),Vector2(63,33),Vector2(-62,33)]:
 		_lamp(Vector3(p.x,1.3,p.y),wood)
@@ -47,11 +48,18 @@ func _ready() -> void:
 		var x:=float(i)*1.1-.9
 		resident.route.assign([Vector3(x,1.3,13.+i*12.),Vector3(x,1.3,35),Vector3(x+1,1.3,57),Vector3(x+1,1.3,13)])
 		resident.speed=.8+float(i)*.12;add_child(resident);residents.append(resident)
+	for i: int in 3:
+		var resident:=preload("res://scripts/world/village_resident.gd").new();resident.speed=1.+float(i)*.15
+		resident.follow_terrain=false
+		resident.route.assign([Vector3(-24.+i*17,1.4,-7),Vector3(25,1.4,-7),Vector3(29,1.4,-23),Vector3(29,1.4,-7),Vector3(-25,1.4,-7)])
+		add_child(resident);residents.append(resident)
 	_make_landmarks(stone,wood)
 	for p: Vector2 in [Vector2(-8,35),Vector2(8,18),Vector2(-35,15),Vector2(57,32),Vector2(-55,55)]:world._make_tree(Vector3(p.x,Layout.height(p),p.y),1.5)
 	var excluded: Array[Node3D]=[];excluded.append_array(residents)
 	preload("res://scripts/world/static_batch.gd").build(self,excluded)
 	_add_external_scenery()
+	old_harbor=preload("res://scripts/world/old_harbor.gd").new();old_harbor.name="PortoVelhoCompleto";old_harbor.position=Vector3(-110,-.3,-18);add_child(old_harbor)
+	services["gear_oldport"]=old_harbor.gear;services["workshop_oldport"]=old_harbor.workshop
 
 func _build(title: String,p: Vector2,w: float,d: float,kind: String,color: Color,id: String) -> void:
 	var building:=Building.new();building.title=title;building.width=w;building.depth=d;building.use=kind;building.tint=color
@@ -71,12 +79,17 @@ func _lamp(p: Vector3,mat: Material) -> void:
 	var light:=OmniLight3D.new();light.position=p+Vector3(0,3.3,0);light.light_color=Color("ffd49a");light.omni_range=11.;light.light_energy=1.4;add_child(light);night_lights.append(light)
 
 func _make_landmarks(stone: Material,wood: Material) -> void:
-	for item: Dictionary in [{"id":"lighthouse","title":"Farol da Aurora","p":Vector2(-65,490),"reward":18},{"id":"lookout","title":"Mirante das Marés","p":Vector2(90,345),"reward":12},{"id":"grotto","title":"Gruta do Contrabandista","p":Vector2(-170,210),"reward":24},{"id":"ruins","title":"Ruínas da Vigia","p":Vector2(-110,310),"reward":20},{"id":"beach","title":"Praia dos Navegantes","p":Vector2(190,105),"reward":10}]:
+	for item: Dictionary in [{"id":"lighthouse","title":"Farol da Aurora","p":Vector2(-65,490),"reward":18},{"id":"lookout","title":"Mirante das Marés","p":Vector2(90,345),"reward":12},{"id":"grotto","title":"Gruta do Contrabandista","p":Vector2(-170,210),"reward":24},{"id":"ruins","title":"Ruínas da Vigia","p":Vector2(-110,310),"reward":20},{"id":"beach","title":"Praia dos Navegantes","p":Vector2(190,105),"reward":10},{"id":"summit","title":"Cume das Andorinhas","p":Vector2(50,775),"reward":35},{"id":"north_wood","title":"Bosque do Norte","p":Vector2(-170,650),"reward":20}]:
 		var p: Vector2=item.p;var at:=Vector3(p.x,Layout.height(p),p.y)
 		item["position"]=at;landmarks.append(item)
 		G.label(self,item.title,at+Vector3(0,3.,0),21)
-		var chest:=G.box(self,at+Vector3(2,.42,1),Vector3(1.2,.8,.7),wood,true)
-		G.box(self,at+Vector3(2,.87,1),Vector3(1.23,.13,.74),wood)
+		var chest_at:=at+Vector3(4,0,-4)
+		for offset: Vector2 in [Vector2(4,-4),Vector2(-4,-4),Vector2(4,4),Vector2(-4,4)]:
+			var candidate:=p+offset
+			if Layout.path_at(candidate).x>3.:
+				chest_at=Vector3(candidate.x,Layout.height(candidate),candidate.y);break
+		G.box(self,chest_at+Vector3.UP*.42,Vector3(1.2,.8,.7),wood,true)
+		G.box(self,chest_at+Vector3.UP*.87,Vector3(1.23,.13,.74),wood)
 		if item.id=="grotto":
 			# Rock-built coastal grotto: an actual traversable arch, not a sealed facade.
 			for side: float in [-1.,1.]:

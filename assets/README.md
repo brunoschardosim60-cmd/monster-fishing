@@ -5,8 +5,8 @@ Os seis arquivos enviados foram lidos e exportados para cópias próprias do jog
 | Origem | Arquivo do jogo | Uso |
 |---|---|---|
 | fishing boat 3d model.glb | boats/fishing_boat.glb | Aurora, navegação e convés |
-| tugboat 3d model.glb | boats/tugboat.glb | Embarcação atracada, colisão e flutuação |
-| coastal village harbor 3d model.glb | environment/harbor.glb + harbor_roof_0..3.glb | Arquitetura reaproveitada + cena completa |
+| tugboat 3d model.glb | boats/tugboat.glb | Rebocador atracado e duas embarcações de tráfego |
+| coastal village harbor 3d model.glb | environment/harbor_dressed.glb | Porto antigo completo, 58 m, ligado à vila |
 | survivalist character 3d model.zip | characters/survivalist.glb + survivalist_rigged.glb | Original convertido e personagem preparado |
 | dragon creature 3d model.glb | monsters/dragon.glb | Guardião da Vigia, observado pela enciclopédia |
 | goat 3d model (1).glb | props/goat.glb | Animal estático na vila |
@@ -23,10 +23,14 @@ Os seis arquivos enviados foram lidos e exportados para cópias próprias do jog
 6. Só inclua espécies capturáveis na lista de pesca após definir raridade, peso, valor e regras de região. O guardião usa observação e não entra na seleção aleatória de peixes.
 7. Execute primeiro `first_asset_in_game.gd` ou um cenário equivalente para UM asset: aparência, dimensões, colisão, ponto do jogador, controle e desempenho. Expanda depois.
 
-As alternativas procedurais de barco/personagem/peixes permanecem no código. Peixes não possuem GLBs externos nesta entrega; usam a malha funcional existente. Não crie caminhos para arquivos que ainda não existem.
+As alternativas procedurais de barco/personagem/peixes permanecem no código. Cavala, atum e peixe-lanterna agora têm GLBs reais em fish/, com cenas em scenes/models/. O Vigia Abissal usa monsters/abyssal_guardian.glb. Foram modelados no Blender com referências e texturas geradas; não houve conversão automática pela Tripo. Sardinha e robalo mantêm a alternativa procedural. Não crie caminhos para arquivos que ainda não existem.
+
+marine_ecosystem.gd conecta cardumes à isca e ao motor, define habitats por profundidade/horário e mantém a observação da criatura. marine_visual.gd compartilha cenas/materiais e anima caudas e nadadeiras no shader. Os Resources registram espécie, raridade, valor, região, cena e permissão de captura. maritime_traffic.gd e traffic_vessel.gd controlam as embarcações independentes; o Aurora preserva seu próprio controlador.
+
+Natureza CC0 preparada em environment/nature/ usa malhas compartilhadas, vento e representações simplificadas à distância. **Powered by Poly Haven**. Consulte docs/asset-audit/polyhaven-sources.json e ground-sources.json para origem e licença. Arquitetura, geologia e acessórios locais estão em environment/architecture/, environment/geology/ e characters/accessories/.
 
 ## Pipeline local
 
 Execute no Blender em modo background os scripts em `scripts/pipeline/`. `prepare_external_assets.py -- <chave>` converte/decima uma cópia; `rig_survivalist.py` prepara o personagem; `extract_harbor_roofs.py` separa arquitetura; `foliage_texture.py` usa Pillow para a textura original da folhagem. Texturas dos modelos são limitadas a 2048 pixels. O runtime não executa Python/Blender.
 
-O personagem de origem tinha três figuras fundidas em uma malha, sem esqueleto. A figura central foi recortada, normalizada para 1,82 m e recebeu 17 ossos, pesos locais e sete clips. Não há retarget automático ou animações Tripo presumidas.
+O personagem de origem tinha três figuras fundidas em uma malha, sem esqueleto. A figura central foi recortada, normalizada para 1,82 m e recebeu 17 ossos e 11 clips: Idle, Walk, Run, Fish, Hold, Steer, Swim, Cast, Reel, Jump e Fall. Não há retarget automático ou animações Tripo presumidas. Boné, mochila, vara e captura acompanham pontos do corpo animado.

@@ -40,6 +40,16 @@ func _ready() -> void:
 		elif material_family=="creature":
 			part.material_override=Materials.surface("granite",Color("ae9c76"),5.,false)
 		elif material_family=="harbor":
+			if "dressed" in asset_path:
+				for surface: int in part.mesh.get_surface_count():
+					var source: Material=part.get_active_material(surface)
+					var id: String=source.resource_name
+					var tint:=Color("bdb59c");var kind:="paint"
+					if "Roof" in id:kind="weathered_wood";tint=Color("a87753")
+					elif "Timber" in id:kind="weathered_wood";tint=Color("a59779")
+					elif "Stone" in id:kind="granite";tint=Color("aeb1a4")
+					part.set_surface_override_material(surface,Materials.surface(kind,tint,.6,true))
+				continue
 			var material:=Materials.surface("weathered_wood",Color("b2a28a"),2.,false)
 			part.material_override=material
 	if material_family in ["boat","harbor","creature"]:

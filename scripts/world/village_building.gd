@@ -14,7 +14,7 @@ var windows: StandardMaterial3D
 
 func _ready() -> void:
 	var stone:=M.surface("granite",Color("afb2a6"),1.)
-	var wall:=M.surface("paint",tint,2.)
+	var wall:=M.surface("lime_plaster",Color.WHITE.lerp(tint,.18),.35)
 	var trim:=M.surface("weathered_wood",Color("d6ccb2"),2.)
 	var wood:=M.surface("teak",Color("b7a180"),1.2)
 	var dark:=M.surface("weathered_wood",Color("544d3c"),1.5)
@@ -42,24 +42,27 @@ func _ready() -> void:
 	for x: float in [-half,half,-.94,.94]:G.box(self,Vector3(x,1.65,-back-.13),Vector3(.12,3.3,.12),trim)
 	var roof:=M.surface("weathered_wood",Color("865f4a") if use!="workshop" else Color("526b70"),1.5)
 	var rise:=1.7;var slope:=atan2(rise,half+.5);var roof_len:=sqrt(pow(half+.5,2)+rise*rise)
-	var variant:=absi(title.hash()+int(position.x))%4
-	var roof_path: String="res://assets/environment/harbor_roof_%d.glb"%variant
-	var imported_roof:=ResourceLoader.exists(roof_path)
-	if imported_roof:
-		var roof_model: Node3D=load(roof_path).instantiate();add_child(roof_model)
-		roof_model.scale=Vector3(width+1.3,3.,depth+1.4);roof_model.position.y=3.18
-		for part: Node in roof_model.find_children("*","MeshInstance3D",true,false):part.material_override=roof
-		G.box(self,Vector3(0,3.27,0),Vector3(width,.12,depth),dark,true)
-	else:
-		for side: float in [-1.,1.]:
-			var panel:=G.box(self,Vector3(side*(half+.5)*.5,3.3+rise*.5,0),Vector3(roof_len,.15,depth+1.2),roof,true)
-			panel.rotation.z=-side*slope
+	for side: float in [-1.,1.]:
+		var panel:=G.box(self,Vector3(side*(half+.5)*.5,3.3+rise*.5,0),Vector3(roof_len,.15,depth+1.2),roof,true)
+		panel.rotation.z=-side*slope
+	G.box(self,Vector3(0,5.08,0),Vector3(.24,.16,depth+1.4),trim)
+	var details: Node3D=preload("res://assets/environment/architecture/coastal_house_details.glb").instantiate()
+	details.name="ModeledCoastalArchitecture";details.scale=Vector3(width/8.,1.,depth/7.);add_child(details)
+	for part: MeshInstance3D in details.find_children("*","MeshInstance3D",true,false):
+		if str(part.name).begins_with("Individual curved"):
+			part.material_override=M.surface("lime_plaster",Color("915c3c").lerp(Color("79554a"),float(absi(title.hash())%4)*.15),.8)
 	var gable_mat:=wall.duplicate() as StandardMaterial3D;gable_mat.cull_mode=BaseMaterial3D.CULL_DISABLED
 	for z: float in [-back,back]:
-		if imported_roof:continue
 		G.mesh_node(self,G.polygon_mesh(PackedVector3Array([Vector3(-half,3.3,z),Vector3(half,3.3,z),Vector3(0,5.,z)]),PackedInt32Array([0,1,2])),gable_mat,Vector3.ZERO)
 		G.beam(self,Vector3(-half-.5,3.3,z+signf(z)*.63),Vector3(0,5.,z+signf(z)*.63),.085,trim)
 		G.beam(self,Vector3(0,5.,z+signf(z)*.63),Vector3(half+.5,3.3,z+signf(z)*.63),.085,trim)
+	# Open timber veranda: a shaded human-scale threshold and visible beams.
+	if use in ["home","cabin","inn","warehouse"]:
+		for side: float in [-1.,1.]:
+			G.box(self,Vector3(side*(half-.3),1.35,-back-1.15),Vector3(.16,2.7,.16),dark,true)
+			G.beam(self,Vector3(side*(half-.3),2.,-back-1.15),Vector3(side*(half-1.),2.65,-back-1.15),.06,trim)
+		var porch:=G.box(self,Vector3(0,2.77,-back-.85),Vector3(width+.35,.12,1.9),roof);porch.rotation.x=.13
+		G.box(self,Vector3(0,2.6,-back-1.7),Vector3(width+.3,.18,.18),trim)
 	# Recessed framed windows and shutters give the facade human scale.
 	var glass:=G.material(Color("49737a"),.22);glass.metallic=.3
 	windows=glass;windows.emission_enabled=true;windows.emission=Color("ffb968");windows.emission_energy_multiplier=0.

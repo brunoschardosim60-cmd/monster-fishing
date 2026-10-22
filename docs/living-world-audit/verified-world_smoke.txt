@@ -1,0 +1,18 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+PASS: Walkable surface at (0.0, 5.0, -17.0)
+PASS: Upward terrain normal at (0.0, 5.0, -17.0)
+PASS: Safe ground height at (0.0, 5.0, -17.0)
+PASS: Walkable surface at (0.0, 5.0, -8.0)
+PASS: Upward terrain normal at (0.0, 5.0, -8.0)
+PASS: Safe ground height at (0.0, 5.0, -8.0)
+PASS: Walkable surface at (0.0, 5.0, -6.0)
+PASS: Upward terrain normal at (0.0, 5.0, -6.0)
+PASS: Safe ground height at (0.0, 5.0, -6.0)
+PASS: Walkable surface at (6.0, 5.0, -7.0)
+PASS: Upward terrain normal at (6.0, 5.0, -7.0)
+PASS: Safe ground height at (6.0, 5.0, -7.0)
+PASS: Boat berth has clearance above the underwater shelf
+PASS: Walk from pier to market waypoint (0.0, 1.4, -7.0)
+PASS: Walk from pier to market waypoint (6.0, 1.4, -7.0)
+WORLD_SMOKE_FAILURES=0

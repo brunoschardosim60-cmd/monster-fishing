@@ -6,7 +6,7 @@ uniform float cloud_cover=.32;
 uniform float weather_time=0.;
 uniform float lightning=0.;
 float clouds(vec2 p) {
-	return texture(cloud_noise,p).r*.6+texture(cloud_noise,p*2.13).r*.27+texture(cloud_noise,p*4.07).r*.13;
+	return texture(cloud_noise,p).r*.52+texture(cloud_noise,p*2.13).r*.24+texture(cloud_noise,p*4.07).r*.13+texture(cloud_noise,p*8.1).r*.07+texture(cloud_noise,p*16.3).r*.04;
 }
 float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 void sky() {
@@ -28,17 +28,24 @@ void sky() {
 	col+=vec3(1.,.48,.14)*pow(sun,10.)*.55*day;
 	col+=vec3(1.,.87,.65)*smoothstep(.9996,.9999,sun)*9.*(1.-cloud_cover*.92);
 	if(d.y>.015) {
-		vec2 uv=d.xz/(d.y+.18)*.035+vec2(.21,.37)+weather_time*vec2(.00012,.00005);
-		float c=clouds(uv);
-		float density=smoothstep(mix(.5,.22,cloud_cover),mix(.67,.46,cloud_cover),c)*smoothstep(.015,.12,d.y);
-		density=mix(density,1.,smoothstep(.65,1.,cloud_cover)*.92);
-		density*=smoothstep(.015,.12,d.y);
-		float edge=clouds(uv+sun_direction.xz*.008)-c;
-		vec3 rim=mix(vec3(.75,.78,.76),vec3(1.,.63,.31),pow(sun,3.)*.8);
-		vec3 cloud_col=mix(vec3(.10,.14,.19),rim,clamp(.45+edge*12.,0.,1.));
-		cloud_col=mix(cloud_col,vec3(.08,.11,.15)*(1.+c*.4),smoothstep(.55,1.,cloud_cover));
-		cloud_col=mix(cloud_col*vec3(.08,.13,.23),cloud_col,day);
-		col=mix(col,cloud_col,density*.93);
+		// Integrate a shallow cloud layer; shifted samples give soft, lit volume.
+		float transmission=1.;vec3 scattered=vec3(0.);
+		vec3 warm=mix(vec3(1.12,1.16,1.13),vec3(1.45,.87,.43),pow(sun,4.)*(1.-smoothstep(.1,.6,sun_direction.y)));
+		for(int i=0;i<6;i++){
+			float layer=(float(i)+.5)/6.;
+			vec2 uv=d.xz/(d.y+.12)*(.052+layer*.014)+vec2(.21,.37)+weather_time*vec2(.00012,.00005);
+			float c=clouds(uv);
+			float profile=sin(layer*3.141593)*.075;
+			float density=smoothstep(mix(.64,.27,cloud_cover)-profile,mix(.76,.43,cloud_cover),c);
+			density=mix(density,.85,smoothstep(.65,1.,cloud_cover));
+			float lighting=clamp(.58+(clouds(uv+sun_direction.xz*.009)-c)*14.+layer*.15,0.,1.);
+			vec3 cloud_col=mix(vec3(.18,.24,.30),warm,lighting);
+			cloud_col=mix(cloud_col,vec3(.10,.14,.19)*(1.+lighting*.7),smoothstep(.55,1.,cloud_cover));
+			cloud_col*=mix(vec3(.07,.11,.20),vec3(1.),day);
+			float opacity=(1.-exp(-density*.8))*smoothstep(.015,.14,d.y);
+			scattered+=transmission*opacity*cloud_col;transmission*=1.-opacity;
+		}
+		col=col*transmission+scattered;
 	}
 	if(d.y<0.) col=mix(col,vec3(.04,.12,.15),smoothstep(0.,.12,-d.y));
 	col=mix(col,col*vec3(.25,.33,.43),cloud_cover*.78)+vec3(.65,.76,1.)*lightning*.5;

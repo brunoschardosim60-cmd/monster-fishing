@@ -1,0 +1,14 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+LEG (320.0, -80.0) actual (305.2114, 0.0, -81.42879)
+LEG (420.0, 200.0) actual (414.7139, 0.0, 185.9733)
+LEG (420.0, 750.0) actual (419.9143, 0.0, 735.2283)
+LEG (70.0, 1170.0) actual (79.40171, 0.0, 1158.492)
+LEG (-530.0, 1030.0) actual (-515.4964, 0.0, 1033.255)
+LEG (-530.0, 540.0) actual (-529.8881, 0.0, 554.9326)
+LEG (-340.0, -90.0) actual (-344.174, 0.0, -75.95375)
+LEG (30.0, -100.0) actual (15.10121, 0.0, -99.42615)
+PASS Complete circumnavigation with real throttle/steering: 8/8 legs, 3779 metres
+PASS Offshore route has no invisible collision walls
+PASS Disembark away from port and walk onto eastern beach
+EXPLORATION JOURNEY 3 checks / 0 failures

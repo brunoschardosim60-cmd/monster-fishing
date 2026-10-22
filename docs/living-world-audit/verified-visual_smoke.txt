@@ -1,0 +1,55 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.3.260 - Forward+ - Using Device #0: AMD - AMD Radeon RX 580 2048SP
+
+GPU: AMD Radeon RX 580 2048SP / AMD
+RENDERER: forward_plus / vulkan
+NOTICE: short real GPU observations; use render_benchmark.gd for frame-time measurements.
+PASS: 01_title framebuffer is readable
+PASS: 01_title PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/01_title.png (1198x749)
+PASS: graphics settings fits viewport: [P: (1015.0, 90.0), S: (395.0, 570.0)]
+PASS: stats fits viewport: [P: (1040.0, 36.0), S: (360.0, 60.0)]
+PASS: prompt fits viewport: [P: (270.0, 803.0), S: (900.0, 40.0)]
+PASS: toast fits viewport: [P: (260.0, 106.0), S: (920.0, 52.0)]
+PERFORMANCE_SAMPLE: {"draw_calls":441.0,"fps_engine_monitor":33.0,"objects":1143.0,"physics_ms":2.797,"primitives":869535.0,"process_ms":28.326,"scene":"pier_idle"}
+PASS: 02_pier_idle framebuffer is readable
+PASS: 02_pier_idle PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/02_pier_idle.png (1198x749)
+PASS: actual cast reaches bite
+PASS: actual strike starts reel
+PASS: fishing panel fits viewport: [P: (480.0, 600.0), S: (480.0, 184.0)]
+PASS: fishing hint fits viewport: [P: (500.0, 652.0), S: (440.0, 20.0)]
+PASS: active fishing toast fits viewport: [P: (260.0, 106.0), S: (920.0, 52.0)]
+PASS: 03_fishing_reel framebuffer is readable
+PASS: 03_fishing_reel PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/03_fishing_reel.png (1198x749)
+PASS: real catch waits in hand for disposition
+PASS: real 3D catch display is visible
+PASS: capture toast fits viewport: [P: (260.0, 106.0), S: (920.0, 52.0)]
+PASS: 04_catch_model framebuffer is readable
+PASS: 04_catch_model PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/04_catch_model.png (1198x749)
+PASS: keeping real catch credits inventory
+PASS: boat camera entered through interaction
+PERFORMANCE_SAMPLE: {"draw_calls":112.0,"fps_engine_monitor":32.0,"objects":1063.0,"physics_ms":2.656,"primitives":827666.0,"process_ms":28.453,"scene":"boat_ocean"}
+PASS: 05_boat_ocean framebuffer is readable
+PASS: 05_boat_ocean PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/05_boat_ocean.png (1198x749)
+PASS: 07_boat_detail framebuffer is readable
+PASS: 07_boat_detail PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/07_boat_detail.png (1198x749)
+PASS: 10_boat_wake framebuffer is readable
+PASS: 10_boat_wake PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/10_boat_wake.png (1198x749)
+PERFORMANCE_SAMPLE: {"draw_calls":2275.0,"fps_engine_monitor":33.0,"objects":3341.0,"physics_ms":3.43,"primitives":11249783.0,"process_ms":28.532,"scene":"village"}
+PASS: 06_village framebuffer is readable
+PASS: 06_village PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/06_village.png (1198x749)
+PERFORMANCE_SAMPLE: {"draw_calls":47.0,"fps_engine_monitor":32.0,"objects":47.0,"physics_ms":3.484,"primitives":596229.0,"process_ms":28.371,"scene":"ocean_close"}
+PASS: 08_ocean_close framebuffer is readable
+PASS: 08_ocean_close PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/08_ocean_close.png (1198x749)
+PASS: 09_angler_detail framebuffer is readable
+PASS: 09_angler_detail PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/visual/09_angler_detail.png (1198x749)
+VISUAL SMOKE: PASS (34 checks, 0 failures)

@@ -13,6 +13,12 @@ var integrity: float=1.
 var trail: MeshInstance3D
 var heave_velocity: float=0.
 var impact_cooldown: float=0.
+var lights_enabled: bool=true
+var searchlight_upgraded: bool=false
+var hull_protection: float=1.
+var deck_lights: Array[Light3D]=[]
+var lamp_materials: Array[StandardMaterial3D]=[]
+var searchlight: SpotLight3D
 
 var occupied: bool = false
 var controls_enabled: bool = true
@@ -39,6 +45,7 @@ func _ready() -> void:
 	add_child(shape)
 	_build_visual()
 	_build_bucket()
+	_build_lights()
 	trail=preload("res://scripts/ocean/wake_trail.gd").new()
 	add_child(trail)
 
@@ -63,7 +70,7 @@ func _physics_process(delta: float) -> void:
 	velocity.y = 0.0
 	move_and_slide()
 	if get_slide_collision_count() > 0:
-		if absf(speed)>2.: integrity=maxf(.15,integrity-absf(speed)*delta*.003)
+		if absf(speed)>2.: integrity=maxf(.15,integrity-absf(speed)*delta*.003*hull_protection)
 		speed = move_toward(speed, 0.0, 9.0 * delta)
 	position.y = 0.0
 	var wrapped:=preload("res://scripts/world/archipelago_layout.gd").wrapped(global_position)
@@ -102,6 +109,33 @@ func _physics_process(delta: float) -> void:
 
 func set_occupied(value: bool) -> void:
 	occupied = value
+
+func toggle_lights() -> void:
+	lights_enabled=not lights_enabled
+	update_lights()
+
+func update_lights() -> void:
+	for light: Light3D in deck_lights:light.visible=lights_enabled
+	for material: StandardMaterial3D in lamp_materials:material.emission_enabled=lights_enabled
+	if searchlight!=null:searchlight.visible=lights_enabled and searchlight_upgraded
+
+func _build_lights() -> void:
+	var steel:=Materials.surface("paint",Color("283b40"),3.,false)
+	for side: float in [-1.,1.]:
+		var color:=Color("ee473d") if side<0. else Color("5be8a2")
+		var glow:=G.material(color);glow.emission_enabled=true;glow.emission=color;glow.emission_energy_multiplier=2.
+		lamp_materials.append(glow)
+		G.box(_hull,Vector3(side*1.15,2.4,-.5),Vector3(.22,.16,.28),steel)
+		G.sphere(_hull,Vector3(side*1.18,2.42,-.64),Vector3(.08,.07,.09),glow,12)
+		var nav:=OmniLight3D.new();nav.position=Vector3(side*1.18,2.42,-.65);nav.light_color=color;nav.light_energy=.45;nav.omni_range=2.4;_hull.add_child(nav);deck_lights.append(nav)
+	for at: Vector3 in [Vector3(0,3.,.85),Vector3(0,2.9,-1.5)]:
+		G.box(_hull,at,Vector3(.48,.15,.23),steel)
+		var lens:=G.material(Color("fff0c8"));lens.emission_enabled=true;lens.emission=Color("ffd29a");lens.emission_energy_multiplier=1.6
+		lamp_materials.append(lens)
+		G.box(_hull,at+Vector3(0,-.09,0),Vector3(.36,.035,.17),lens)
+		var lamp:=OmniLight3D.new();lamp.position=at-Vector3.UP*.2;lamp.light_color=Color("ffd69c");lamp.light_energy=2.1;lamp.omni_range=6.;lamp.shadow_enabled=false;_hull.add_child(lamp);deck_lights.append(lamp)
+	searchlight=SpotLight3D.new();searchlight.name="UpgradeableBowSearchlight";searchlight.position=Vector3(0,3.2,-1.2);searchlight.rotation.x=-.16;searchlight.spot_range=65.;searchlight.spot_angle=24.;searchlight.spot_attenuation=1.2;searchlight.light_energy=5.;searchlight.light_color=Color("e9f3e9");searchlight.shadow_enabled=true;_hull.add_child(searchlight)
+	update_lights()
 
 func seat_position() -> Vector3:
 	if imported_model!=null: return imported_model.get_node("Helm").global_position

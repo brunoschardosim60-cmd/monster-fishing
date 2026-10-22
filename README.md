@@ -1,49 +1,53 @@
 # Monster Fishing — Arquipélago da Aurora
 
-Jogo de pesca e exploração em Godot 4.7.2. Esta versão amplia a costa inicial para uma ilha de aproximadamente 500 × 570 metros, com vila, interiores acessíveis, trilhas, praia, mirante, gruta e ruínas. O mar navegável ocupa 4,4 × 4,4 km e conecta as bordas opostas.
+Jogo local de pesca e exploração em **Godot 4.7.2**. A ilha inicial tem aproximadamente **700 × 1.100 m**, vila, porto antigo, interiores, trilhas de montanha, fauna marinha e embarcações em movimento. O oceano navegável ocupa 4,4 × 4,4 km e conecta as bordas opostas.
 
 ## Jogar
 
-Abra **Jogar.cmd** e clique em **Começar a explorar**. O barco fica à direita da ponta do cais. **Jogar leve.cmd** usa OpenGL/Compatibility, com iluminação e reflexos simplificados. **Abrir editor.cmd** abre o projeto no Godot portátil em tools/godot/.
+Abra **Jogar.cmd**. **Esc** permite mudar clima, horário, qualidade Baixa/Equilibrada/Alta/Ultra, resolução 3D e VSync. As preferências gráficas são salvas. **Jogar leve.cmd** usa OpenGL/Compatibility. **Abrir editor.cmd** abre o projeto no Godot portátil.
 
 | Controle | Ação |
 |---|---|
 | WASD / Mouse | Caminhar, nadar ou pilotar / olhar |
-| Shift | Correr / nadar mais rápido |
-| E | Interagir, embarcar ou desembarcar, inclusive em mar aberto |
-| R | Alternar leme e caminhada no convés |
-| Espaço / botão esquerdo | Lançar, fisgar e recolher; solte para aliviar tensão |
-| Botão direito | Cancelar a pesca |
-| G / X | Guardar o peixe que está na mão / devolvê-lo ao mar |
+| Shift / Espaço | Correr / pular, inclusive no convés |
+| E / R | Interagir, embarcar e sair / alternar leme e convés |
+| Clique esquerdo ou Q | Segurar para mirar, soltar para lançar; fisgar e recolher na disputa |
+| Roda do mouse / botão direito | Ajustar alcance enquanto mira / cancelar pesca |
+| G / X | Guardar a captura na mão / devolver ao mar |
+| L / V | Luzes do barco / observar criatura próxima com o barco lento |
 | F | Primeira / terceira pessoa |
-| M / Z | Abrir mapa / mudar sua escala |
-| J / Tab | Enciclopédia e descobertas / capturas |
-| Esc | Pausa, retorno seguro, clima e horário |
+| M / Z | Mapa / mudar escala |
+| J / Tab | Enciclopédia / capturas |
+| Esc | Pausa, retorno ao cais e configurações |
 
-Pesque olhando para água livre a partir de praias, cais, rochas ou do barco parado. Quando capturar, escolha **G** ou **X**; a captura só entra no inventário ao guardar. Na água, aproxime-se do barco e pressione **E** para subir. O barco continua desacelerando quando você passa ao convés.
+Pesque de praias, cais, rochas ou do barco em baixa velocidade. O lançamento verifica água, alcance e obstáculos; é possível caminhar com a linha lançada. Solte para aliviar a tensão nas arrancadas. A captura entra no inventário ao guardar com **G**. Na água, aproxime-se do Aurora e use **E** para subir.
 
-Na vila, entre pelas portas abertas e use **E** perto do centro do estabelecimento. A loja vende iscas, vara, linha e anzol; a oficina vende melhoria de motor e repara o casco. O mercado compra capturas, o armazém guarda/retira peixes e a cabana permite descansar. As compras usam as moedas e modificam os sistemas reais de pesca e navegação.
+A costa tem sardinha, cavala e robalo; águas profundas acrescentam atum. À noite, o mar profundo também oferece peixe-lanterna. Cardumes aproximam-se da isca e fogem de motores próximos; lançar junto deles favorece sua espécie. O Vigia Abissal é uma descoberta por observação, sem captura ou combate.
 
-## Mundo e modelos
+## Mundo e arte
 
-- 14 prédios acessíveis, seis serviços, moradores caminhando, iluminação noturna, fumaça e aves.
-- Trilhas até o farol, mirante, ruínas, gruta e praia; descobertas dão moedas e materiais uma única vez por sessão.
-- Ondas geométricas e normais finas, profundidade, espuma, refração, reflexos, abrigo no porto, esteira persistente e flutuação compartilhada entre CPU/GPU.
-- Ciclo de dia/noite, sol, lua, estrelas, nuvens, chuva, relâmpagos, trovão e ondulação residual.
-- Modelos reais fornecidos pelo usuário: barco pesqueiro pilotável, rebocador atracado, personagem, cabra, dragão e arquitetura derivada do porto. As versões otimizadas ficam em assets/; os originais em Downloads não foram alterados.
+- 14 prédios com interiores e portas, mercado, loja, oficina, armazém, cabana e moradores caminhando.
+- Porto antigo com o **GLB completo enviado**, em escala de 58 m, conectado à vila por cais e duas bancas funcionais.
+- Compras reais de iscas, vara, linha, anzol, motor, reparo, molinete de maior alcance, proteção do casco e holofote de 65 m.
+- Trilha norte até o cume de 150 m, mirantes, gruta, ruínas, farol e arco rochoso com passagem navegável.
+- Pesqueiro, rebocador e navio de apoio percorrem oito trechos ao redor da ilha, com flutuação, esteiras, luzes e desvio do jogador.
+- Todos os seis modelos enviados integrados: personagem, pesqueiro, rebocador, porto, cabra e dragão.
+- Personagem com rig local e 11 animações, incluindo braços/tronco, lançamento, recolhimento, salto e queda.
+- Novos modelos no Blender: detalhes das casas, arco, boné, mochila, três peixes e criatura marinha. Folhas e materiais gerados também são utilizados no jogo.
+- Árvores, samambaias, rochedos e materiais CC0: **Powered by Poly Haven**. Fontes em docs/asset-audit/.
 
-Veja [a entrega, testes e capturas atuais](docs/ARCHIPELAGO.md) e [o contrato de integração de assets](assets/README.md).
+Veja [a entrega e validação atuais](docs/LIVING_WORLD.md), [imagens e prompts](docs/ART_GENERATION.md) e [o contrato de assets](assets/README.md). As imagens conceituais são referências; docs/living-world-audit/ contém capturas do jogo real.
 
 ## Testar
 
-**Testar.cmd** executa pesca, integração, terreno, água, atracação, caminhada pelos interiores/trilhas e uma volta completa de barco ao redor da ilha. **Testar arquipelago visual.cmd** gera imagens no Godot e mede seis cenários em 1440×900. **Testar oceano visual.cmd** percorre os cenários marítimos. Saídas temporárias: tests/output/; evidências versionadas: docs/archipelago-audit/.
+**Testar.cmd** executa pesca, economia, navegação, salto, terreno, interiores, caminhada, circunavegação e comportamento marinho. **Testar arquipelago visual.cmd** renderiza imagens, verifica animação/vento e mede seis cenários em 1440×900. **Testar oceano visual.cmd** verifica os cenários marítimos. Saídas temporárias: tests/output/.
 
-O projeto funciona localmente, sem serviço Tripo em execução. O Blender é necessário apenas para refazer a preparação dos modelos, usando os scripts em scripts/pipeline/. O Godot portátil não é versionado; em outra máquina use uma instalação Standard compatível.
+Blender só é necessário para refazer scripts em scripts/pipeline/. O runtime não depende de Python nem de um serviço Tripo. O Godot portátil não é versionado; em outra máquina use uma instalação Standard compatível.
 
-## Limites desta etapa
+## Estado da entrega
 
-O progresso ainda é mantido **somente durante a sessão**. O mundo usa conexão entre bordas de um mapa plano; não é um planeta esférico. A ilha inicial concentra o conteúdo: as três ilhas distantes ainda são bases para futuras regiões, sem vilas completas. Dragão e cabra chegaram sem rig; o dragão é uma descoberta não capturável, com movimento respiratório simples, e a cabra é estática. O personagem recebeu rig e sete animações básicas locais, que ainda comportam refinamento artístico.
+O progresso permanece **por sessão**. O mundo conecta bordas de um mapa plano, sem planeta esférico. A ilha inicial concentra o conteúdo; outras regiões são bases para expansão. Os interiores acessíveis são os módulos da vila; construções fechadas do porto importado não ganharam interiores fictícios.
 
-O GLB do porto não tinha interiores caminháveis. Seus telhados foram separados e reaproveitados sobre salas com portas e colisões próprias; a cena completa também está disponível e aparece como maquete na oficina. A vila combina esses módulos com construção procedural. O resultado é uma etapa jogável ampliada; não equivale ao acabamento final das imagens conceituais.
+Cabra e dragão chegaram sem rig: a cabra é estática e o dragão tem respiração simples e descoberta. O navio de apoio adapta o rebocador fornecido para 30 m. Navios de tráfego não podem ser pilotados.
 
-Documentos de fases anteriores em docs/ são históricos. Para o estado atual, use docs/ARCHIPELAGO.md.
+O acabamento ainda não equivale às referências realistas. Documentos anteriores, incluindo docs/ARCHIPELAGO.md, são históricos; o estado atual está em docs/LIVING_WORLD.md.

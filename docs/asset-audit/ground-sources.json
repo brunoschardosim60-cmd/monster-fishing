@@ -1,0 +1,65 @@
+[
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forest_ground_04/forest_ground_04_diff_1k.jpg",
+    "asset": "forest_ground_04",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\forest_floor_color.jpg",
+    "md5": "6ad9df4d731a238299806f739a26af83"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forest_ground_04/forest_ground_04_nor_gl_1k.jpg",
+    "asset": "forest_ground_04",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\forest_floor_normal.jpg",
+    "md5": "a010a0802c2d9a930c6f00d3b1f196d2"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forest_ground_04/forest_ground_04_rough_1k.jpg",
+    "asset": "forest_ground_04",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\forest_floor_rough.jpg",
+    "md5": "b5c7ba5c16f00261e9a765d52cf7e0ac"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_grass_rock/aerial_grass_rock_diff_1k.jpg",
+    "asset": "aerial_grass_rock",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\meadow_color.jpg",
+    "md5": "e920ce36afd0abff000b8366d3d768d3"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_grass_rock/aerial_grass_rock_nor_gl_1k.jpg",
+    "asset": "aerial_grass_rock",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\meadow_normal.jpg",
+    "md5": "c8aa4c4f09b113cc7edef89ddeaccad9"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_grass_rock/aerial_grass_rock_rough_1k.jpg",
+    "asset": "aerial_grass_rock",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\meadow_rough.jpg",
+    "md5": "f78c5cdc565f990299ae7c5a81f68cf7"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cobblestone_floor_01/cobblestone_floor_01_diff_1k.jpg",
+    "asset": "cobblestone_floor_01",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\cobblestone_color.jpg",
+    "md5": "ef7a4b9314ccd7f11ea07a06b81e515a"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cobblestone_floor_01/cobblestone_floor_01_nor_gl_1k.jpg",
+    "asset": "cobblestone_floor_01",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\cobblestone_normal.jpg",
+    "md5": "25994f0cbfefb6a4be0e0a349fa8c3ea"
+  },
+  {
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cobblestone_floor_01/cobblestone_floor_01_rough_1k.jpg",
+    "asset": "cobblestone_floor_01",
+    "license": "CC0-1.0",
+    "file": "assets\\textures\\cobblestone_rough.jpg",
+    "md5": "5aae412052050610a59763370841b2d4"
+  }
+]

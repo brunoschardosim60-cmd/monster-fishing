@@ -53,6 +53,7 @@ func _make_rain() -> void:
 	rain_particles.gravity=Vector3(2,-4,1)
 	var mesh:=QuadMesh.new(); mesh.size=Vector2(.017,.52); mesh.material=Effects.drop_material()
 	rain_particles.mesh=mesh; rain_particles.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	rain_particles.material_override=mesh.material
 	add_child(rain_particles)
 
 func _make_seabed() -> void:
@@ -71,7 +72,7 @@ func _make_ice() -> void:
 	mat.roughness=.28; mat.metallic=.12
 	var rng:=RandomNumberGenerator.new(); rng.seed=419
 	for i: int in 11:
-		var at:=Vector3(578.+float(i%4)*12.+rng.randf_range(-2,2),0,-606.-float(i/4)*12.)
+		var at:=Vector3(478.+float(i%4)*12.+rng.randf_range(-2,2),0,-606.-float(i/4)*12.)
 		if Waves.coast(Vector2(at.x,at.z)).x<2.: continue
 		var floe:=Node3D.new(); add_child(floe); floe.position=at
 		var st:=SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)

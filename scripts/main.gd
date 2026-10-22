@@ -29,6 +29,13 @@ var stowing: bool=false
 var stow_tween: Tween
 var stow_origin:=Vector3.ZERO
 var service_id: String=""
+var aiming: bool=false
+var aim_manual: bool=false
+var cast_charge: float=0.
+var cast_distance: float=14.
+var cast_marker: MeshInstance3D
+var graphics: RefCounted
+var marine: Node3D
 const Economy=preload("res://scripts/inventory/harbor_economy.gd")
 
 func _ready() -> void:
@@ -43,6 +50,7 @@ func _ready() -> void:
 	boat.position = Vector3(3.9, 0, -23)
 	_add_system(boat)
 	boat.water_effects=world.ocean.effects
+	world.traffic.set_player_boat(boat)
 	player = Player.new()
 	player.name = "Player"
 	player.position = world.safe_spawn()
@@ -56,11 +64,15 @@ func _ready() -> void:
 	fishing.state_changed.connect(_on_fishing_state)
 	fishing_visual = FishingVisual.new()
 	_add_system(fishing_visual)
+	cast_marker=MeshInstance3D.new()
+	var ring:=TorusMesh.new();ring.inner_radius=.42;ring.outer_radius=.5;ring.rings=24;ring.ring_segments=6;cast_marker.mesh=ring
+	var aim_material:=StandardMaterial3D.new();aim_material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;aim_material.albedo_color=Color("8de8dd");cast_marker.material_override=aim_material;cast_marker.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;add_child(cast_marker);cast_marker.hide()
 	audio = OceanAudio.new()
 	_add_system(audio)
 	audio.configure(world.ocean,boat)
 	surface_fish=preload("res://scripts/fishing/surface_fish.gd").new()
 	_add_system(surface_fish); surface_fish.effects=world.ocean.effects
+	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
 	hud = HUD.new()
 	add_child(hud)
 	hud.start_requested.connect(begin_play)
@@ -72,6 +84,9 @@ func _ready() -> void:
 	hud.service_closed.connect(func() -> void: service_id="";Input.mouse_mode=Input.MOUSE_MODE_CAPTURED)
 	hud.time_selected.connect(func(hour_value: float) -> void: world.ocean.hour=hour_value)
 	hud.map_view.game=self
+	graphics=preload("res://scripts/visuals/graphics_settings.gd").new();graphics.configure(self)
+	hud.configure_graphics(graphics)
+	hud.graphics_changed.connect(func(level: int,scale_value: float,sync: bool) -> void:graphics.apply(level,scale_value,sync))
 	player.controls_enabled = false
 	boat.controls_enabled = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -106,6 +121,7 @@ func _input(event: InputEvent) -> void:
 		if get_tree().paused:
 			resume_play()
 		else:
+			aiming=false
 			get_tree().paused = true
 			hud.show_pause()
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -114,6 +130,10 @@ func _input(event: InputEvent) -> void:
 	if not started or get_tree().paused:
 		return
 	if event.is_action_pressed("deck"): toggle_deck()
+	if event.is_action_pressed("boat_lights"):
+		boat.toggle_lights();hud.notify("Luzes do barco acesas." if boat.lights_enabled else "Luzes do barco apagadas.")
+	if event.is_action_pressed("observe_wildlife"):
+		hud.notify("Vigia Abissal registrado na enciclopédia. Descoberta: +40 moedas." if marine.observe_guardian() else "Aproxime-se devagar da criatura para observá-la. Cada descoberta é registrada uma vez.")
 	if event.is_action_pressed("keep_catch"): finish_catch(false)
 	if event.is_action_pressed("release_catch"): finish_catch(true)
 	if event.is_action_pressed("world_map"):hud.map_view.visible=not hud.map_view.visible
@@ -121,8 +141,16 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact"):
 		interact()
 	if event.is_action_pressed("fish"):
-		fish_action()
+		if fishing.state==Fishing.State.IDLE and pending_catch.is_empty():aiming=true;aim_manual=false;cast_charge=0.
+		else:fish_action()
+	if event.is_action_released("fish") and aiming:
+		aiming=false;fish_action()
+	if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
+		cast_distance=clampf(cast_distance+(2. if event.button_index==MOUSE_BUTTON_WHEEL_UP else -2.),5.,42.+fishing.cast_range_bonus)
+		if aiming:
+			aim_manual=true;cast_charge=(cast_distance-5.)/(37.+fishing.cast_range_bonus)
 	if event.is_action_pressed("cancel_fishing"):
+		aiming=false
 		fishing.cancel()
 	if event.is_action_pressed("inventory"):
 		hud.toggle_ledger(inventory.catches, inventory.total_value())
@@ -146,9 +174,25 @@ func _physics_process(_delta: float) -> void:
 func _process(delta: float) -> void:
 	if not started or get_tree().paused:
 		return
-	player.movement_locked = fishing.active() or hud.service_open
+	player.movement_locked = hud.service_open
+	player.fishing_active=fishing.active() or aiming
+	player.fishing_state=fishing.state
+	player.cast_power=cast_charge
 	player.holding_fish=not pending_catch.is_empty()
-	boat.controls_enabled = not fishing.active() and not hud.service_open
+	boat.controls_enabled = not hud.service_open
+	if aiming and not aim_manual:
+		cast_charge=minf(1.,cast_charge+delta*.65)
+		cast_distance=lerpf(5.,42.+fishing.cast_range_bonus,cast_charge)
+	var aim_target:=_cast_target() if aiming else {}
+	cast_marker.visible=not aim_target.is_empty()
+	if cast_marker.visible:
+		cast_marker.global_position=aim_target.position
+		cast_marker.position.y=preload("res://scripts/world/wave_field.gd").height_at(cast_marker.position)+.22
+	if fishing.active():
+		var line_distance: float=player.global_position.distance_to(fishing_visual.target)
+		fishing.line_stretch=clampf((line_distance-42.-fishing.cast_range_bonus)/14.,0.,1.)
+		if player.swimming or line_distance>56.+fishing.cast_range_bonus:
+			fishing.cancel();hud.notify("Linha recolhida: você entrou na água ou ultrapassou o alcance da linha.")
 	fishing.set_reeling(Input.is_action_pressed("fish"))
 	fishing_visual.update_line(player.rod_tip(), fishing.state, delta)
 	hud.stats.text = "%d  MOEDAS     /     %d  CAPTURAS" % [inventory.money, inventory.count()]
@@ -158,12 +202,13 @@ func _process(delta: float) -> void:
 	hud.compass.text = "%s  ·  %03d°" % [directions[int((heading + 22.5) / 45.0) % 8], int(heading)]
 	hud.prompt.text = _interaction_hint()
 	hud.update_fishing(fishing.state, fishing.tension, fishing.progress, fishing.bite_time_remaining)
+	if fishing.state==Fishing.State.REELING and fishing.surging:hud.fishing_hint.text="ARRANCADA DO PEIXE · solte para aliviar a tensão!"
 	if not boarded_once:
 		hud.objective.text = "PRIMEIRA VIAGEM\nCaminhe até o barco e pressione E."
 	elif not sailed_once:
 		hud.objective.text = "SOLTE AS AMARRAS\nW acelera · S freia · A / D viram."
 	elif not caught_once:
-		hud.objective.text = "UM BOM LUGAR PARA FICAR\nPare o barco e lance a linha com ESPAÇO."
+		hud.objective.text = "ESCOLHA SEU LANÇAMENTO\nSegure o clique para mirar e solte para lançar."
 	elif not sold_once:
 		hud.objective.text = "O FRUTO DA VIAGEM\nVolte ao cais. O mercado fica na ilha."
 	else:
@@ -171,35 +216,42 @@ func _process(delta: float) -> void:
 
 func can_cast() -> bool:
 	if not pending_catch.is_empty() or stowing or player.swimming or hud.service_open: return false
-	if player.in_boat and absf(boat.speed)>=1.2: return false
+	if player.in_boat and absf(boat.speed)>=6.: return false
 	return not _cast_target().is_empty()
 
 func _cast_target() -> Dictionary:
 	var source: Vector3=player.global_position
 	var forward:=Vector3(-sin(player.yaw),0,-cos(player.yaw))
-	if player.in_boat and not player.on_deck: forward=(boat.global_basis*Vector3(-.65,0,-1.)).normalized()
-	for distance: float in [8.,12.,18.,24.]:
+	for distance: float in [cast_distance,maxf(5.,cast_distance*.7),8.,5.]:
 		var target:=source+forward*distance;target.y=.1
 		if world.is_land(target):continue
-		var query:=PhysicsRayQueryParameters3D.create(source+Vector3.UP*1.6,target,1)
-		var hit:=get_world_3d().direct_space_state.intersect_ray(query)
-		if hit.is_empty():return {"position":target}
+		# Validate the same ballistic arc used by the bobber, not a straight ray
+		# through the pier beneath the angler's feet.
+		var start:=source+Vector3.UP*1.6;var previous:=start;var clear:=true
+		for step: int in range(1,9):
+			var t:=float(step)/8.;var point:=start.lerp(target,t)+Vector3.UP*sin(t*PI)*maxf(2.,distance*.2)
+			var query:=PhysicsRayQueryParameters3D.create(previous,point,1)
+			if not get_world_3d().direct_space_state.intersect_ray(query).is_empty():clear=false;break
+			previous=point
+		if clear:return {"position":target}
 	return {}
 
 func fish_action() -> void:
 	if fishing.state == Fishing.State.IDLE:
 		if not can_cast():
-			hud.notify("Guarde ou devolva a captura primeiro." if not pending_catch.is_empty() else ("Pare o barco para pescar." if player.in_boat and absf(boat.speed)>=1.2 else "Olhe para uma área de água livre. Você pode pescar em praias, cais e no convés."))
+			hud.notify("Guarde ou devolva a captura primeiro." if not pending_catch.is_empty() else ("Reduza para menos de 12 nós para lançar." if player.in_boat and absf(boat.speed)>=6. else "Olhe para água livre. Ajuste o alcance com a roda do mouse."))
 			return
 		var target: Vector3=_cast_target().position
 		fishing_visual.target = target
+		fishing_visual.cast_start=player.rod_tip();fishing_visual.cast_elapsed=0.
 		fishing.bait_bonus=.25 if inventory.bait>0 else 0.
 		if inventory.bait>0:inventory.bait-=1
-		fishing.start_cast("coast")
+		fishing.start_cast(marine.region_at(target),marine.school_at(target))
 	else:
 		fishing.strike()
 
 func interact() -> void:
+	aiming=false
 	if fishing.active():
 		fishing.cancel()
 	if player.in_boat:
@@ -222,7 +274,7 @@ func interact() -> void:
 		if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:
 			world.village.guardian.observe()
 			if not inventory.encyclopedia.has("island_guardian"):
-				inventory.record({"id":"island_guardian","name":"Guardião da Vigia","rarity":"Lendária","weight":0.})
+				inventory.record({"id":"island_guardian","name":"Guardião da Vigia","rarity":"Lendária","weight":0.,"observation":true})
 			hud.notify("Guardião da Vigia observado e registrado. Esta criatura não pode ser capturada com a vara.");return
 		var service: String=world.village.nearby_service(player.global_position)
 		if not service.is_empty():
@@ -262,23 +314,25 @@ func near_dock() -> bool:
 	return Vector2(boat.global_position.x - 3.9, boat.global_position.z + 23).length() < 9.5
 
 func _interaction_hint() -> String:
+	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V  observar Vigia Abissal · aproxime-se abaixo de 6 nós · E sair do barco"
+	if aiming:return "SOLTE CLIQUE / Q para lançar · %.0f m · ESPAÇO pular · DIREITO cancelar"%cast_distance
 	if not pending_catch.is_empty():return "G  guardar %s   ·   X  devolver ao mar"%["no balde" if player.in_boat else "na mochila"]
 	if fishing.active():
-		return "BOTÃO DIREITO  recolher e cancelar"
+		return "WASD reposicionar · CLIQUE / Q fisgar/recolher · DIREITO cancelar · ESPAÇO pular"
 	if player.in_boat:
-		if player.on_deck:return "WASD  caminhar no convés   ·   R  leme   ·   E  desembarcar   ·   ESPAÇO  pescar"
+		if player.on_deck:return "WASD  caminhar no convés   ·   R  leme   ·   E  desembarcar   ·   CLIQUE / Q  pescar"
 		if near_dock() and absf(boat.speed) < 2.0:
-			return "E  desembarcar no cais   ·   ESPAÇO  lançar a linha"
-		return "%.0f nós · Casco %d%% · R convés · E sair · %s" % [absf(boat.speed) * 1.94,int(boat.integrity*100.), "ESPAÇO pescar" if can_cast() else "S reduzir"]
+			return "E  desembarcar no cais   ·   CLIQUE / Q  lançar a linha"
+		return "%.0f nós · Casco %d%% · R convés · E sair · %s" % [absf(boat.speed) * 1.94,int(boat.integrity*100.), "CLIQUE / Q pescar · ESPAÇO pular · L luzes" if can_cast() else "S reduzir"]
 	if player.global_position.distance_to(boat.global_position + Vector3(0, 1, 0)) < 5.0:
-		return "E  embarcar no Aurora   ·   ESPAÇO  pescar no cais"
+		return "E  embarcar no Aurora   ·   CLIQUE / Q  pescar no cais"
 	if near_market():
 		return "E  vender capturas  /  %d moedas" % inventory.total_value()
-	if can_cast():
-		return "ESPAÇO  lançar a linha   ·   M  mapa   ·   J  enciclopédia"
 	var service: String=world.village.nearby_service(player.global_position)
+	if not service.is_empty():return "E  acessar %s"%hud.SERVICE_NAMES.get(service.replace("_oldport",""),service)
+	if can_cast():
+		return "CLIQUE / Q  lançar a linha   ·   M  mapa   ·   J  enciclopédia"
 	if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:return "E  observar Guardião da Vigia"
-	if not service.is_empty():return "E  acessar %s"%hud.SERVICE_NAMES.get(service,service)
 	var discovery: Dictionary=world.village.nearby_discovery(player.global_position)
 	if not discovery.is_empty():return "E  explorar "+str(discovery.title)
 	return "WASD  nadar · E  subir no barco" if player.swimming else "Explore as trilhas da ilha · M mapa · J enciclopédia"
@@ -352,6 +406,7 @@ func _recover_player() -> void:
 	hud.notify("Você voltou ao cais em segurança. Nenhuma captura foi perdida.")
 
 func return_to_harbor() -> void:
+	aiming=false
 	fishing.cancel()
 	boat.set_occupied(false)
 	boat.reset_to_dock()
@@ -364,7 +419,7 @@ func return_to_harbor() -> void:
 func _configure_input() -> void:
 	var bindings: Dictionary = {
 		"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D,
-		"sprint": KEY_SHIFT, "interact": KEY_E, "fish": KEY_SPACE,
+		"sprint": KEY_SHIFT, "interact": KEY_E, "fish": KEY_Q, "jump":KEY_SPACE,"boat_lights":KEY_L,"observe_wildlife":KEY_V,
 		"camera_toggle": KEY_F, "pause": KEY_ESCAPE, "inventory": KEY_TAB,
 		"look_left": KEY_LEFT, "look_right": KEY_RIGHT,
 		"deck":KEY_R,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,

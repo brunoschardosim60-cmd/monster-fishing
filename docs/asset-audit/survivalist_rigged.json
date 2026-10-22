@@ -7,9 +7,13 @@
   "triangles": 16380,
   "bones": 17,
   "animations": [
+    "Cast",
+    "Fall",
     "Fish",
     "Hold",
     "Idle",
+    "Jump",
+    "Reel",
     "Run",
     "Steer",
     "Swim",

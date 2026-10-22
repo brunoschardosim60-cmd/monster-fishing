@@ -4,6 +4,7 @@ const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const G=preload("res://scripts/world/geometry.gd")
 const Details=preload("res://scripts/world/coastal_details.gd")
 const Materials=preload("res://scripts/visuals/materials.gd")
+const Nature=preload("res://scripts/world/nature_library.gd")
 var world: Node3D
 var terrain_material: ShaderMaterial
 var chunks: Array[Node3D]=[]
@@ -20,14 +21,18 @@ func _ready() -> void:
 	distant_material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR;distant_material.alpha_scissor_threshold=.35
 	distant_material.billboard_mode=BaseMaterial3D.BILLBOARD_FIXED_Y;distant_material.billboard_keep_scale=true;distant_material.cull_mode=BaseMaterial3D.CULL_DISABLED;distant_material.roughness=1.
 	terrain_material=ShaderMaterial.new();terrain_material.shader=preload("res://assets/shaders/terrain.gdshader")
+	terrain_material.set_shader_parameter("meadow_tex",load("res://assets/textures/meadow_color.jpg"))
+	terrain_material.set_shader_parameter("floor_tex",load("res://assets/textures/forest_floor_color.jpg"))
+	terrain_material.set_shader_parameter("ground_normal",load("res://assets/textures/forest_floor_normal.jpg"))
 	for key: String in ["sand_color","sand_normal","rock_tex","rock_normal","noise_tex"]:
-		var file: String={"rock_tex":"granite_color","rock_normal":"granite_normal","noise_tex":"cloud_noise"}.get(key,key)
+		var file: String={"rock_tex":"cliff_granite_color","rock_normal":"granite_normal","noise_tex":"cloud_noise"}.get(key,key)
 		terrain_material.set_shader_parameter(key,load("res://assets/textures/"+file+".png"))
 	world.terrain_materials.append(terrain_material)
-	_make_tree_templates()
 	_make_grass_template()
-	for x: int in range(-4,4):
-		for z: int in range(-1,8): _chunk(Vector2(x*80,z*80))
+	for x: int in range(-6,5):
+		for z: int in range(-1,14): _chunk(Vector2(x*80,z*80))
+	_make_cliffs()
+	_make_sea_arch()
 	# The surface template is no longer needed after extracting reusable meshes.
 
 func _chunk(origin: Vector2) -> void:
@@ -52,8 +57,56 @@ func _chunk(origin: Vector2) -> void:
 	var mesh:=ArrayMesh.new();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
 	var terrain:=G.mesh_node(chunk,mesh,terrain_material,Vector3.ZERO);terrain.name="WalkableGround"
 	var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0;var collision:=CollisionShape3D.new();collision.shape=mesh.create_trimesh_shape();body.add_child(collision);chunk.add_child(body)
-	_forest(chunk,origin)
+	_living_forest(chunk,origin)
 	_ground_cover(chunk,origin)
+
+func _living_forest(chunk: Node3D,origin: Vector2) -> void:
+	var kinds: Array[Array]=[[],[],[],[],[]]
+	for i: int in 60:
+		var p:=origin+Vector2(rng.randf_range(2,78),rng.randf_range(2,78));var h:=Layout.height(p);var coast:=Layout.coast(p).x
+		if coast> -9. or h>170. or Layout.path_at(p).x<6. or (p.y<76. and absf(p.x)<110.):continue
+		if p.distance_to(Vector2(-110,310))<28. or p.distance_to(Vector2(-65,490))<22. or p.distance_to(Vector2(-170,210))<14.:continue
+		var slope:=absf(Layout.height(p+Vector2(2,0))-h)+absf(Layout.height(p+Vector2(0,2))-h)
+		if slope>2.2:continue
+		var kind:=rng.randi_range(0,1)
+		if coast> -45. or (p.y<150. and rng.randf()<.55):kind=rng.randi_range(2,3)
+		var size:=rng.randf_range(.7,1.4)
+		var t:=Transform3D(Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3.ONE*size),Vector3(p.x-origin.x,h,p.y-origin.y))
+		kinds[kind].append(t);foliage_count+=1
+		var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0
+		var shape:=CollisionShape3D.new();var cylinder:=CylinderShape3D.new();cylinder.radius=.26*size;cylinder.height=4.*size;shape.shape=cylinder;shape.position=t.origin+Vector3(0,2.*size,0);body.add_child(shape);chunk.add_child(body)
+	for i: int in 70:
+		var p:=origin+Vector2(rng.randf_range(1,79),rng.randf_range(1,79));var h:=Layout.height(p)
+		if Layout.coast(p).x> -16. or Layout.path_at(p).x<3.3 or Layout.plot_ground(p) or h>155.:continue
+		if p.y<75. and absf(p.x)<110.:continue
+		if absf(Layout.height(p+Vector2.ONE)-h)>1.:continue
+		kinds[4].append(Transform3D(Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3.ONE*rng.randf_range(.7,1.6)),Vector3(p.x-origin.x,h,p.y-origin.y)))
+	for kind: int in 5:
+		var transforms: Array[Transform3D]=[];transforms.assign(kinds[kind]);Nature.grove(chunk,kind,transforms)
+
+func _make_cliffs() -> void:
+	for p: Vector2 in [Vector2(-220,410),Vector2(-270,520),Vector2(-250,730),Vector2(-170,860),Vector2(-85,900),Vector2(20,890),Vector2(190,750),Vector2(200,560),Vector2(-205,270),Vector2(160,270),Vector2(40,350)]:
+		if Layout.path_at(p).x<22.:continue
+		var h:=Layout.height(p)
+		var node:=Nature.plant(self,5,Vector3(p.x,h-3.,p.y),rng.randf_range(.7,1.5),rng.randf()*TAU)
+		for part: Node in node.get_children():
+			if part is MeshInstance3D:
+				var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0;var shape:=CollisionShape3D.new();shape.shape=part.mesh.create_trimesh_shape();body.add_child(shape);part.add_child(body)
+
+func _make_sea_arch() -> void:
+	# The western pillar grows out of the headland; the central channel remains open.
+	for p: Vector3 in [Vector3(232,-5,305),Vector3(223,-5,325),Vector3(239,-4,289)]:
+		var rock:=Nature.plant(self,5,p,2.1,rng.randf()*TAU)
+		for part: Node in rock.get_children():
+			if part is MeshInstance3D:
+				var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0
+				var shape:=CollisionShape3D.new();shape.shape=part.mesh.create_trimesh_shape();body.add_child(shape);part.add_child(body)
+	var arch: Node3D=preload("res://assets/environment/geology/aurora_sea_arch.glb").instantiate()
+	arch.name="ArcoDasMares";arch.position=Vector3(285,0,275);add_child(arch)
+	for part: Node in arch.find_children("*","MeshInstance3D",true,false):
+		part.material_override=Materials.surface("cliff_granite",Color.WHITE,.13)
+		var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0
+		var shape:=CollisionShape3D.new();shape.shape=part.mesh.create_trimesh_shape();body.add_child(shape);part.add_child(body)
 
 func _make_grass_template() -> void:
 	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)

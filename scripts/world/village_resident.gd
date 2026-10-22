@@ -3,6 +3,7 @@ const Layout=preload("res://scripts/world/archipelago_layout.gd")
 var route: Array[Vector3]=[]
 var target_index: int=0
 var speed: float=1.15
+var follow_terrain: bool=true
 var visual: Node3D
 var wait: float=0.
 func _ready() -> void:
@@ -16,7 +17,8 @@ func _process(delta: float) -> void:
 	var target:=route[target_index];var diff:=target-position;diff.y=0.
 	var moving:=wait<=0. and diff.length()>.25
 	if moving:
-		position+=diff.normalized()*minf(speed*delta,diff.length());position.y=Layout.height(Vector2(position.x,position.z))+.08
+		position+=diff.normalized()*minf(speed*delta,diff.length())
+		position.y=Layout.height(Vector2(position.x,position.z))+.08 if follow_terrain else target.y
 		rotation.y=lerp_angle(rotation.y,atan2(-diff.x,-diff.z),delta*4.)
 	elif wait<=0.: target_index=(target_index+1)%route.size();wait=2.5
 	if visual.visible:visual.update_animation(speed if moving else 0.,false,delta)

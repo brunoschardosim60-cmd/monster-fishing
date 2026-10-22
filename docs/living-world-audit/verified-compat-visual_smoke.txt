@@ -1,0 +1,55 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 Core Profile Context 25.8.1.250617 - Compatibility - Using Device: ATI Technologies Inc. - AMD Radeon RX 580 2048SP
+
+GPU: AMD Radeon RX 580 2048SP / ATI Technologies Inc.
+RENDERER: gl_compatibility / opengl3
+NOTICE: short real GPU observations; use render_benchmark.gd for frame-time measurements.
+PASS: 01_title framebuffer is readable
+PASS: 01_title PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/01_title.png (1198x749)
+PASS: graphics settings fits viewport: [P: (1015.0, 90.0), S: (395.0, 570.0)]
+PASS: stats fits viewport: [P: (1040.0, 36.0), S: (360.0, 60.0)]
+PASS: prompt fits viewport: [P: (270.0, 803.0), S: (900.0, 40.0)]
+PASS: toast fits viewport: [P: (260.0, 106.0), S: (920.0, 52.0)]
+PERFORMANCE_SAMPLE: {"draw_calls":447.0,"fps_engine_monitor":25.0,"objects":1151.0,"physics_ms":3.339,"primitives":872099.0,"process_ms":35.741,"scene":"pier_idle"}
+PASS: 02_pier_idle framebuffer is readable
+PASS: 02_pier_idle PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/02_pier_idle.png (1198x749)
+PASS: actual cast reaches bite
+PASS: actual strike starts reel
+PASS: fishing panel fits viewport: [P: (480.0, 600.0), S: (480.0, 184.0)]
+PASS: fishing hint fits viewport: [P: (500.0, 652.0), S: (440.0, 20.0)]
+PASS: active fishing toast fits viewport: [P: (260.0, 106.0), S: (920.0, 52.0)]
+PASS: 03_fishing_reel framebuffer is readable
+PASS: 03_fishing_reel PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/03_fishing_reel.png (1198x749)
+PASS: real catch waits in hand for disposition
+PASS: real 3D catch display is visible
+PASS: capture toast fits viewport: [P: (260.0, 106.0), S: (920.0, 52.0)]
+PASS: 04_catch_model framebuffer is readable
+PASS: 04_catch_model PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/04_catch_model.png (1198x749)
+PASS: keeping real catch credits inventory
+PASS: boat camera entered through interaction
+PERFORMANCE_SAMPLE: {"draw_calls":114.0,"fps_engine_monitor":25.0,"objects":889.0,"physics_ms":3.435,"primitives":827470.0,"process_ms":35.311,"scene":"boat_ocean"}
+PASS: 05_boat_ocean framebuffer is readable
+PASS: 05_boat_ocean PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/05_boat_ocean.png (1198x749)
+PASS: 07_boat_detail framebuffer is readable
+PASS: 07_boat_detail PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/07_boat_detail.png (1198x749)
+PASS: 10_boat_wake framebuffer is readable
+PASS: 10_boat_wake PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/10_boat_wake.png (1198x749)
+PERFORMANCE_SAMPLE: {"draw_calls":2431.0,"fps_engine_monitor":19.0,"objects":3145.0,"physics_ms":3.678,"primitives":11223773.0,"process_ms":43.592,"scene":"village"}
+PASS: 06_village framebuffer is readable
+PASS: 06_village PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/06_village.png (1198x749)
+PERFORMANCE_SAMPLE: {"draw_calls":48.0,"fps_engine_monitor":25.0,"objects":48.0,"physics_ms":3.999,"primitives":608653.0,"process_ms":34.453,"scene":"ocean_close"}
+PASS: 08_ocean_close framebuffer is readable
+PASS: 08_ocean_close PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/08_ocean_close.png (1198x749)
+PASS: 09_angler_detail framebuffer is readable
+PASS: 09_angler_detail PNG saved
+CAPTURE: C:/Users/Bruno/Documents/MonsterFishing/tests/output/compatibility/09_angler_detail.png (1198x749)
+VISUAL SMOKE: PASS (34 checks, 0 failures)

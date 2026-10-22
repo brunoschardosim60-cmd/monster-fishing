@@ -102,7 +102,7 @@ func _run() -> void:
 	await _frames(60); await _capture("10_persistent_turning_wake")
 	_place(1,Vector3(593,0,-603),Vector3(591,4,-593),Vector3(608,0,-624))
 	await _frames(180); await _capture("11_cold_floes")
-	_place(2,Vector3(604,0,-620),Vector3(599,6,-611),Vector3(605,0,-628))
+	_place(2,Vector3(504,0,-620),Vector3(499,6,-611),Vector3(505,0,-628))
 	await _frames(180); await _capture("14_ice_channel")
 	_place(0,Vector3(12,0,-22),Vector3(12,-1.,-20),Vector3(12,-4.,-24))
 	await _frames(120); await _capture("12_underwater")

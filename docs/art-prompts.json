@@ -1,0 +1,26 @@
+[
+  [
+    "house_reference",
+    "Use case: photorealistic-natural. Production design reference for an original realistic 3D fishing exploration game called Monster Fishing. A believable inhabited coastal fisherman's cottage, 8 metres wide, one storey with a small loft in a steep terracotta tile gable roof. Weathered white limewashed plaster, lower course of uneven dark granite masonry, salt-worn teal timber shutters, recessed glass windows, real wooden porch posts, front door 1.8 metres wide open into a furnished room, fishing net hung beside a working bench, rope coils, small chimney. Human scale and structurally plausible construction. Show the exact same house twice, large front three-quarter view and smaller rear three-quarter view on a neutral light gray studio ground, consistent dimensions. Soft overcast daylight, sharp physically based material detail, restrained aged colors, not cartoon, not miniature, no labels, no text, no logos, no people, no atmospheric background. Modeling reference, all roof and foundation visible."
+  ],
+  [
+    "island_reference",
+    "Use case: photorealistic-natural. Original production environment reference for a realistic 3D maritime exploration game. A great walkable coastal island with irregular granite mountain ridges and a large natural sea arch visible from the water; turquoise shallows, narrow sheltered harbor in the lower left, forested inland valleys, a winding realistic footpath that climbs to a stone lighthouse on a 150 metre summit. A small lived-in fishing village around a safe harbor, no dense city. Rock strata fractured by erosion, scree at bases, vegetation restricted to soil ledges, pale sandy coves. Wide panoramic daytime scene seen from a boat at about 12 metres above the sea, dramatic but physically believable scale, rich PBR texture detail, natural azure sky and cumulus clouds, realistic water, cinematic visual target, not stylized, not fantasy castle, no HUD, no typography, no text."
+  ],
+  [
+    "character_reference",
+    "Use case: photorealistic-natural. Production character design reference for an original realistic coastal fishing exploration game. One adult male fisherman around 35 with short dark hair and trimmed beard, practical navy cotton work jacket, dark worn cargo trousers, brown salt-worn lace-up boots, aged olive canvas backpack with leather straps, faded navy peaked cap. Believable normal human proportions, no heroic armor or tactical weapons. Present consistent full-body front and rear views of the SAME character in relaxed A pose on a neutral mid gray studio background, side by side with clear separation, arms away from torso enough to see sleeves and hands. Physically based fabric weave, stitching, functional pockets, seams, subtle weathering, realistic face, hands with five fingers, soft diffuse lighting. Entire feet and cap inside image. No text, no labels, no props held in hands, no logo."
+  ],
+  [
+    "lime_plaster",
+    "Use case: photorealistic-natural. Game-ready tiling albedo texture of aged pale ivory lime plaster from a coastal fisherman's cottage. Perfectly front-on orthographic surface, uniform overcast diffuse lighting, no perspective, no directional shadows, no objects, no wall edges. Fine granular plaster, subtle irregular wear patches revealing muted warm gray undercoat, a few fine hairline cracks, sparse muted salt discoloration, realistic human-scale material. Texture covers entire square canvas edge to edge and repeats seamlessly left/right and top/bottom. Medium contrast, no large black stains, no stones, no windows, no border, no typography. Base color only, no baked highlights."
+  ],
+  [
+    "cliff_granite",
+    "Use case: photorealistic-natural. Game-ready tileable albedo surface texture of weathered coastal granite cliff, perfectly front-on orthographic photograph of only rock. Large interlocking fractured angular granite slabs, irregular horizontal strata and thin vertical fissures, warm light-gray stone with charcoal crevices and faint ochre mineral streaks, occasional subdued moss in fine creases. Flat diffuse lighting with no cast shadows and no glossy highlights. No sky, no ground, no scenery, no objects, no borders, no text. Square material fills entire frame, seamlessly repeating edges. Convincing natural geology and restrained realistic color variation, not an illustration."
+  ],
+  [
+    "fisher_canvas",
+    "Use case: photorealistic-natural. Game-ready tileable albedo texture of faded navy blue waxed cotton canvas for a realistic coastal fisherman's jacket and peaked cap. Entire square is a flat orthographic fabric surface, fine tightly woven cotton grain, subtle irregular abrasion and salt wear, soft creases suggested only by fabric texture without deep shadows. Uniform diffuse light, no lighting gradients. No buttons, no seams, no pockets, no clothing silhouette, no human, no text, no watermark. Edge-to-edge repeating surface with seamless edges, dark desaturated navy, restrained physically plausible color."
+  ]
+]

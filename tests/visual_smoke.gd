@@ -69,6 +69,7 @@ func _run() -> void:
 	game.audio.stop_all()
 	await _frames(120)
 	await _capture("01_title")
+	_hud_bounds("graphics settings",game.hud.graphics_panel)
 	game.begin_play()
 	game.set_process_input(false)
 	for action: StringName in InputMap.get_actions(): InputMap.action_erase_events(action)

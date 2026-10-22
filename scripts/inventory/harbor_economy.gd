@@ -4,7 +4,10 @@ const CATALOG: Dictionary={
 	"rod":{"title":"Vara reforçada · recolhimento +15%","price":65,"service":"gear"},
 	"line":{"title":"Linha trançada · tensão -15%","price":55,"service":"gear"},
 	"hook":{"title":"Anzol de aço · recolhimento +8%","price":35,"service":"gear"},
+	"reel":{"title":"Molinete de longo alcance · lançamento +12 m","price":45,"service":"gear"},
 	"engine":{"title":"Melhoria do motor · velocidade +15%","price":110,"service":"workshop"},
+	"searchlight":{"title":"Farol de proa · ilumina até 65 m · tecla L","price":60,"service":"workshop"},
+	"hull":{"title":"Proteção do casco · reduz dano por impacto 40%","price":80,"service":"workshop"},
 	"repair":{"title":"Reparar o casco · integridade 100%","price":18,"service":"workshop"}}
 static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> String:
 	if not CATALOG.has(id): return "Produto indisponível."
@@ -23,3 +26,7 @@ static func apply(inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> 
 	fishing.rod_bonus=float(inventory.equipment.rod)*.15
 	fishing.line_bonus=float(inventory.equipment.line)*.15
 	fishing.hook_bonus=float(inventory.equipment.hook)*.08
+	fishing.cast_range_bonus=float(inventory.equipment.get("reel",0))*12.
+	boat.searchlight_upgraded=inventory.equipment.get("searchlight",0)>0
+	boat.hull_protection=.6 if inventory.equipment.get("hull",0)>0 else 1.
+	boat.update_lights()

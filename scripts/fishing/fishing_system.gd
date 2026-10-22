@@ -13,6 +13,8 @@ const SPECIES: Array[Resource] = [
 	preload("res://data/fish/sardine.tres"),
 	preload("res://data/fish/mackerel.tres"),
 	preload("res://data/fish/seabass.tres"),
+	preload("res://data/fish/tuna.tres"),
+	preload("res://data/fish/lanternfish.tres"),
 ]
 const BITE_WINDOW: float = 3.2
 const CAST_DURATION: float = 0.85
@@ -31,6 +33,9 @@ var rod_bonus: float=0.
 var line_bonus: float=0.
 var bait_bonus: float=0.
 var hook_bonus: float=0.
+var line_stretch: float=0.
+var cast_range_bonus: float=0.
+var surging: bool=false
 
 var _wait_duration: float = 4.0
 var _reeling: bool = false
@@ -43,22 +48,22 @@ func _init() -> void:
 func active() -> bool:
 	return state >= State.CASTING and state <= State.REELING
 
-func start_cast(region: String = "coast") -> bool:
+func start_cast(region: String = "coast", school_species: String = "") -> bool:
 	if state != State.IDLE:
 		return false
 	var available: Array[Resource] = []
 	var weight_sum: float = 0.0
 	for item: Resource in SPECIES:
-		if region in item.regions:
+		if item.capture_allowed and region in item.regions:
 			available.append(item)
-			weight_sum += float(item.encounter_weight)
+			weight_sum += float(item.encounter_weight)*(3. if item.id==school_species else 1.)
 	if available.is_empty():
 		_message("Ainda não há espécies registradas nestas águas.")
 		return false
 	var selection: float = rng.randf_range(0.0, weight_sum)
 	species_current = available.back()
 	for item: Resource in available:
-		selection -= float(item.encounter_weight)
+		selection -= float(item.encounter_weight)*(3. if item.id==school_species else 1.)
 		if selection <= 0.0:
 			species_current = item
 			break
@@ -112,7 +117,7 @@ func advance(delta: float) -> void:
 			if state_time >= _wait_duration:
 				bite_time_remaining = BITE_WINDOW
 				_change_state(State.BITE)
-				_message("MORDIDA! Clique ou pressione ESPAÇO para fisgar!")
+				_message("MORDIDA! Clique ou pressione Q para fisgar!")
 		State.BITE:
 			bite_time_remaining = maxf(0.0, BITE_WINDOW - state_time)
 			if bite_time_remaining <= 0.0:
@@ -126,11 +131,14 @@ func advance(delta: float) -> void:
 
 func _update_fight(delta: float) -> void:
 	var difficulty: float = float(species_current.difficulty)
+	surging=difficulty>=.8 and sin(state_time*1.35+_fight_phase)>.72
 	var tug: float = 0.5 + 0.5 * sin(state_time * 2.2 + _fight_phase)
+	tension+=delta*line_stretch*.12
 	if _reeling:
 		_slack_time = 0.0
 		tension += delta * (0.19 + difficulty * 0.09 + tug * 0.06)*(1.-line_bonus)
 		progress += delta * (0.155 - difficulty * 0.045)*(1.+rod_bonus+hook_bonus)
+		if surging:tension+=delta*.16*(1.-line_bonus);progress-=delta*.045
 	else:
 		_slack_time += delta
 		tension -= delta * 0.37

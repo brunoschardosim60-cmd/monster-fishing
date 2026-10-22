@@ -46,7 +46,7 @@ static func depth_at(p: Vector2) -> float:
 
 static func channel_at(p: Vector2) -> float:
 	# Passage between the northern island's shelf and the floating ice field.
-	return 1.-smoothstep(.25,1.,Vector2((p.x-604.)/12.,(p.y+626.)/34.).length())
+	return 1.-smoothstep(.25,1.,Vector2((p.x-504.)/12.,(p.y+626.)/34.).length())
 
 static func height_at(p: Vector3) -> float:
 	if waves.is_empty(): advance(0.,wind,energy,rain,direction)

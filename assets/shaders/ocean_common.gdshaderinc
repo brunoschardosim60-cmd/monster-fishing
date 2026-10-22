@@ -14,7 +14,7 @@ float sea_exposure(vec2 p,vec4 c) {
 }
 vec3 sea_surface(vec2 p) {
 	vec4 c=coast_data(p); float exposed=sea_exposure(p,c);
-	float channel=1.-smoothstep(.25,1.,length((p-vec2(604,-626))/vec2(12,34)));
+	float channel=1.-smoothstep(.25,1.,length((p-vec2(504,-626))/vec2(12,34)));
 	float shore=smoothstep(-1.3,6.,c.x);
 	float lod=1.-smoothstep(185.,240.,max(abs(p.x-ocean_center.x),abs(p.y-ocean_center.y)));
 	vec3 result=vec3(0);

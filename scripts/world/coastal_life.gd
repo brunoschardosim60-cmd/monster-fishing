@@ -27,7 +27,7 @@ func _ready() -> void:
 	for i: int in [0,2,5,8]:
 		var b: Node3D=world.village.buildings[i];var p:=CPUParticles3D.new();p.amount=14;p.lifetime=5.;p.direction=Vector3.UP;p.spread=14.;p.initial_velocity_min=.35;p.initial_velocity_max=.65;p.gravity=Vector3(.1,.08,.03);p.scale_amount_min=.2;p.scale_amount_max=.5
 		var ramp:=Gradient.new();ramp.set_color(0,Color(.55,.58,.59,.18));ramp.set_color(1,Color(.6,.64,.65,0));p.color_ramp=ramp
-		var mesh:=QuadMesh.new();mesh.size=Vector2(1,1);var mat:=preload("res://scripts/ocean/water_effects.gd").drop_material().duplicate() as StandardMaterial3D;mat.albedo_color=Color(.5,.54,.57,.35);mesh.material=mat;p.mesh=mesh
+		var mesh:=QuadMesh.new();mesh.size=Vector2(1,1);var mat:=preload("res://scripts/ocean/water_effects.gd").drop_material().duplicate() as StandardMaterial3D;mat.albedo_color=Color(.5,.54,.57,.35);mesh.material=mat;p.mesh=mesh;p.material_override=mat
 		p.position=b.position+Vector3(b.width*.5-.8,5.65,b.depth*.5-1);add_child(p);smoke.append(p)
 	var stream:=AudioStreamWAV.new();stream.format=AudioStreamWAV.FORMAT_16_BITS;stream.mix_rate=22050
 	var samples:=PackedByteArray();samples.resize(22050)

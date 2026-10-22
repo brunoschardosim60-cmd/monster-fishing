@@ -25,7 +25,7 @@ func _run() -> void:
 	check(Waves.exposure(Vector2(235,230))<Waves.exposure(Vector2(-235,230)),"lee protection changes with the coast normal and wind direction")
 	check(Waves.depth_at(Vector2(220,230))<Waves.depth_at(Vector2(350,-200)),"bathymetry deepens away from the island")
 	check(absf(Waves.height_at(Vector3(0,0,18)))<.0001,"wave displacement vanishes inside land")
-	check(Waves.channel_at(Vector2(604,-626))>.99 and Waves.channel_at(Vector2(30,-100))==0.,"authored ice passage guides local ripples without changing open water")
+	check(Waves.channel_at(Vector2(504,-626))>.99 and Waves.channel_at(Vector2(30,-100))==0.,"authored ice passage guides local ripples without changing open water")
 	if DisplayServer.get_name()!="headless":
 		var probe:=SubViewport.new(); probe.size=Vector2i(16,16); probe.disable_3d=true
 		probe.render_target_update_mode=SubViewport.UPDATE_ALWAYS; root.add_child(probe)
@@ -34,19 +34,32 @@ func _run() -> void:
 		var maximum:=0.; var shelter_error:=0.
 		for state: int in 5:
 			weather.settle(state)
-			Waves.ocean_center=[Vector2.ZERO,Vector2(-120,250),Vector2(580,-620),Vector2(400,-350),Vector2(-680,-500)][state]
+			Waves.ocean_center=[Vector2.ZERO,Vector2(-120,250),Vector2(480,-620),Vector2(400,-350),Vector2(-680,-500)][state]
 			Waves.advance(3.7,weather.wind,weather.energy,weather.rain,Vector2.from_angle(weather.heading)); Waves.bind(mat)
+			mat.set_shader_parameter("probe_exposure",false)
 			for i: int in 3: await process_frame
 			await RenderingServer.frame_post_draw
 			var image:=probe.get_texture().get_image()
 			for y: int in 16:
 				for x: int in 16:
 					var p:=Vector3(Waves.ocean_center.x-140.+x*18.,0,Waves.ocean_center.y-160.+y*24.)
-					if x==15 and y<8: p=Vector3(604.+float(y%3-1)*3.,0,-626.+floorf(float(y)/3.)*4.)
+					if x==15 and y<8: p=Vector3(504.+float(y%3-1)*3.,0,-626.+floorf(float(y)/3.)*4.)
 					var color:=image.get_pixel(x,y)
 					var decoded: float=(roundf(color.r*255.)*256.+roundf(color.g*255.))/4096.-8.
 					maximum=maxf(maximum,absf(decoded-Waves.height_at(p)))
-					shelter_error=maxf(shelter_error,absf(color.b-Waves.exposure(Vector2(p.x,p.z))))
+			# Pack exposure into two bytes too: the blue channel loses precision
+			# in an 8-bit render target and cannot establish a CPU/GPU mismatch.
+			mat.set_shader_parameter("probe_exposure",true)
+			for i: int in 3:await process_frame
+			await RenderingServer.frame_post_draw
+			image=probe.get_texture().get_image()
+			for y: int in 16:
+				for x: int in 16:
+					var p:=Vector2(Waves.ocean_center.x-140.+x*18.,Waves.ocean_center.y-160.+y*24.)
+					if x==15 and y<8:p=Vector2(504.+float(y%3-1)*3.,-626.+floorf(float(y)/3.)*4.)
+					var color:=image.get_pixel(x,y)
+					var decoded: float=(roundf(color.r*255.)*256.+roundf(color.g*255.))/65535.
+					shelter_error=maxf(shelter_error,absf(decoded-Waves.exposure(p)))
 		check(maximum<.003,"CPU/GPU agree across 1280 samples / five states (packed height error %.5f m)"%maximum)
 		check(shelter_error<.005,"CPU/GPU coast shelter agrees (error %.5f)"%shelter_error)
 		probe.queue_free(); await process_frame

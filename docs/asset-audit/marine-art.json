@@ -1,0 +1,18 @@
+[
+  {
+    "file": "assets/fish/mackerel.glb",
+    "triangles": 4940
+  },
+  {
+    "file": "assets/fish/tuna.glb",
+    "triangles": 4946
+  },
+  {
+    "file": "assets/fish/lanternfish.glb",
+    "triangles": 10572
+  },
+  {
+    "file": "assets/monsters/abyssal_guardian.glb",
+    "triangles": 13738
+  }
+]

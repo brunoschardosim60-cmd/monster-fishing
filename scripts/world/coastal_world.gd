@@ -17,6 +17,7 @@ var region: Node3D
 var village: Node3D
 var water_root: Node3D
 var life: Node3D
+var traffic: Node3D
 
 var rng := RandomNumberGenerator.new()
 var gulls: Array[Node3D] = []
@@ -42,7 +43,7 @@ func _ready() -> void:
 	_make_lighting()
 	_make_ocean()
 	region=preload("res://scripts/world/island_region.gd").new();region.world=self;region.name="AuroraIsland";add_child(region)
-	for i: int in range(4,Layout.LOBES.size()):
+	for i: int in range(4,7):
 		var island:=Layout.LOBES[i]
 		_make_island(Vector3(island.x,0,island.y),Vector2(island.z,island.w),false)
 	_make_dock()
@@ -58,6 +59,7 @@ func _ready() -> void:
 	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
 	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
+	traffic=preload("res://scripts/world/maritime_traffic.gd").new();traffic.name="TrafegoMaritimo";add_child(traffic)
 	life=preload("res://scripts/world/coastal_life.gd").new();life.world=self;life.name="CoastalLife";add_child(life)
 
 func safe_spawn() -> Vector3:
@@ -179,6 +181,9 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 	var mesh := G.polygon_mesh(vertices, indices, colors)
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://assets/shaders/terrain.gdshader")
+	mat.set_shader_parameter("meadow_tex",load("res://assets/textures/meadow_color.jpg"))
+	mat.set_shader_parameter("floor_tex",load("res://assets/textures/forest_floor_color.jpg"))
+	mat.set_shader_parameter("ground_normal",load("res://assets/textures/forest_floor_normal.jpg"))
 	terrain_materials.append(mat)
 	mat.set_shader_parameter("sand_color", load("res://assets/textures/sand_color.png"))
 	mat.set_shader_parameter("sand_normal", load("res://assets/textures/sand_normal.png"))
@@ -370,7 +375,9 @@ func _make_foliage() -> void:
 		Details.shrub(self,pos,rng)
 
 func _make_tree(pos: Vector3, tree_scale: float) -> void:
-	Details.pine(self, pos, tree_scale, rng, dark_wood)
+	var kind:=rng.randi_range(0,3)
+	if pos.z<80. and absf(pos.x)<110.:kind=2 if rng.randf()<.65 else 1
+	preload("res://scripts/world/nature_library.gd").plant(self,kind,pos,tree_scale*.65,rng.randf()*TAU)
 
 func _make_rock(pos: Vector3, dimensions: Vector3) -> void:
 	if pos.y<1.5:
@@ -417,6 +424,7 @@ func _make_sign() -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
+	preload("res://scripts/world/nature_library.gd").wind(Waves.time,Waves.wind,Waves.direction)
 	for i: int in range(gulls.size()):
 		var phase := elapsed * (0.14 + i * 0.006) + i * 1.8
 		gulls[i].position = Vector3(cos(phase) * (20 + i * 4), 13 + i * 1.8 + sin(elapsed * 0.5 + i), -25 + sin(phase) * (18 + i * 4))

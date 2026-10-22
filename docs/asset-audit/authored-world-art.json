@@ -1,0 +1,18 @@
+[
+  {
+    "file": "assets/environment/architecture/coastal_house_details.glb",
+    "triangles": 16828
+  },
+  {
+    "file": "assets/environment/geology/aurora_sea_arch.glb",
+    "triangles": 4844
+  },
+  {
+    "file": "assets/characters/accessories/fisher_cap.glb",
+    "triangles": 1376
+  },
+  {
+    "file": "assets/characters/accessories/fisher_backpack.glb",
+    "triangles": 1864
+  }
+]

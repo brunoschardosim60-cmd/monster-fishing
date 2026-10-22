@@ -2,7 +2,7 @@
 This is a new local rig/animation pass; the source upload was not animated.
 """
 import bpy, bmesh, pathlib, math, json
-from mathutils import Vector
+from mathutils import Vector, Quaternion
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=str(ROOT/'assets/characters/survivalist.glb'))
@@ -64,40 +64,76 @@ def segment_distance(p,a,b):
     return (p-a-(b-a)*t).length
 for v in mesh.vertices:
     p=v.co;side='Left' if p.x>0 else 'Right'
-    if abs(p.x)>.235 and .65<p.z<1.47:
-        candidates=[s for s in specs if s[0] in [side+'UpperArm',side+'ForeArm',side+'Hand']]
-    elif p.z<.85:
-        candidates=[s for s in specs if s[0] in [side+'UpperLeg',side+'LowerLeg',side+'Foot','Hips']]
-    else:
-        candidates=[s for s in specs if s[0] in ['Hips','Spine','Chest','Neck','Head']]
-    ranked=sorted([(segment_distance(p,s[1],s[2]),s[0]) for s in candidates])[:2]
-    weights=[1/max(.018,d)**4 for d,n in ranked];total=sum(weights)
-    for (d,name),weight in zip(ranked,weights):obj.vertex_groups[name].add([v.index],weight/total,'REPLACE')
+    # The jacket's side pockets protrude at the waist. A vertical x threshold
+    # incorrectly binds those pockets to the hands and stretches the trousers.
+    boundary=min(.39,.19+max(0.,1.24-p.z)*.8)
+    a=max(0.,min(1.,(abs(p.x)-boundary+.025)/.065)) if .65<p.z<1.49 else 0.
+    a=a*a*(3-2*a)
+    arm_candidates=[s for s in specs if s[0] in [side+'UpperArm',side+'ForeArm',side+'Hand']]
+    body_candidates=[s for s in specs if s[0] in (['Hips','Spine','Chest','Neck','Head'] if p.z>.88 else [side+'UpperLeg',side+'LowerLeg',side+'Foot','Hips'])]
+    for candidates,mix in [(arm_candidates,a),(body_candidates,1-a)]:
+        if mix<.0001:continue
+        ranked=sorted([(segment_distance(p,s[1],s[2]),s[0]) for s in candidates])[:2]
+        weights=[1/max(.018,d)**4 for d,n in ranked];total=sum(weights)
+        for (d,name),weight in zip(ranked,weights):obj.vertex_groups[name].add([v.index],mix*weight/total,'REPLACE')
 scene=bpy.context.scene;scene.render.fps=30
+def rotate_world(name,x=0.,y=0.,z=0.):
+    # Bone-local Y follows the bone; it is NOT the character's vertical axis.
+    # Convert character-space rotations so arms bend instead of just twisting.
+    bone=arm.pose.bones[name];rest=arm.data.bones[name].matrix_local.to_quaternion()
+    world=Quaternion((0,0,1),z) @ Quaternion((0,1,0),y) @ Quaternion((1,0,0),x)
+    bone.rotation_mode='QUATERNION';bone.rotation_quaternion=rest.inverted() @ world @ rest
 def key_pose(frame,kind,phase):
     for bone in arm.pose.bones:
-        bone.rotation_mode='XYZ';bone.rotation_euler=(0,0,0);bone.location=(0,0,0)
+        bone.rotation_mode='QUATERNION';bone.rotation_quaternion=(1,0,0,0);bone.location=(0,0,0)
+    running=kind=='Run';moving=kind in ('Walk','Run')
+    swing=math.sin(phase);stride=.78 if running else .48
+    rotate_world('Hips',x=.10 if running else .015,y=math.sin(phase)*(.05 if moving else .008),z=swing*.07 if moving else .012*math.sin(phase))
+    rotate_world('Spine',x=-.04 if running else .015,z=-swing*.10 if moving else .012*math.sin(phase))
+    rotate_world('Chest',x=.025*math.sin(phase),z=-swing*.055 if moving else .02*math.sin(phase*.5))
+    rotate_world('Head',z=.03*math.sin(phase*.5),x=.025*math.sin(phase))
+    arm.pose.bones['Hips'].location.y=(abs(math.sin(phase))*(.055 if running else .025)) if moving else math.sin(phase)*.008
     for label,sign in [('Left',1),('Right',-1)]:
-        arm.pose.bones[label+'UpperArm'].rotation_euler.y=-sign*.38
-        swing=math.sin(phase)*(.62 if kind=='Run' else .38)
-        if kind in ('Walk','Run'):
-            arm.pose.bones[label+'UpperLeg'].rotation_euler.x=sign*swing
-            arm.pose.bones[label+'LowerLeg'].rotation_euler.x=max(0,-sign*math.sin(phase))*.52
-            arm.pose.bones[label+'UpperArm'].rotation_euler.x=-sign*swing*.55
-            arm.pose.bones['Hips'].location.y=abs(math.sin(phase))*.025
+        rotate_world(label+'UpperArm',x=.02*math.sin(phase+sign),y=sign*.36)
+        rotate_world(label+'ForeArm',x=.10)
+        if moving:
+            rotate_world(label+'UpperLeg',x=sign*swing*stride)
+            rotate_world(label+'LowerLeg',x=-max(0,-sign*swing)*(1.05 if running else .62))
+            rotate_world(label+'Foot',x=max(0,sign*swing)*.15)
+            rotate_world(label+'UpperArm',x=-sign*swing*(.72 if running else .55),y=sign*.27)
+            rotate_world(label+'ForeArm',x=(.85 if running else .20)+max(0,sign*swing)*.25)
+            rotate_world(label+'Hand',x=-.1,z=sign*.06)
         if kind in ('Fish','Hold','Steer'):
-            arm.pose.bones[label+'UpperArm'].rotation_euler.x=.68 if kind!='Hold' else (.6 if label=='Left' else 0.)
-            arm.pose.bones[label+'ForeArm'].rotation_euler.x=.55
+            rotate_world(label+'UpperArm',x=.50 if kind!='Hold' else (.64 if label=='Left' else .05),y=sign*.32)
+            rotate_world(label+'ForeArm',x=.65 if kind!='Hold' else (.7 if label=='Left' else .12),y=-sign*.12)
+            rotate_world('Chest',x=.035+math.sin(phase)*.025,z=math.sin(phase)*.03)
+        if kind=='Reel':
+            rotate_world(label+'UpperArm',x=.72+math.sin(phase)*.07,y=sign*.35)
+            rotate_world(label+'ForeArm',x=.6+(math.sin(phase)*.28 if label=='Left' else .06),y=-sign*.18)
+            rotate_world(label+'Hand',z=math.sin(phase)*.35 if label=='Left' else 0.)
+            rotate_world('Spine',x=-.11+math.sin(phase)*.04)
+        if kind=='Cast':
+            t=(frame-1)/32
+            windup=math.sin(min(1,t/.45)*math.pi*.5) if t<.45 else max(0,1-(t-.45)/.3)
+            rotate_world(label+'UpperArm',x=.4+windup*1.8,y=sign*.25)
+            rotate_world(label+'ForeArm',x=.45+windup*.6)
+            rotate_world('Chest',x=-windup*.15,z=windup*.25)
+        if kind in ('Jump','Fall'):
+            rotate_world(label+'UpperArm',x=.5 if kind=='Jump' else -.18,y=-sign*.18)
+            rotate_world(label+'ForeArm',x=.65 if kind=='Jump' else .28)
+            rotate_world(label+'UpperLeg',x=.35 if kind=='Jump' else .08)
+            rotate_world(label+'LowerLeg',x=-.6 if kind=='Jump' else -.22)
+            rotate_world('Chest',x=.1)
         if kind=='Swim':
-            arm.pose.bones[label+'UpperArm'].rotation_euler.x=1.1+sign*math.sin(phase)*.5
-            arm.pose.bones[label+'UpperLeg'].rotation_euler.x=sign*math.sin(phase)*.15
-    arm.pose.bones['Chest'].rotation_euler.x=math.sin(phase)*.012
+            rotate_world(label+'UpperArm',x=1.45+sign*swing*.85,y=sign*.2)
+            rotate_world(label+'ForeArm',x=.4+sign*swing*.3)
+            rotate_world(label+'UpperLeg',x=sign*swing*.24)
     for bone in arm.pose.bones:
-        bone.keyframe_insert('rotation_euler',frame=frame,group=bone.name)
+        bone.keyframe_insert('rotation_quaternion',frame=frame,group=bone.name)
         bone.keyframe_insert('location',frame=frame,group=bone.name)
-for kind in ['Idle','Walk','Run','Fish','Hold','Steer','Swim']:
+for kind in ['Idle','Walk','Run','Fish','Hold','Steer','Swim','Cast','Reel','Jump','Fall']:
     action=bpy.data.actions.new(kind);arm.animation_data_create();arm.animation_data.action=action
-    for frame in [1,9,17,25,33]:key_pose(frame,kind,(frame-1)/32*math.tau)
+    for frame in range(1,34,2):key_pose(frame,kind,(frame-1)/32*math.tau)
     track=arm.animation_data.nla_tracks.new();track.name=kind;track.strips.new(kind,1,action)
 arm.animation_data.action=None
 for track in arm.animation_data.nla_tracks:track.mute=True

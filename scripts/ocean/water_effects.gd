@@ -40,6 +40,7 @@ func _ready() -> void:
 		var spray:=CPUParticles3D.new()
 		spray.emitting=false; spray.one_shot=true; spray.explosiveness=.92
 		spray.amount=40; spray.lifetime=1.2; spray.mesh=drop
+		spray.material_override=drop.material
 		spray.direction=Vector3.UP; spray.spread=65.
 		spray.gravity=Vector3(0,-9.8,0); spray.initial_velocity_min=1.5; spray.initial_velocity_max=4.
 		spray.local_coords=false

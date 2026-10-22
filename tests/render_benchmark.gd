@@ -22,6 +22,10 @@ func _run() -> void:
 	render_view.add_child(game)
 	root.position=Vector2i(40,40)
 	game.begin_play()
+	var quality:=2
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--quality="):quality=int(arg.trim_prefix("--quality="))
+	game.graphics.apply(quality,1.,true,false)
 	game.set_process_input(false)
 	for action: StringName in InputMap.get_actions(): InputMap.action_erase_events(action)
 	game.player.controls_enabled=false
@@ -59,8 +63,8 @@ func _run() -> void:
 		var report:={"scene":["pier","village","boat","storm","forest","night_village"][stage],"frames":600,"fps_mean":600000./total,"frame_ms_p50":times[300],"frame_ms_p95":times[570],"frame_ms_p99":times[594],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"video_memory_mb":Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)/1048576.}
 		reports.append(report)
 		print(JSON.stringify(report))
-	var file:=FileAccess.open("res://tests/output/visual/benchmark.json",FileAccess.WRITE)
-	file.store_string(JSON.stringify({"gpu":RenderingServer.get_video_adapter_name(),"renderer":RenderingServer.get_current_rendering_method(),"physical_window":str(root.size),"framebuffer":str(render_view.size),"samples":reports,"limits":"Fixed 1440x900 3D render target, MSAA 2x, TAA, VSync/60 FPS cap, 600 measured frames per view after warmup. Other applications may be active; not a full hardware benchmark."},"\t"))
+	var file:=FileAccess.open("res://tests/output/visual/benchmark-quality-%d.json"%quality,FileAccess.WRITE)
+	file.store_string(JSON.stringify({"gpu":RenderingServer.get_video_adapter_name(),"renderer":RenderingServer.get_current_rendering_method(),"quality":quality,"physical_window":str(root.size),"framebuffer":str(render_view.size),"samples":reports,"limits":"Fixed 1440x900 3D render target at 100 percent scale, selected quality preset, VSync/60 FPS cap, 600 measured frames per view after warmup. Other applications may be active; not a full hardware benchmark."},"\t"))
 	file.close()
 	game.audio.stop_all()
 	game.audio.fx.stop()

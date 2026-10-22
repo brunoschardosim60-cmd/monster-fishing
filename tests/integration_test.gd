@@ -110,7 +110,8 @@ func _run() -> void:
 	_check(game.player.in_boat and game.boat.occupied, "E boards when the player reaches the boat")
 	var berth: Vector3 = game.boat.global_position
 	Input.action_press("move_forward")
-	await _frames(120)
+	# Slow drift now permits casting; accelerate past the new 6 m/s limit.
+	await _frames(180)
 	_check(game.boat.speed > 3.0 and game.boat.global_position.distance_to(berth) > 3.0, "W accelerates and moves the boat across the ocean")
 	_check(not game.can_cast(), "casting is blocked while the boat is moving fast")
 	game.fish_action()

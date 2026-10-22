@@ -16,7 +16,7 @@ func run() -> void:
 	game.player.position=Vector3(0,1.55,-23);game.interact()
 	game.boat.position=Vector3(30,0,-100)
 	var reached:=0
-	for target: Vector2 in [Vector2(320,-80),Vector2(360,180),Vector2(300,440),Vector2(70,640),Vector2(-290,590),Vector2(-360,270),Vector2(-320,-70),Vector2(30,-100)]:
+	for target: Vector2 in [Vector2(320,-80),Vector2(420,200),Vector2(420,750),Vector2(70,1170),Vector2(-530,1030),Vector2(-530,540),Vector2(-340,-90),Vector2(30,-100)]:
 		for frame: int in 2200:
 			var p:=Vector2(game.boat.position.x,game.boat.position.z);var diff:=target-p
 			if diff.length()<15.:reached+=1;break

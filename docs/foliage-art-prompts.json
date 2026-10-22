@@ -1,0 +1,12 @@
+[
+  {
+    "path": "assets/textures/palm_frond.png",
+    "mode": "built-in image_gen / generate / transparent",
+    "prompt": "Use case: photorealistic-natural. Asset type: alpha cutout foliage texture for a 3D Godot fishing game, not a concept illustration. Create one single coconut palm frond seen straight from above, lying flat, centered upright with thin stem at bottom centre and tapered pointed tip at top centre. Entire frond inside square canvas with narrow transparent margins. Many slender naturally irregular green leaflets along a central yellow-green rachis, narrow air gaps between leaflets, realistic veins, mature emerald and olive greens. Flat diffuse shadowless lighting with no highlights baked into the surface. Genuine transparent background including all gaps. No pot, no tree, no scenery, no ground, no text, no border, no cast shadow. This will be mapped to curved polygon fronds on a real 3D palm tree."
+  },
+  {
+    "path": "assets/textures/coastal_leaves.png",
+    "mode": "built-in image_gen / generate / transparent",
+    "prompt": "Use case: photorealistic-natural. Asset type: realistic foliage alpha texture for a 3D coastal exploration game. One small dense terminal branch of a tropical coastal evergreen tree, viewed from directly above, entirely visible centered in square frame. 18 to 25 smooth oval broad leaves of different sizes, slender branching woody twigs, realistic leaf veins, muted natural emerald, olive and yellow-green tones, younger lighter leaves at the tips. Three branching sprays forming a roughly rounded irregular cluster, natural little air gaps, foliage fills 85 percent of image. Genuine transparent background including air gaps. Soft diffuse even lighting, no cast shadow, no baked sun direction. Sharp leaf edges, no white outlines, no text, no border, no pot, no environment. This image will be used as a cutout texture on curved leaf cards over actual modeled tree branches."
+  }
+]

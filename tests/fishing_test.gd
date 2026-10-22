@@ -84,8 +84,12 @@ func _run() -> void:
 	for species: Resource in Fishing.SPECIES:
 		_check(species.min_weight > 0.0 and species.max_weight >= species.min_weight and species.value_per_kg > 0.0, "valid species range: " + species.id)
 	var sampled: Dictionary = {}
-	for attempt: int in range(60):
-		fishing.start_cast()
+	for attempt: int in range(180):
+		var region: String=["coast","open_water","abyss"][attempt%3]
+		fishing.start_cast(region)
+		if not fishing.species_current.regions.has(region):
+			_check(false,"selected species belongs to the fishing region")
+			break
 		_wait_for_bite(fishing)
 		fishing.strike()
 		holding = true
@@ -110,7 +114,15 @@ func _run() -> void:
 		fishing.advance(3.0)
 		if sampled.size() == Fishing.SPECIES.size():
 			break
-	_check(sampled.size() == Fishing.SPECIES.size(), "all three species can be encountered and caught")
+	_check(sampled.size() == Fishing.SPECIES.size(), "all five species can be encountered and caught in their habitats")
+	var encounters: Array[int]=[]
+	for preference: String in ["","mackerel"]:
+		var count:=0;fishing.rng.seed=941
+		for i: int in 600:
+			fishing.cancel();fishing.start_cast("coast",preference)
+			if fishing.species_current.id=="mackerel":count+=1
+		encounters.append(count)
+	_check(encounters[1]>encounters[0]+90,"Casting into a visible school increases that species' encounter rate")
 	fishing.queue_free()
 	print("FISHING TESTS: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(0 if failures == 0 else 1)

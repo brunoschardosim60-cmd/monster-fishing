@@ -1,0 +1,24 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.3.260 - Forward+ - Using Device #0: AMD - AMD Radeon RX 580 2048SP
+
+PASS: choosing storm never jumps directly to storm values
+PASS: front develops wind, rain and accumulated swell
+PASS: rain clears before residual swell dissipates
+PASS: residual energy eventually dissipates
+PASS: port receives less than half the open-water wind exposure
+PASS: lee protection changes with the coast normal and wind direction
+PASS: bathymetry deepens away from the island
+PASS: wave displacement vanishes inside land
+PASS: authored ice passage guides local ripples without changing open water
+PASS: CPU/GPU agree across 1280 samples / five states (packed height error 0.00026 m)
+PASS: CPU/GPU coast shelter agrees (error 0.00381)
+PASS: fishing rejects the solid surface of an ice floe
+PASS: storm pitch/roll follows water and stays within the vessel limit
+PASS: storm centre stays within freeboard allowance (max 0.651 m)
+PASS: heave tracks four-point buoyancy plane (max lag 0.200 m)
+PASS: wake survives releasing throttle
+PASS: old wake samples stay in world space
+PASS: wake dissipates and its sample budget is released
+PASS: harbor recovery clears the previous wake
+PASS: heavier vessel resource has greater inertia and slower angular response
+OCEAN CONTRACT: 20 checks, 0 failures

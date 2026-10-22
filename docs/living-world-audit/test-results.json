@@ -1,0 +1,104 @@
+[
+  {
+    "suite": "verified-archipelago_contract",
+    "pass_lines": 26,
+    "errors": 0,
+    "last_line": "ARCHIPELAGO 26 checks / 0 failures"
+  },
+  {
+    "suite": "verified-compat-ocean_contract",
+    "pass_lines": 20,
+    "errors": 0,
+    "last_line": "OCEAN CONTRACT: 20 checks, 0 failures"
+  },
+  {
+    "suite": "verified-compat-visual_smoke",
+    "pass_lines": 34,
+    "errors": 0,
+    "last_line": "VISUAL SMOKE: PASS (34 checks, 0 failures)"
+  },
+  {
+    "suite": "verified-docking_regression",
+    "pass_lines": 18,
+    "errors": 0,
+    "last_line": "DOCKING REGRESSIONS: 18 checks, 0 failures"
+  },
+  {
+    "suite": "verified-expanded_routes",
+    "pass_lines": 3,
+    "errors": 0,
+    "last_line": "EXPANDED ROUTES 3 checks / 0 failures"
+  },
+  {
+    "suite": "verified-exploration_journey",
+    "pass_lines": 3,
+    "errors": 0,
+    "last_line": "EXPLORATION JOURNEY 3 checks / 0 failures"
+  },
+  {
+    "suite": "verified-fishing_test",
+    "pass_lines": 29,
+    "errors": 0,
+    "last_line": "FISHING TESTS: PASS"
+  },
+  {
+    "suite": "verified-import",
+    "pass_lines": 0,
+    "errors": 0,
+    "last_line": "\u001b[0m"
+  },
+  {
+    "suite": "verified-integration_test",
+    "pass_lines": 45,
+    "errors": 0,
+    "last_line": "INTEGRATION TESTS: PASS (45 checks, 0 failures)"
+  },
+  {
+    "suite": "verified-living_visual",
+    "pass_lines": 0,
+    "errors": 0,
+    "last_line": "WIND_RENDER PASS calm/storm changed sampled pixels=[2846, 7914] root_changes=0"
+  },
+  {
+    "suite": "verified-living_world_contract",
+    "pass_lines": 20,
+    "errors": 0,
+    "last_line": "LIVING WORLD 20 checks / 0 failures"
+  },
+  {
+    "suite": "verified-marine_world_contract",
+    "pass_lines": 17,
+    "errors": 0,
+    "last_line": "MARINE WORLD 17 checks / 0 failures"
+  },
+  {
+    "suite": "verified-ocean_contract",
+    "pass_lines": 18,
+    "errors": 0,
+    "last_line": "OCEAN CONTRACT: 18 checks, 0 failures"
+  },
+  {
+    "suite": "verified-visual_smoke",
+    "pass_lines": 34,
+    "errors": 0,
+    "last_line": "VISUAL SMOKE: PASS (34 checks, 0 failures)"
+  },
+  {
+    "suite": "verified-water_contract",
+    "pass_lines": 8,
+    "errors": 0,
+    "last_line": "WATER CONTRACT: 8 checks, 0 failures"
+  },
+  {
+    "suite": "verified-world_art_visual",
+    "pass_lines": 0,
+    "errors": 0,
+    "last_line": "SWIM_RENDER abyssal_guardian PASS changed pixels=257"
+  },
+  {
+    "suite": "verified-world_smoke",
+    "pass_lines": 15,
+    "errors": 0,
+    "last_line": "WORLD_SMOKE_FAILURES=0"
+  }
+]

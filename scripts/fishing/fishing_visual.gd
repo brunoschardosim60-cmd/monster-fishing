@@ -5,6 +5,8 @@ var bobber: MeshInstance3D
 var ripple: MeshInstance3D
 var target: Vector3 = Vector3.ZERO
 var elapsed: float = 0
+var cast_start:=Vector3.ZERO
+var cast_elapsed: float=0.
 
 func _ready() -> void:
 	line_mesh = ImmediateMesh.new()
@@ -45,10 +47,15 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 		return
 	var end := target + Vector3(sin(elapsed * 1.8) * 0.15, 0.16 + sin(elapsed * 2.0) * 0.06, 0)
 	end.y = Waves.height_at(end) + .13
+	if state==1:
+		cast_elapsed+=delta
+		var t:=clampf(cast_elapsed/.85,0.,1.)
+		end=cast_start.lerp(end,t)+Vector3.UP*sin(t*PI)*maxf(2.,cast_start.distance_to(target)*.2)
 	if state == 3:
 		end.y += sin(elapsed * 24.0) * 0.18
 	bobber.global_position = end
 	ripple.global_position = Vector3(end.x, 0, end.z)
+	ripple.visible=state!=1
 	Waves.bind(ripple.material_override)
 	ripple.material_override.set_shader_parameter("age",fmod(elapsed,2.5))
 	ripple.material_override.set_shader_parameter("strength",.4 if state!=3 else .9)

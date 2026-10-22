@@ -23,7 +23,11 @@ func walk_to(target: Vector3,budget: int=1200) -> bool:
 		previous=diff.length()
 		if stuck>120:break
 		await physics_frame
-	Input.action_release("move_forward");print("WALK END target=",target," player=",game.player.global_position);return false
+	Input.action_release("move_forward");print("WALK END target=",target," player=",game.player.global_position)
+	for i: int in game.player.get_slide_collision_count():
+		var hit: KinematicCollision3D=game.player.get_slide_collision(i)
+		print("BLOCKER ",hit.get_collider().get_path()," at ",hit.get_collider().global_position," normal ",hit.get_normal())
+	return false
 func run() -> void:
 	Engine.time_scale=6.;Engine.physics_ticks_per_second=120
 	game=load("res://scenes/main/main.tscn").instantiate();root.add_child(game);game.begin_play();game.audio.stop_all();game.set_process(false);game.set_process_input(false)
@@ -33,7 +37,7 @@ func run() -> void:
 	check(game.world.region.chunks.size()>40,"Modular large island terrain")
 	check(game.world.region.foliage_count>500,"Terrain-aware forest instances")
 	check(game.world.village.buildings.size()>=12,"Organized inhabited village")
-	check(game.world.village.services.size()==6,"Six connected service locations")
+	check(game.world.village.services.size()==8,"Eight connected service locations including the full harbor")
 	check(await walk_to(Vector3(0,1.25,0)),"Walk from preserved pier to village")
 	var accessible:=0
 	for b: Node3D in game.world.village.buildings:
