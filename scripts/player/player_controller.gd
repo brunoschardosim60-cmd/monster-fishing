@@ -40,7 +40,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	camera.fov = 68.0
 	camera.near = 0.08
-	camera.far = 700.0
+	camera.far = 2200.0
 	arm.add_child(camera)
 	camera.current = true
 	_update_camera(1.0)
@@ -78,6 +78,7 @@ func _physics_process(delta: float) -> void:
 	_update_camera(delta)
 
 func _update_camera(delta: float) -> void:
+	camera.position.y=move_toward(camera.position.y,0.,delta*2.)
 	# Orbit distance can otherwise push a third-person camera under the water.
 	if not first_person:
 		pitch = minf(pitch, 0.15)
@@ -97,3 +98,10 @@ func rod_tip() -> Vector3:
 	if first_person:
 		return camera.global_position + camera.global_basis * Vector3(0.35, -0.25, -1.0)
 	return visual.rod_tip()
+
+func keep_camera_above_water() -> void:
+	if not in_boat: return
+	var sea=preload("res://scripts/world/wave_field.gd")
+	var water: float=sea.height_at(camera.global_position)
+	var deficit:=water+.3-camera.global_position.y
+	if deficit>0.: camera.global_position.y+=deficit

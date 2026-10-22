@@ -66,7 +66,7 @@ func _run() -> void:
 	# This test never captures desktop content, and leaves the native UI alone.
 	root.position = Vector2i(40, 40) if "--visible-visual" in OS.get_cmdline_user_args() else Vector2i(-2500, -1500)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	game.audio.ambient.stop()
+	game.audio.stop_all()
 	await _frames(120)
 	await _capture("01_title")
 	game.begin_play()
@@ -170,8 +170,9 @@ func _run() -> void:
 	if report != null:
 		report.store_string(JSON.stringify({"gpu": RenderingServer.get_video_adapter_name(), "renderer": RenderingServer.get_current_rendering_method(), "viewport": str(root.get_visible_rect()), "samples": samples, "checks": checks, "failures": failures, "visible_window": "--visible-visual" in OS.get_cmdline_user_args(), "limitations": "Short rendered smoke observations; other applications active. Not a sustained benchmark."}, "\t"))
 		report.close()
-	game.audio.ambient.stop()
+	game.audio.stop_all()
 	game.audio.fx.stop()
+	OS.delay_msec(100)
 	game.queue_free()
 	await process_frame
 	print("VISUAL SMOKE: %s (%d checks, %d failures)" % ["PASS" if failures == 0 else "FAIL", checks, failures])

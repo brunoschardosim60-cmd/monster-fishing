@@ -98,7 +98,7 @@ func run() -> void:
 	check(paused, "logical-only Escape pauses the game")
 	await tap_logical_key(KEY_ESCAPE)
 	check(not paused, "logical-only Escape resumes the game")
-	game.audio.ambient.stop()
+	game.audio.stop_all()
 	game.audio.fx.stop()
 	OS.delay_msec(100)
 	game.queue_free()

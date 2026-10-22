@@ -1,0 +1,141 @@
+extends Node3D
+const Waves=preload("res://scripts/world/wave_field.gd")
+const Weather=preload("res://scripts/ocean/sea_weather.gd")
+const Effects=preload("res://scripts/ocean/water_effects.gd")
+const G=preload("res://scripts/world/geometry.gd")
+signal thunder(at: Vector3)
+var world: Node3D
+var weather=Weather.new()
+var effects: Node3D
+var rain_particles: CPUParticles3D
+var shore_points: Array[Vector3]=[]
+var previous_heights: Array[float]=[]
+var ice: Array[Node3D]=[]
+var ice_footprints: Array[Vector3]=[]
+var light_clock: float=0.
+var flash_clock: float=20.
+var flash_remaining: float=0.
+var thunder_delay: float=-1.
+var underwater: bool=false
+var cold: float=0.
+var strike_position:=Vector3.ZERO
+
+func _ready() -> void:
+	process_physics_priority=-30
+	Waves.reset()
+	effects=Effects.new(); effects.name="WaterInteractions"; add_child(effects)
+	_make_rain(); _make_seabed(); _make_ice()
+	for island: Vector4 in Waves.ISLANDS:
+		for i: int in 20:
+			var angle:=float(i)*TAU/20.
+			var edge:=1.+sin(angle*5.)*.025+cos(angle*9.)*.016
+			shore_points.append(Vector3(island.x+cos(angle)*island.z*edge,0,island.y+sin(angle)*island.w*edge))
+			previous_heights.append(0.)
+	for p: Vector3 in world.shore_rocks:
+		shore_points.append(p); previous_heights.append(0.)
+
+func _make_rain() -> void:
+	rain_particles=CPUParticles3D.new()
+	rain_particles.name="LocalRain"; rain_particles.emitting=false
+	rain_particles.amount=1000 if RenderingServer.get_current_rendering_method()=="forward_plus" else 550
+	rain_particles.lifetime=.85; rain_particles.local_coords=false
+	rain_particles.emission_shape=CPUParticles3D.EMISSION_SHAPE_BOX
+	rain_particles.emission_box_extents=Vector3(14,1,14)
+	rain_particles.direction=Vector3.DOWN; rain_particles.spread=3.
+	rain_particles.initial_velocity_min=18.; rain_particles.initial_velocity_max=23.
+	rain_particles.gravity=Vector3(2,-4,1)
+	var mesh:=QuadMesh.new(); mesh.size=Vector2(.017,.52); mesh.material=Effects.drop_material()
+	rain_particles.mesh=mesh; rain_particles.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(rain_particles)
+
+func _make_seabed() -> void:
+	var plane:=PlaneMesh.new(); plane.size=Vector2(640,640)
+	plane.subdivide_width=200; plane.subdivide_depth=200
+	var mat:=ShaderMaterial.new(); mat.shader=preload("res://assets/shaders/seabed.gdshader")
+	mat.set_shader_parameter("sand_tex",load("res://assets/textures/sand_color.png"))
+	mat.set_shader_parameter("noise_tex",load("res://assets/textures/foam_noise.png"))
+	var floor_mesh:=G.mesh_node(self,plane,mat,Vector3.ZERO)
+	floor_mesh.custom_aabb=AABB(Vector3(-320,-200,-320),Vector3(640,201,640))
+	floor_mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+func _make_ice() -> void:
+	var mat:=StandardMaterial3D.new(); mat.albedo_color=Color("a1c9cf")
+	mat.roughness=.28; mat.metallic=.12
+	var rng:=RandomNumberGenerator.new(); rng.seed=419
+	for i: int in 11:
+		var at:=Vector3(72.+float(i%4)*8.+rng.randf_range(-2,2),0,-126.-float(i/4)*8.)
+		if Waves.coast(Vector2(at.x,at.z)).x<2.: continue
+		var floe:=Node3D.new(); add_child(floe); floe.position=at
+		var st:=SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var rim:=PackedVector3Array(); var radius:=rng.randf_range(1.1,2.5)
+		for j: int in 9:
+			var angle:=float(j)/9.*TAU
+			rim.append(Vector3(cos(angle)*radius*rng.randf_range(.8,1.2),rng.randf_range(.05,.22),sin(angle)*radius))
+		for j: int in 9:
+			var a:=rim[j]; var b:=rim[(j+1)%9]
+			for v: Vector3 in [Vector3(0,.36,0),b,a,a,b,b-Vector3(0,.85,0),a,b-Vector3(0,.85,0),a-Vector3(0,.85,0)]: st.add_vertex(v)
+		st.generate_normals(); G.mesh_node(floe,st.commit(),mat,Vector3.ZERO)
+		var body:=StaticBody3D.new(); body.collision_layer=1; body.collision_mask=0
+		var shape:=CollisionShape3D.new(); var cylinder:=CylinderShape3D.new(); cylinder.radius=radius*.85; cylinder.height=1.2
+		shape.shape=cylinder; body.add_child(shape); add_child(body); body.position=at
+		ice.append(floe)
+		ice_footprints.append(Vector3(at.x,at.z,radius))
+
+func is_ice(at: Vector3) -> bool:
+	for item: Vector3 in ice_footprints:
+		if Vector2(at.x-item.x,at.z-item.y).length()<item.z: return true
+	return false
+
+func _physics_process(delta: float) -> void:
+	weather.advance(delta)
+	Waves.advance(delta,weather.wind,weather.energy,weather.rain,Vector2.from_angle(weather.heading))
+	Waves.bind(world.ocean_material)
+	var camera:=get_viewport().get_camera_3d()
+	if camera==null: return
+	var p:=camera.global_position
+	cold=1.-smoothstep(15.,60.,Vector2(p.x,p.z).distance_to(Vector2(115,-150)))
+	underwater=p.y<Waves.height_at(p)-.08
+	rain_particles.global_position=p+Vector3(0,8,0)
+	rain_particles.emitting=weather.rain>.03 and not underwater
+	rain_particles.color=Color(1,1,1,weather.rain*.6)
+	rain_particles.gravity=Vector3(Waves.direction.x*weather.wind*8.,-4,Waves.direction.y*weather.wind*8.)
+	flash_clock-=delta; flash_remaining=maxf(0.,flash_remaining-delta)
+	if flash_clock<0. and weather.rain>.72:
+		flash_clock=19.+fposmod(Waves.time*1.73,13.)
+		flash_remaining=.18; thunder_delay=1.3
+		strike_position=p+Vector3(-160,100,-220)
+	if thunder_delay>=0.:
+		thunder_delay-=delta
+		if thunder_delay<0.: thunder.emit(strike_position)
+	_update_lighting(delta)
+	for floe: Node3D in ice:
+		var at:=floe.global_position
+		floe.position.y=Waves.height_at(at)*.85
+		floe.rotation.z=atan((Waves.height_at(at+Vector3.RIGHT)-Waves.height_at(at-Vector3.RIGHT))*.5)*.5
+	# Shore emitters are culled before sampling and trigger on passing crests.
+	for i: int in shore_points.size():
+		var at:=shore_points[i]
+		if at.distance_squared_to(p)>4900.: continue
+		var c:=Waves.coast(Vector2(at.x,at.z))
+		var incoming:=Waves.height_at(at+Vector3(c.y,0,c.z)*5.)
+		if incoming>.18 and previous_heights[i]<=.18 and weather.energy>.2:
+			effects.splash(at,.45+weather.energy*.9,true)
+		previous_heights[i]=incoming
+
+func _update_lighting(delta: float) -> void:
+	light_clock+=delta
+	var flash:=flash_remaining/.18
+	world.sun.light_energy=lerpf(1.25,.23,weather.cloud)+flash*3.
+	world.sun.light_color=Color("ffd4a0").lerp(Color("a9bfd2"),weather.cloud*.85)
+	world.environment.fog_density=.055 if underwater else weather.fog+cold*.012
+	world.environment.fog_light_color=Color("0a5460") if underwater else Color("7c9da8").lerp(Color("425967"),weather.cloud)
+	world.environment.fog_sky_affect=1. if underwater else .04+weather.rain*.45
+	world.environment.tonemap_exposure=.72 if underwater else .95
+	world.sky_material.set_shader_parameter("lightning",flash)
+	if light_clock>.35:
+		light_clock=0.
+		world.sky_material.set_shader_parameter("cloud_cover",weather.cloud)
+		world.sky_material.set_shader_parameter("weather_time",Waves.time)
+		for mat: ShaderMaterial in world.terrain_materials:
+			mat.set_shader_parameter("sea_time",Waves.time)
+			mat.set_shader_parameter("wet_weather",weather.rain)

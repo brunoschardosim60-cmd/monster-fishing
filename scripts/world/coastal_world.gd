@@ -6,6 +6,12 @@ const Materials = preload("res://scripts/visuals/materials.gd")
 const Details = preload("res://scripts/world/coastal_details.gd")
 const Waves = preload("res://scripts/world/wave_field.gd")
 var ocean_material: ShaderMaterial
+var environment: Environment
+var sky_material: ShaderMaterial
+var sun: DirectionalLight3D
+var ocean: Node3D
+var terrain_materials: Array[ShaderMaterial]=[]
+var shore_rocks: Array[Vector3]=[]
 
 var rng := RandomNumberGenerator.new()
 var gulls: Array[Node3D] = []
@@ -49,11 +55,14 @@ func _ready() -> void:
 	dynamic_roots.append_array(gulls)
 	dynamic_roots.append_array(buoys)
 	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
+	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
+	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
 
 func safe_spawn() -> Vector3:
 	return Vector3(0.0, 1.55, -17.0)
 
 func is_land(pos: Vector3) -> bool:
+	if ocean!=null and ocean.is_ice(pos): return true
 	# The same footprints as the four visible islands, including scenic shores.
 	var islands: Array[Vector4] = [
 		Vector4(0, 18, 29, 32), Vector4(-95, -95, 20, 24),
@@ -68,13 +77,16 @@ func is_land(pos: Vector3) -> bool:
 func _make_lighting() -> void:
 	var env_node := WorldEnvironment.new()
 	var env := Environment.new()
+	environment=env
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_mat := ShaderMaterial.new()
+	sky_material=sky_mat
 	sky_mat.shader = preload("res://assets/shaders/coastal_sky.gdshader")
 	sky_mat.set_shader_parameter("cloud_noise", load("res://assets/textures/cloud_noise.png"))
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_256
+	sky.process_mode=Sky.PROCESS_MODE_REALTIME
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.55
@@ -103,7 +115,7 @@ func _make_lighting() -> void:
 	env.fog_sky_affect = 0.04
 	env_node.environment = env
 	add_child(env_node)
-	var sun := DirectionalLight3D.new()
+	sun = DirectionalLight3D.new()
 	sun.name = "LateAfternoonSun"
 	sun.rotation_degrees = Vector3(-17, 145, 0)
 	sun.light_color = Color("ffd4a0")
@@ -118,8 +130,8 @@ func _make_lighting() -> void:
 func _make_ocean() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(480, 480)
-	plane.subdivide_width = 480
-	plane.subdivide_depth = 480
+	plane.subdivide_width = 640
+	plane.subdivide_depth = 640
 	var mat := ShaderMaterial.new()
 	mat.shader = OCEAN
 	ocean_material = mat
@@ -127,9 +139,10 @@ func _make_ocean() -> void:
 	mat.set_shader_parameter("foam_tex", load("res://assets/textures/foam_noise.png"))
 	var water := G.mesh_node(self, plane, mat, Vector3.ZERO)
 	water.name = "Ocean"
+	water.custom_aabb=AABB(Vector3(-240,-8,-240),Vector3(480,16,480))
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Four coarse horizon strips avoid doubling the fine mesh under the bay.
-	for data: Vector4 in [Vector4(0,-600,1600,720),Vector4(0,600,1600,720),Vector4(-600,0,720,480),Vector4(600,0,720,480)]:
+	for data: Vector4 in [Vector4(0,-1320,4800,2160),Vector4(0,1320,4800,2160),Vector4(-1320,0,2160,480),Vector4(1320,0,2160,480)]:
 		var far_mesh := PlaneMesh.new()
 		far_mesh.size = Vector2(data.z, data.w)
 		far_mesh.subdivide_width = 32
@@ -170,6 +183,7 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 	var mesh := G.polygon_mesh(vertices, indices, colors)
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://assets/shaders/terrain.gdshader")
+	terrain_materials.append(mat)
 	mat.set_shader_parameter("sand_color", load("res://assets/textures/sand_color.png"))
 	mat.set_shader_parameter("sand_normal", load("res://assets/textures/sand_normal.png"))
 	mat.set_shader_parameter("noise_tex", load("res://assets/textures/cloud_noise.png"))
@@ -185,6 +199,10 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 	body.add_child(col)
 	island.add_child(body)
 	if not playable:
+		# Exposed headlands form a rocky surf zone, leaving the original routes open.
+		for j: int in [0,1,3,4,5,6,7]:
+			var a:=float(j)*TAU/8.
+			_make_rock(center+Vector3(cos(a)*size.x*.99,-.05,sin(a)*size.y*.99),Vector3(2.8,2.1,3.5))
 		for i: int in range(12):
 			var angle := rng.randf() * TAU
 			var r := rng.randf_range(0.1, 0.56)
@@ -369,6 +387,9 @@ func _make_tree(pos: Vector3, tree_scale: float) -> void:
 	Details.pine(self, pos, tree_scale, rng, dark_wood)
 
 func _make_rock(pos: Vector3, dimensions: Vector3) -> void:
+	if pos.y<1.5:
+		var c:=Waves.coast(Vector2(pos.x,pos.z))
+		shore_rocks.append(pos+Vector3(c.y,0,c.z)*maxf(dimensions.x,dimensions.z)*1.05)
 	var node := Details.stone(self, pos, dimensions, rock, rng.randi())
 	node.rotation.y = rng.randf() * TAU
 
@@ -410,8 +431,6 @@ func _make_sign() -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
-	Waves.time = elapsed
-	ocean_material.set_shader_parameter("sea_time", elapsed)
 	for i: int in range(gulls.size()):
 		var phase := elapsed * (0.14 + i * 0.006) + i * 1.8
 		gulls[i].position = Vector3(cos(phase) * (20 + i * 4), 13 + i * 1.8 + sin(elapsed * 0.5 + i), -25 + sin(phase) * (18 + i * 4))

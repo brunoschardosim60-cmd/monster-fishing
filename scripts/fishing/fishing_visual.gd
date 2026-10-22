@@ -18,8 +18,8 @@ func _ready() -> void:
 	add_child(line)
 	bobber = MeshInstance3D.new()
 	var sphere := SphereMesh.new()
-	sphere.radius = 0.12
-	sphere.height = 0.24
+	sphere.radius = 0.085
+	sphere.height = 0.30
 	bobber.mesh = sphere
 	var red := StandardMaterial3D.new()
 	red.albedo_color = Color("ed8057")
@@ -28,13 +28,12 @@ func _ready() -> void:
 	bobber.material_override = red
 	add_child(bobber)
 	ripple = MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.65
-	torus.outer_radius = 0.68
-	ripple.mesh = torus
-	var foam := StandardMaterial3D.new()
-	foam.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	foam.albedo_color = Color("a6dcd7")
+	var plane:=PlaneMesh.new(); plane.size=Vector2(10,10)
+	plane.subdivide_width=20; plane.subdivide_depth=20
+	ripple.mesh = plane
+	var foam := ShaderMaterial.new()
+	foam.shader=preload("res://assets/shaders/ripple.gdshader")
+	foam.set_shader_parameter("foam_tex",load("res://assets/textures/foam_noise.png"))
 	ripple.material_override = foam
 	add_child(ripple)
 	visible = false
@@ -49,8 +48,10 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 	if state == 3:
 		end.y += sin(elapsed * 24.0) * 0.18
 	bobber.global_position = end
-	ripple.global_position = Vector3(end.x, end.y - .07, end.z)
-	ripple.scale = Vector3.ONE * (0.7 + fmod(elapsed, 1.5) * 0.6)
+	ripple.global_position = Vector3(end.x, 0, end.z)
+	Waves.bind(ripple.material_override)
+	ripple.material_override.set_shader_parameter("age",fmod(elapsed,2.5))
+	ripple.material_override.set_shader_parameter("strength",.4 if state!=3 else .9)
 	line_mesh.clear_surfaces()
 	line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
 	for i in 17:

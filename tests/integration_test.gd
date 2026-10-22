@@ -193,7 +193,7 @@ func _run() -> void:
 	_release_movement()
 	# --fixed-fps advances faster than the real audio thread. Stop voices and
 	# allow one audio callback to release playback resources before teardown.
-	game.audio.ambient.stop()
+	game.audio.stop_all()
 	game.audio.fx.stop()
 	OS.delay_msec(100)
 	game.queue_free()

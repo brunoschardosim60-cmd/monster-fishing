@@ -69,3 +69,9 @@ Para repetir a inspeção gráfica: `--rendering-method gl_compatibility --audio
 Ainda recomendado: uma viagem longa com teclado/mouse físicos, ajuste subjetivo de sensibilidade, apreciação visual e auditiva e medição sustentada de desempenho. Isso é avaliação complementar de polimento, não substitui nem invalida os testes técnicos executados.
 
 O progresso desta Fase 1 é mantido apenas durante a sessão. Os testes de recuperação e retorno seguro preservam o estado em memória; não afirmam salvamento em disco.
+
+## Oceano integrado — 21/10/2026
+
+A atualização mais recente mantém os testes anteriores e adiciona `water_contract.gd` (8 verificações) e `ocean_contract.gd` (19 com GPU; 17 no modo headless). O total técnico atual é **127**, contando a execução gráfica do contrato. As 19 verificações do oceano passaram nos dois renderizadores. `visual_smoke.gd` atualmente verifica 32 condições.
+
+`Testar oceano visual.cmd` executa os dez cenários do documento do oceano, mais gelo, canal, submersão, salto do peixe, relâmpago e escolha de clima. O framebuffer é fixo em 1440 × 900. Consulte [OCEAN_SYSTEM.md](OCEAN_SYSTEM.md) para capturas, limites da simulação e o benchmark sustentado de cais, vila, barco e tempestade. Os números anteriores deste documento descrevem as etapas anteriores do projeto.

@@ -23,6 +23,7 @@ var caught_once: bool = false
 var sold_once: bool = false
 var last_toast: String = ""
 var catch_display: Node3D
+var surface_fish: Node3D
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -35,6 +36,7 @@ func _ready() -> void:
 	boat.name = "FishingBoat"
 	boat.position = Vector3(3.9, 0, -23)
 	_add_system(boat)
+	boat.water_effects=world.ocean.effects
 	player = Player.new()
 	player.name = "Player"
 	player.position = world.safe_spawn()
@@ -50,12 +52,16 @@ func _ready() -> void:
 	_add_system(fishing_visual)
 	audio = OceanAudio.new()
 	_add_system(audio)
+	audio.configure(world.ocean,boat)
+	surface_fish=preload("res://scripts/fishing/surface_fish.gd").new()
+	_add_system(surface_fish); surface_fish.effects=world.ocean.effects
 	hud = HUD.new()
 	add_child(hud)
 	hud.start_requested.connect(begin_play)
 	hud.resume_requested.connect(resume_play)
 	hud.return_requested.connect(return_to_harbor)
 	hud.quit_requested.connect(func() -> void: get_tree().quit())
+	hud.weather_selected.connect(func(index: int) -> void: world.ocean.weather.choose(index))
 	player.controls_enabled = false
 	boat.controls_enabled = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -109,6 +115,7 @@ func _physics_process(_delta: float) -> void:
 	if player.in_boat:
 		player.global_position = boat.seat_position()
 		player.visual.rotation.y = boat.rotation.y
+		player.keep_camera_above_water()
 		if boat.global_position.distance_to(Vector3(3.9, 0, -23)) > 15.0:
 			sailed_once = true
 	if catch_display != null:
@@ -122,6 +129,7 @@ func _process(delta: float) -> void:
 	fishing.set_reeling(Input.is_action_pressed("fish"))
 	fishing_visual.update_line(player.rod_tip(), fishing.state, delta)
 	hud.stats.text = "%d  MOEDAS     /     %d  CAPTURAS" % [inventory.money, inventory.count()]
+	hud.sea_label.text = "COSTA DO FAROL  /  "+world.ocean.weather.LABELS[world.ocean.weather.state]
 	var heading := wrapf(rad_to_deg(-player.yaw), 0, 360)
 	var directions := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 	hud.compass.text = "%s  ·  %03d°" % [directions[int((heading + 22.5) / 45.0) % 8], int(heading)]
@@ -216,6 +224,7 @@ func _on_caught(data: Dictionary) -> void:
 	inventory.add_catch(data)
 	caught_once = true
 	audio.cue("catch")
+	world.ocean.effects.splash(fishing_visual.target,clampf(.5+float(data.get("weight",1.))*.08,.5,2.5),true)
 	if catch_display != null:
 		catch_display.show_catch(data)
 
@@ -224,6 +233,11 @@ func _on_fishing_message(message: String) -> void:
 		hud.notify(message)
 
 func _on_fishing_state(state: int) -> void:
+	if state in [Fishing.State.IDLE,Fishing.State.ESCAPED] and is_instance_valid(surface_fish): surface_fish.hide()
+	if state==Fishing.State.REELING and is_instance_valid(surface_fish):
+		surface_fish.breach(fishing_visual.target,fishing.species_current)
+	if is_instance_valid(fishing_visual) and state in [Fishing.State.WAITING,Fishing.State.BITE]:
+		world.ocean.effects.splash(fishing_visual.target,.5 if state==Fishing.State.WAITING else .85,state==Fishing.State.BITE)
 	if state == Fishing.State.BITE and is_instance_valid(audio):
 		audio.cue("bite")
 

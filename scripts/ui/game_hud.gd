@@ -3,6 +3,9 @@ signal start_requested
 signal resume_requested
 signal return_requested
 signal quit_requested
+signal weather_selected(index: int)
+var sea_label: Label
+var weather_picker: OptionButton
 
 const INK := Color("071d2b")
 const CREAM := Color("e4edf1")
@@ -41,7 +44,7 @@ func _ready() -> void:
 	var top := _panel(root, Vector2(34, 28), Vector2(330, 100))
 	var box := _vbox(top)
 	_label(box, "MONSTER FISHING", 24, CREAM)
-	_label(box, "COSTA DO FAROL   /   FIM DE TARDE", 12, SEA)
+	sea_label=_label(box, "COSTA DO FAROL   /   BRISA", 11, SEA)
 	hud_controls.append(top)
 	stats = _label(root, "", 19, CREAM)
 	stats.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -142,6 +145,15 @@ func _make_overlay() -> void:
 	quit_button.pressed.connect(func() -> void: quit_requested.emit())
 	var build_label := _label(overlay, "FASE 1  •  PROTÓTIPO JOGÁVEL     /     COSTA DO FAROL", 13, SEA)
 	build_label.position = Vector2(100, 820)
+	var weather_panel:=_panel(overlay,Vector2(930,200),Vector2(395,220))
+	var weather_box:=_vbox(weather_panel)
+	_label(weather_box,"CONDIÇÕES DO MAR",18,GOLD)
+	weather_picker=OptionButton.new()
+	for text: String in ["Clima dinâmico","Mar calmo","Brisa","Mar agitado","Tempestade","Após a tempestade"]: weather_picker.add_item(text)
+	weather_picker.custom_minimum_size=Vector2(325,44)
+	weather_box.add_child(weather_picker)
+	weather_picker.item_selected.connect(func(index: int) -> void: weather_selected.emit(index-1))
+	_label(weather_box,"O tempo muda aos poucos.\nO mar leva mais tempo para se acalmar.\n\nEscolha também pelo menu de pausa.",15,CREAM)
 
 func begin_play() -> void:
 	started = true

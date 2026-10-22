@@ -4,7 +4,12 @@ const Sculpt = preload("res://scripts/visuals/sculpt.gd")
 const Materials = preload("res://scripts/visuals/materials.gd")
 const Waves = preload("res://scripts/world/wave_field.gd")
 const G = preload("res://scripts/world/geometry.gd")
-## Small coastal launch. Physics stays level; only the handcrafted hull bobs.
+## Horizontal collision controller plus a damped, four-point waterline sampler.
+@export var hydrodynamics: Resource=preload("res://data/boats/coastal_launch.tres")
+var water_effects: Node3D
+var trail: MeshInstance3D
+var heave_velocity: float=0.
+var impact_cooldown: float=0.
 
 var occupied: bool = false
 var controls_enabled: bool = true
@@ -30,6 +35,8 @@ func _ready() -> void:
 	shape.position.y = 0.5
 	add_child(shape)
 	_build_visual()
+	trail=preload("res://scripts/ocean/wake_trail.gd").new()
+	add_child(trail)
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
@@ -39,7 +46,9 @@ func _physics_process(delta: float) -> void:
 		throttle = Input.get_axis("move_back", "move_forward")
 		steering = Input.get_axis("move_left", "move_right")
 	if throttle > 0.0:
-		speed = move_toward(speed, max_speed, 2.7 * delta)
+		var exposure:=Waves.exposure(Vector2(global_position.x,global_position.z))
+		var limit: float=max_speed*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)
+		speed = move_toward(speed, limit, 2.7 * delta)
 	elif throttle < 0.0:
 		speed = move_toward(speed, -3.2, (5.5 if speed > 0.2 else 1.8) * delta)
 	else:
@@ -59,18 +68,34 @@ func _physics_process(delta: float) -> void:
 		position.z = boundary.y
 		speed = minf(speed, 0.0)
 	wake_strength = clampf(absf(speed) / max_speed, 0.0, 1.0)
+	trail.advance(global_position,global_basis,speed,delta)
+	impact_cooldown=maxf(0.,impact_cooldown-delta)
 	if is_instance_valid(_hull):
-		_hull.position.y = lerpf(_hull.position.y, Waves.height_at(global_position),minf(delta*5.,1.))
-		var right_height := Waves.height_at(global_position + global_basis.x)-Waves.height_at(global_position-global_basis.x)
-		var front_height := Waves.height_at(global_position-global_basis.z*2.)-Waves.height_at(global_position+global_basis.z*2.)
-		_hull.rotation.z = lerpf(_hull.rotation.z,atan(right_height*.5)*.55-steering*wake_strength*.055,delta*4.)
-		_hull.rotation.x = lerpf(_hull.rotation.x,-atan(front_height*.25)*.65-wake_strength*.025,delta*4.)
+		var half_beam: float=hydrodynamics.beam*.5
+		var half_length: float=hydrodynamics.waterline_length*.5
+		var right:=Waves.height_at(global_position+global_basis.x*half_beam)
+		var left:=Waves.height_at(global_position-global_basis.x*half_beam)
+		var front:=Waves.height_at(global_position-global_basis.z*half_length)
+		var back:=Waves.height_at(global_position+global_basis.z*half_length)
+		var target: float=(right+left+front+back)*.125+Waves.height_at(global_position)*.5-hydrodynamics.draft_offset
+		var omega:=sqrt(float(hydrodynamics.heave_stiffness)/float(hydrodynamics.mass_kg))
+		heave_velocity+=((target-_hull.position.y)*omega*omega-2.*hydrodynamics.damping_ratio*omega*heave_velocity)*delta
+		_hull.position.y+=heave_velocity*delta
+		_hull.position.y=clampf(_hull.position.y,target-.2,target+.2)
+		var blend: float=1.-exp(-delta*hydrodynamics.angular_response)
+		var roll: float=atan((right-left)/hydrodynamics.beam)-steering*wake_strength*.065
+		var pitch: float=atan((front-back)/hydrodynamics.waterline_length)+wake_strength*.025
+		_hull.rotation.z=lerpf(_hull.rotation.z,clampf(roll,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
+		_hull.rotation.x=lerpf(_hull.rotation.x,clampf(pitch,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
+		if water_effects!=null and impact_cooldown<=0. and wake_strength>.18 and front-_hull.position.y>.17:
+			water_effects.splash(global_position-global_basis.z*2.1,.4+wake_strength*Waves.energy,true)
+			impact_cooldown=.65
 		_propeller.rotation.z += delta * speed * 8.0
 		_foam_left.visible = wake_strength > 0.08
 		_foam_right.visible = wake_strength > 0.08
 		_foam_left.scale.z = 0.5 + wake_strength * 2.3
 		_foam_right.scale.z = 0.5 + wake_strength * 2.3
-		_wake_material.set_shader_parameter("sea_time", Waves.time)
+		Waves.bind(_wake_material)
 		_wake_material.set_shader_parameter("strength", wake_strength)
 
 func set_occupied(value: bool) -> void:
@@ -84,6 +109,8 @@ func reset_to_dock() -> void:
 	rotation = Vector3.ZERO
 	speed = 0.0
 	velocity = Vector3.ZERO
+	heave_velocity=0.; _hull.position.y=Waves.height_at(global_position)
+	if trail!=null: trail.clear_trail()
 
 func _build_visual() -> void:
 	_hull = Node3D.new()

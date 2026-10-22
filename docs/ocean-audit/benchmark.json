@@ -1,0 +1,49 @@
+{
+	"framebuffer": "(1440, 900)",
+	"gpu": "AMD Radeon RX 580 2048SP",
+	"limits": "Fixed 1440x900 3D render target, MSAA 2x, TAA, VSync/60 FPS cap, 600 measured frames per view after warmup. Other applications may be active; not a full hardware benchmark.",
+	"physical_window": "(1280, 749)",
+	"renderer": "forward_plus",
+	"samples": [
+		{
+			"draw_calls": 301.0,
+			"fps_mean": 59.7720771155431,
+			"frame_ms_p50": 16.721,
+			"frame_ms_p95": 17.58,
+			"frame_ms_p99": 18.853,
+			"frames": 600,
+			"scene": "pier",
+			"video_memory_mb": 490.272247314453
+		},
+		{
+			"draw_calls": 548.0,
+			"fps_mean": 59.7948200544651,
+			"frame_ms_p50": 16.699,
+			"frame_ms_p95": 17.562,
+			"frame_ms_p99": 18.163,
+			"frames": 600,
+			"scene": "village",
+			"video_memory_mb": 490.272247314453
+		},
+		{
+			"draw_calls": 273.0,
+			"fps_mean": 59.7939083361378,
+			"frame_ms_p50": 16.713,
+			"frame_ms_p95": 17.517,
+			"frame_ms_p99": 18.826,
+			"frames": 600,
+			"scene": "boat",
+			"video_memory_mb": 490.272247314453
+		},
+		{
+			"draw_calls": 254.0,
+			"fps_mean": 59.7941884035151,
+			"frame_ms_p50": 16.703,
+			"frame_ms_p95": 17.467,
+			"frame_ms_p99": 17.922,
+			"frames": 600,
+			"scene": "storm",
+			"video_memory_mb": 490.348541259766
+		}
+	]
+}

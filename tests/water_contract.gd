@@ -42,7 +42,7 @@ func _run() -> void:
 	_check(is_equal_approx(Waves.time,old_time),"pausing freezes the shared water clock")
 	_check(is_equal_approx(float(game.world.ocean_material.get_shader_parameter("sea_time")),old_time),"shader and buoyancy share the paused time")
 	paused=false
-	game.audio.ambient.stop()
+	game.audio.stop_all()
 	game.audio.fx.stop()
 	# Fixed-FPS simulation can outrun the real audio callback during teardown.
 	OS.delay_msec(100)
