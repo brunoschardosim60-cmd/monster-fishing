@@ -41,12 +41,12 @@ static func cylinder(parent: Node3D, pos: Vector3, radius: float, height: float,
 	mesh.rings = 1
 	return mesh_node(parent, mesh, mat, pos)
 
-static func sphere(parent: Node3D, pos: Vector3, size: Vector3, mat: Material, segments: int = 10) -> MeshInstance3D:
+static func sphere(parent: Node3D, pos: Vector3, size: Vector3, mat: Material, segments: int = 24) -> MeshInstance3D:
 	var mesh := SphereMesh.new()
 	mesh.radius = 1.0
 	mesh.height = 2.0
 	mesh.radial_segments = segments
-	mesh.rings = 5
+	mesh.rings = 12
 	return mesh_node(parent, mesh, mat, pos, size)
 
 static func beam(parent: Node3D, a: Vector3, b: Vector3, thickness: float, mat: Material) -> MeshInstance3D:

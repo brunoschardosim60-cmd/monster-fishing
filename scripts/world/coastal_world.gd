@@ -2,6 +2,10 @@ extends Node3D
 ## Phase 1: one seamless playable coast and a navigable ocean.
 const G = preload("res://scripts/world/geometry.gd")
 const OCEAN = preload("res://assets/shaders/ocean.gdshader")
+const Materials = preload("res://scripts/visuals/materials.gd")
+const Details = preload("res://scripts/world/coastal_details.gd")
+const Waves = preload("res://scripts/world/wave_field.gd")
+var ocean_material: ShaderMaterial
 
 var rng := RandomNumberGenerator.new()
 var gulls: Array[Node3D] = []
@@ -17,13 +21,13 @@ var rock: StandardMaterial3D
 
 func _ready() -> void:
 	rng.seed = 241019
-	wood = G.material(Color("a27a4c"))
-	dark_wood = G.material(Color("443e31"))
-	cream = G.material(Color("e9d3a1"))
-	teal = G.material(Color("3b6663"))
+	wood = Materials.surface("weathered_wood", Color("d0b894"), 1.1)
+	dark_wood = Materials.surface("weathered_wood", Color("655646"), 1.5)
+	cream = Materials.surface("paint", Color("c4c4ac"), 1.8)
+	teal = Materials.surface("paint", Color("3a6467"), 1.4)
 	leaf = G.material(Color("345e49"))
 	leaf_light = G.material(Color("527959"))
-	rock = G.material(Color("717a74"))
+	rock = Materials.surface("granite", Color("a5aaa3"), 1.2)
 	_make_lighting()
 	_make_ocean()
 	_make_island(Vector3(0, 0, 18), Vector2(29, 32), true)
@@ -35,9 +39,10 @@ func _ready() -> void:
 	_make_cabin(Vector3(13, 1.25, 16), 0.18, false)
 	_make_market()
 	_make_foliage()
-	_make_lighthouse(Vector3(-97, 1.25, -94))
+	_make_lighthouse(Vector3(-97, _island_height(-2,1,Vector2(-2./20.,1./24.).length(),false), -94))
 	_make_wildlife()
 	_make_sign()
+	Details.dress_harbor(self, rng, wood, dark_wood, rock)
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
 		_make_buoy(p)
 	var dynamic_roots: Array[Node3D] = []
@@ -65,53 +70,79 @@ func _make_lighting() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color("487e95")
-	sky_mat.sky_horizon_color = Color("d8caad")
-	sky_mat.ground_bottom_color = Color("45564d")
-	sky_mat.ground_horizon_color = Color("d8caad")
-	sky_mat.sky_curve = 0.2
-	sky_mat.sun_angle_max = 2.5
-	sky_mat.sun_curve = 0.15
+	var sky_mat := ShaderMaterial.new()
+	sky_mat.shader = preload("res://assets/shaders/coastal_sky.gdshader")
+	sky_mat.set_shader_parameter("cloud_noise", load("res://assets/textures/cloud_noise.png"))
 	sky.sky_material = sky_mat
+	sky.radiance_size = Sky.RADIANCE_SIZE_256
 	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("a9c5ce")
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.55
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 0.95
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.08
+	env.adjustment_saturation = 1.05
+	if RenderingServer.get_current_rendering_method() == "forward_plus":
+		get_viewport().use_taa = true
+		env.ssao_enabled = true
+		env.ssao_radius = 1.6
+		env.ssao_intensity = 1.5
+		env.ssr_enabled = true
+		env.ssr_max_steps = 32
+		env.glow_enabled = true
+		env.glow_intensity = 0.35
+		env.glow_bloom = 0.0
+	else:
+		env.adjustment_contrast = 1.0
+		env.ambient_light_energy = .8
 	env.fog_enabled = true
-	env.fog_light_color = Color("a5c1bb")
-	env.fog_light_energy = 0.65
-	env.fog_density = 0.0015
-	env.fog_sky_affect = 0.08
+	env.fog_light_color = Color("7c9da8")
+	env.fog_light_energy = 0.7
+	env.fog_density = 0.0023
+	env.fog_sky_affect = 0.04
 	env_node.environment = env
 	add_child(env_node)
 	var sun := DirectionalLight3D.new()
 	sun.name = "LateAfternoonSun"
-	sun.rotation_degrees = Vector3(-23, -28, 0)
-	sun.light_color = Color("ffedcf")
-	sun.light_energy = 1.05
+	sun.rotation_degrees = Vector3(-17, 145, 0)
+	sun.light_color = Color("ffd4a0")
+	sun.light_energy = 1.25
+	sun.light_angular_distance = 0.65
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 130.0
+	sun.directional_shadow_max_distance = 90.0
+	sun.shadow_bias = 0.10
 	add_child(sun)
+	sky_mat.set_shader_parameter("sun_direction", sun.global_basis.z.normalized())
 
 func _make_ocean() -> void:
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(1500, 1500)
-	plane.subdivide_width = 180
-	plane.subdivide_depth = 180
+	plane.size = Vector2(480, 480)
+	plane.subdivide_width = 480
+	plane.subdivide_depth = 480
 	var mat := ShaderMaterial.new()
 	mat.shader = OCEAN
+	ocean_material = mat
+	mat.set_shader_parameter("normal_tex", load("res://assets/textures/water_normal.png"))
+	mat.set_shader_parameter("foam_tex", load("res://assets/textures/foam_noise.png"))
 	var water := G.mesh_node(self, plane, mat, Vector3.ZERO)
 	water.name = "Ocean"
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Four coarse horizon strips avoid doubling the fine mesh under the bay.
+	for data: Vector4 in [Vector4(0,-600,1600,720),Vector4(0,600,1600,720),Vector4(-600,0,720,480),Vector4(600,0,720,480)]:
+		var far_mesh := PlaneMesh.new()
+		far_mesh.size = Vector2(data.z, data.w)
+		far_mesh.subdivide_width = 32
+		far_mesh.subdivide_depth = 32
+		var far_water := G.mesh_node(self, far_mesh, mat, Vector3(data.x,0,data.y))
+		far_water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 	var vertices := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-	const RINGS: int = 12
-	const SEGMENTS: int = 72
+	const RINGS: int = 48
+	const SEGMENTS: int = 128
 	for ring: int in range(RINGS + 1):
 		var radius := float(ring) / float(RINGS)
 		for segment: int in range(SEGMENTS):
@@ -119,11 +150,7 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 			var edge := 1.0 + sin(angle * 5.0) * 0.025 + cos(angle * 9.0) * 0.016
 			var x := cos(angle) * radius * size.x * edge
 			var z := sin(angle) * radius * size.y * edge
-			var height := 1.25
-			if radius > 0.84:
-				height = lerpf(1.25, -0.8, (radius - 0.84) / 0.16)
-			if not playable and radius < 0.75:
-				height += (1.0 - radius / 0.75) * 4.0
+			var height := _island_height(x,z,radius,playable)
 			vertices.append(center + Vector3(x, height, z))
 			var variation := rng.randf_range(-0.035, 0.035)
 			var col := Color("a99b76")
@@ -141,10 +168,13 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 			var d := (ring + 1) * SEGMENTS + (segment + 1) % SEGMENTS
 			indices.append_array(PackedInt32Array([a, c, b, b, c, d]))
 	var mesh := G.polygon_mesh(vertices, indices, colors)
-	var mat := G.material(Color.WHITE)
-	mat.vertex_color_use_as_albedo = true
-	mat.vertex_color_is_srgb = true
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://assets/shaders/terrain.gdshader")
+	mat.set_shader_parameter("sand_color", load("res://assets/textures/sand_color.png"))
+	mat.set_shader_parameter("sand_normal", load("res://assets/textures/sand_normal.png"))
+	mat.set_shader_parameter("noise_tex", load("res://assets/textures/cloud_noise.png"))
+	mat.set_shader_parameter("rock_tex",load("res://assets/textures/granite_color.png"))
+	mat.set_shader_parameter("rock_normal",load("res://assets/textures/granite_normal.png"))
 	var island := G.mesh_node(self, mesh, mat, Vector3.ZERO)
 	island.name = "HomeIsland" if playable else "DistantIsland"
 	var body := StaticBody3D.new()
@@ -158,13 +188,40 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 		for i: int in range(12):
 			var angle := rng.randf() * TAU
 			var r := rng.randf_range(0.1, 0.56)
-			_make_tree(center + Vector3(cos(angle) * r * size.x, 1.25 + (1.0 - r / 0.75) * 4.0, sin(angle) * r * size.y), rng.randf_range(0.7, 1.3))
+			var x:=cos(angle)*r*size.x
+			var z:=sin(angle)*r*size.y
+			_make_tree(center+Vector3(x,_island_height(x,z,r,false),z),rng.randf_range(.7,1.3))
+
+func _island_height(x: float,z: float,radius: float,playable: bool) -> float:
+	var h:=1.25
+	if playable:
+		# The harbor, market and cabins retain their original flat circulation area.
+		var ridge:=exp(-pow((x+10.)/13.,2.)-pow((z-15.)/13.,2.))*14.
+		ridge+=exp(-pow((x-12.)/9.,2.)-pow((z-22.)/11.,2.))*10.
+		var erosion:=1.+sin(x*.57+z*.22)*.11+sin(z*.61-x*.2)*.08
+		ridge=ridge*erosion+sin(x*1.3+z*.7)*.65+sin(z*1.1-x*.8)*.4
+		var stratum:=ridge/2.8
+		ridge=lerpf(ridge,(floorf(stratum)+smoothstep(.55,.95,fposmod(stratum,1.)))*2.8,.55)
+		h+=ridge*smoothstep(4.,14.,z)*(1.-smoothstep(.72,.98,radius))
+	else:
+		h+=pow(maxf(0.,1.-radius/.87),.95)*(18.+sin(x*.2+z*.13)*5.+cos(z*.24)*3.)
+	if radius>.84:
+		h=lerpf(h,-.8,smoothstep(.84,1.,radius))
+	return h
+
+func home_surface_height(x: float,z: float) -> float:
+	var local_z:=z-18.
+	var angle:=atan2(local_z/32.,x/29.)
+	var edge:=1.+sin(angle*5.)*.025+cos(angle*9.)*.016
+	var radius:=Vector2(x/29.,local_z/32.).length()/edge
+	return _island_height(x,local_z,radius,true)
 
 func _make_dock() -> void:
 	G.box(self, Vector3(0, 1.2, -17), Vector3(3.6, 0.3, 18), dark_wood, true)
 	for i: int in range(45):
 		var plank := G.box(self, Vector3(0, 1.365, -8.2 - i * 0.4), Vector3(3.6, 0.055, 0.37), wood if i % 3 else cream)
-		plank.material_override = wood if i % 3 else G.material(Color("ad885b"))
+		plank.material_override = wood
+		plank.rotation.y = rng.randf_range(-.004,.004)
 	for z: float in [-9.0, -14.0, -19.0, -25.0]:
 		for x: float in [-1.65, 1.65]:
 			G.cylinder(self, Vector3(x, 0.4, z), 0.16, 3.5, dark_wood, 0.13)
@@ -206,9 +263,22 @@ func _make_cabin(pos: Vector3, angle: float, main: bool) -> void:
 	for x: float in [-2.95, 2.95]:
 		G.box(house, Vector3(x, 1.7, -2.35), Vector3(0.14, 3.1, 0.14), cream)
 	var roof_vertices := PackedVector3Array([Vector3(-3.5, 3.1, -2.9), Vector3(3.5, 3.1, -2.9), Vector3(0, 4.8, -2.9), Vector3(-3.5, 3.1, 2.9), Vector3(3.5, 3.1, 2.9), Vector3(0, 4.8, 2.9)])
-	var roof_mat := G.material(Color("824b3d") if main else Color("5a615d"))
+	var roof_mat := Materials.surface("weathered_wood",Color("947c70") if main else Color("7a8887"),1.8)
 	roof_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	G.mesh_node(house, G.polygon_mesh(roof_vertices, PackedInt32Array([0,2,1,3,4,5,0,3,5,0,5,2,2,5,4,2,4,1])), roof_mat, Vector3.ZERO)
+	# Clad gables and timber siding give the existing footprint construction scale.
+	for x_index: int in range(-6,7):
+		var x:=float(x_index)*.46
+		var height:=1.7*(1.-absf(x)/3.5)
+		for z: float in [-2.92,2.92]:
+			G.box(house,Vector3(x,3.1+height*.5,z),Vector3(.43,height,.045),teal)
+	for y: float in [.45,.85,1.25,1.65,2.05,2.45,2.85]:
+		for x: float in [-2.92,2.92]:
+			G.box(house,Vector3(x,y,0),Vector3(.04,.035,4.62),dark_wood)
+	for z_index: int in range(15):
+		var z:=-2.8+z_index*.4
+		G.beam(house,Vector3(-3.5,3.12,z),Vector3(0,4.82,z),.018,roof_mat)
+		G.beam(house,Vector3(0,4.82,z),Vector3(3.5,3.12,z),.018,roof_mat)
 	for z: float in [-2.95, 2.95]:
 		G.beam(house, Vector3(-3.5, 3.1, z), Vector3(0, 4.8, z), 0.095, cream)
 		G.beam(house, Vector3(0, 4.8, z), Vector3(3.5, 3.1, z), 0.095, cream)
@@ -224,6 +294,8 @@ func _make_cabin(pos: Vector3, angle: float, main: bool) -> void:
 		G.box(house, Vector3(x, 1.9, -2.51), Vector3(0.06, 1.12, 0.05), dark_wood)
 		G.box(house, Vector3(x, 1.9, -2.51), Vector3(1.0, 0.06, 0.05), dark_wood)
 		G.box(house, Vector3(x, 1.15, -2.6), Vector3(1.3, 0.15, 0.42), wood)
+		for side: float in [-1.,1.]:
+			G.box(house,Vector3(x+side*.78,1.9,-2.40),Vector3(.25,1.3,.07),wood)
 	G.box(house, Vector3(1.9, 4.15, 1.3), Vector3(0.6, 2.0, 0.6), rock)
 	G.box(house, Vector3(1.9, 5.15, 1.3), Vector3(0.8, 0.15, 0.8), cream)
 	G.box(house, Vector3(0, 0.1, -3.1), Vector3(5.6, 0.2, 1.6), wood)
@@ -241,7 +313,7 @@ func _make_market() -> void:
 	G.box(stall, Vector3(0, 1.06, 0), Vector3(4.1, 0.16, 1.7), cream)
 	for x: float in [-1.8, 1.8]:
 		G.cylinder(stall, Vector3(x, 1.65, 0.5), 0.09, 3.3, dark_wood)
-	var canvas := G.material(Color("ca9866"))
+	var canvas := Materials.surface("fabric",Color("b7a383"),5.)
 	G.box(stall, Vector3(0, 3.2, 0), Vector3(4.6, 0.12, 2.5), canvas).rotation.x = 0.12
 	G.box(stall, Vector3(0, 2.94, -1.22), Vector3(4.6, 0.4, 0.07), teal)
 	var label := G.label(stall, "MERCADO  ·  PEIXE FRESCO", Vector3(0, 2.95, -1.28), 24)
@@ -277,7 +349,7 @@ func _make_foliage() -> void:
 			continue
 		if Vector2(x / 29, (z - 18) / 32).length() > 0.74:
 			continue
-		_make_tree(Vector3(x,1.25,z), rng.randf_range(0.75,1.35))
+		_make_tree(Vector3(x,home_surface_height(x,z),z), rng.randf_range(0.75,1.35))
 	for i: int in range(23):
 		var angle := rng.randf() * TAU
 		var pos := Vector3(cos(angle) * 25.0,0.8,sin(angle) * 28.0 + 18.0)
@@ -290,42 +362,15 @@ func _make_foliage() -> void:
 			continue
 		if Vector2(pos.x + 12, pos.z - 7).length() < 5.5 or Vector2(pos.x - 13,pos.z - 16).length() < 5.5:
 			continue
-		G.sphere(self,pos + Vector3(0,0.25,0),Vector3(0.6,0.4,0.55),leaf_light,7)
+		pos.y=home_surface_height(pos.x,pos.z)
+		Details.shrub(self,pos,rng)
 
 func _make_tree(pos: Vector3, tree_scale: float) -> void:
-	var tree := Node3D.new()
-	tree.position = pos
-	tree.scale = Vector3.ONE * tree_scale
-	tree.rotation.y = rng.randf() * TAU
-	add_child(tree)
-	G.cylinder(tree,Vector3(0,1.7,0),0.22,3.4,dark_wood,0.12,7)
-	G.beam(tree,Vector3(0,2.1,0),Vector3(-0.8,3.6,0.1),0.1,dark_wood)
-	G.beam(tree,Vector3(0,2.6,0),Vector3(0.8,4.0,0),0.1,dark_wood)
-	G.sphere(tree,Vector3(-0.6,3.6,0),Vector3(1.5,1.45,1.4),leaf,8)
-	G.sphere(tree,Vector3(0.7,4.1,0.3),Vector3(1.55,1.6,1.45),leaf_light,8)
-	G.sphere(tree,Vector3(0,5.0,0),Vector3(1.15,1.25,1.1),leaf,8)
-	var body := StaticBody3D.new()
-	body.collision_layer = 1
-	body.collision_mask = 0
-	var shape := CylinderShape3D.new()
-	shape.radius = 0.25
-	shape.height = 3.4
-	var collider := CollisionShape3D.new()
-	collider.shape = shape
-	collider.position.y = 1.7
-	body.add_child(collider)
-	tree.add_child(body)
+	Details.pine(self, pos, tree_scale, rng, dark_wood)
 
 func _make_rock(pos: Vector3, dimensions: Vector3) -> void:
-	var node := G.sphere(self,pos,dimensions,rock,7)
-	node.rotation = Vector3(rng.randf_range(-0.3,0.3),rng.randf() * TAU,rng.randf_range(-0.3,0.3))
-	var body := StaticBody3D.new()
-	body.collision_layer = 1
-	body.collision_mask = 0
-	var collider := CollisionShape3D.new()
-	collider.shape = node.mesh.create_convex_shape()
-	body.add_child(collider)
-	node.add_child(body)
+	var node := Details.stone(self, pos, dimensions, rock, rng.randi())
+	node.rotation.y = rng.randf() * TAU
 
 func _make_lighthouse(pos: Vector3) -> void:
 	G.cylinder(self,pos + Vector3(0,4,0),1.8,8,cream,1.25,12)
@@ -365,11 +410,13 @@ func _make_sign() -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
+	Waves.time = elapsed
+	ocean_material.set_shader_parameter("sea_time", elapsed)
 	for i: int in range(gulls.size()):
 		var phase := elapsed * (0.14 + i * 0.006) + i * 1.8
 		gulls[i].position = Vector3(cos(phase) * (20 + i * 4), 13 + i * 1.8 + sin(elapsed * 0.5 + i), -25 + sin(phase) * (18 + i * 4))
 		gulls[i].rotation.y = -phase
 		gulls[i].rotation.z = sin(elapsed * 2.0 + i) * 0.08
 	for i: int in range(buoys.size()):
-		buoys[i].position.y = sin(elapsed * 0.8 + i) * 0.09
+		buoys[i].position.y = Waves.height_at(buoys[i].global_position)
 		buoys[i].rotation.z = sin(elapsed + i) * 0.05
