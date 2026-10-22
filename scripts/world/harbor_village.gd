@@ -14,8 +14,11 @@ var elapsed: float=0.
 var discovered: Dictionary={}
 var guardian: Node3D
 var old_harbor: Node3D
+var bridge_district: Node3D
+var lighting_fixtures: Node3D
 
 func _ready() -> void:
+	lighting_fixtures=Node3D.new();add_child(lighting_fixtures)
 	var wood:=M.surface("weathered_wood",Color("b3a181"),1.5)
 	var stone:=M.surface("granite",Color("a5a89a"),1.)
 	world._make_market()
@@ -60,6 +63,10 @@ func _ready() -> void:
 	_add_external_scenery()
 	old_harbor=preload("res://scripts/world/old_harbor.gd").new();old_harbor.name="PortoVelhoCompleto";old_harbor.position=Vector3(-110,-.3,-18);add_child(old_harbor)
 	services["gear_oldport"]=old_harbor.gear;services["workshop_oldport"]=old_harbor.workshop
+	bridge_district=preload("res://scripts/world/harbor_bridges.gd").new();bridge_district.name="PontesDoMercado";bridge_district.village=self;add_child(bridge_district)
+	for p: Vector2 in [Vector2(-18,-1),Vector2(17,7),Vector2(-20,20),Vector2(21,36),Vector2(0,24),Vector2(0,47),Vector2(-73,-4),Vector2(-88,-4),Vector2(-105,-4)]:_lamp(Vector3(p.x,1.3,p.y),wood)
+
+	preload("res://scripts/world/static_batch.gd").build(lighting_fixtures,[])
 
 func _build(title: String,p: Vector2,w: float,d: float,kind: String,color: Color,id: String) -> void:
 	var building:=Building.new();building.title=title;building.width=w;building.depth=d;building.use=kind;building.tint=color
@@ -73,10 +80,16 @@ func _road(a: Vector3,b: Vector3,width: float,mat: Material) -> void:
 	mesh.rotation.y=atan2(b.x-a.x,b.z-a.z)
 
 func _lamp(p: Vector3,mat: Material) -> void:
-	G.cylinder(self,p+Vector3(0,1.7,0),.07,3.4,mat)
+	G.cylinder(lighting_fixtures,p+Vector3(0,1.7,0),.07,3.4,mat)
 	var glow:=G.material(Color("ffe0a0"));glow.emission_enabled=true;glow.emission=Color("ffc581")
-	G.sphere(self,p+Vector3(0,3.35,0),Vector3(.19,.28,.19),glow,12)
-	var light:=OmniLight3D.new();light.position=p+Vector3(0,3.3,0);light.light_color=Color("ffd49a");light.omni_range=11.;light.light_energy=1.4;add_child(light);night_lights.append(light)
+	G.sphere(lighting_fixtures,p+Vector3(0,3.35,0),Vector3(.19,.28,.19),glow,12)
+	var bronze:=G.material(Color("554737"),.3);bronze.metallic=.55
+	G.cylinder(lighting_fixtures,p+Vector3(0,3.05,0),.23,.1,bronze,.23,12)
+	G.cylinder(lighting_fixtures,p+Vector3(0,3.68,0),.28,.2,bronze,.08,12)
+	for i: int in 4:
+		var a:=float(i)*PI*.5+PI*.25
+		G.beam(lighting_fixtures,p+Vector3(cos(a)*.19,3.08,sin(a)*.19),p+Vector3(cos(a)*.19,3.6,sin(a)*.19),.018,bronze)
+	var light:=OmniLight3D.new();light.position=p+Vector3(0,3.3,0);light.light_color=Color("ffdcad");light.omni_range=15.;light.light_energy=2.4;light.omni_attenuation=.75;add_child(light);night_lights.append(light)
 
 func _make_landmarks(stone: Material,wood: Material) -> void:
 	for item: Dictionary in [{"id":"lighthouse","title":"Farol da Aurora","p":Vector2(-65,490),"reward":18},{"id":"lookout","title":"Mirante das Marés","p":Vector2(90,345),"reward":12},{"id":"grotto","title":"Gruta do Contrabandista","p":Vector2(-170,210),"reward":24},{"id":"ruins","title":"Ruínas da Vigia","p":Vector2(-110,310),"reward":20},{"id":"beach","title":"Praia dos Navegantes","p":Vector2(190,105),"reward":10},{"id":"summit","title":"Cume das Andorinhas","p":Vector2(50,775),"reward":35},{"id":"north_wood","title":"Bosque do Norte","p":Vector2(-170,650),"reward":20}]:
@@ -149,7 +162,7 @@ func _process(delta: float) -> void:
 	for light: OmniLight3D in night_lights:
 		light.visible=camera!=null and camera.global_position.distance_squared_to(light.global_position)<14400. and (light.has_meta("interior") or world.ocean==null or world.ocean.daylight<.45)
 	for b: Node3D in buildings:
-		b.windows.emission_energy_multiplier=0. if world.ocean==null else (1.-world.ocean.daylight)*.65
+		b.windows.emission_energy_multiplier=0. if world.ocean==null else (1.-world.ocean.daylight)*1.5
 	for ship: Node3D in moored:
 		ship.position.y=preload("res://scripts/world/wave_field.gd").height_at(ship.global_position)
 

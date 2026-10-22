@@ -7,13 +7,22 @@ uniform vec3 glow_color : source_color=vec3(0.);
 uniform bool guardian=false;
 uniform bool fin_membrane=false;
 uniform float swim_speed=1.;
+uniform float swim_phase=0.;
+uniform float swim_amount=1.;
+uniform bool controlled=false;
 void vertex(){
 	float tail=clamp((.3-VERTEX.x)/1.1,0.,1.);
 	if(guardian){
 		float wing=clamp(abs(VERTEX.z)/9.,0.,1.);
 		VERTEX.y+=sin(TIME*.85-abs(VERTEX.z)*.3)*wing*wing*1.1;
 		VERTEX.z+=sin(TIME*.65+VERTEX.x*.45)*clamp(-VERTEX.x-2.,0.,9.)*.12;
-	}else{VERTEX.z+=sin(TIME*6.*swim_speed+VERTEX.x*5.)*tail*tail*.075;}
+	}else{
+		float phase=(controlled?swim_phase:TIME*6.*swim_speed)+VERTEX.x*5.;
+		float amplitude=tail*tail*.075*swim_amount;
+		float slope=cos(phase)*5.*amplitude-sin(phase)*tail*.13636*swim_amount;
+		VERTEX.z+=sin(phase)*amplitude;
+		NORMAL=normalize(vec3(NORMAL.x-slope*NORMAL.z,NORMAL.y,NORMAL.z));
+	}
 }
 void fragment(){
 	ALBEDO=tint.rgb*(textured?texture(albedo_tex,UV).rgb:vec3(1.));

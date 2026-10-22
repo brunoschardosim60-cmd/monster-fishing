@@ -284,6 +284,7 @@ func _build_external_visual() -> void:
 	hydrodynamics=preload("res://data/boats/tripo_fishing_boat.tres").duplicate()
 	_hull=Node3D.new(); _hull.name="WaveFollowingHull"; add_child(_hull)
 	imported_model=preload("res://scenes/models/fishing_boat_model.tscn").instantiate(); _hull.add_child(imported_model)
+	var fittings:=preload("res://scripts/boats/boat_outfitting.gd").new();fittings.name="TeakAndDeckFittings";_hull.add_child(fittings)
 	_propeller=Node3D.new(); _hull.add_child(_propeller)
 	var metal:=Materials.surface("paint",Color("253e43"),3.,false)
 	G.cylinder(_hull,Vector3(0,1.55,.85),.06,.85,metal)

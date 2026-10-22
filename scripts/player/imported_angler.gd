@@ -15,6 +15,7 @@ var locomotion_phase: float=0.
 var _rod: Node3D
 var _tip: Marker3D
 var current: String=""
+var gait_speed: float=0.
 var right_hand: int=-1
 var left_hand: int=-1
 var rod_grip_basis:=Basis.IDENTITY
@@ -48,14 +49,16 @@ func _ready() -> void:
 	_tip=Marker3D.new();_tip.position=Vector3(0,1.72,-1.8);_rod.add_child(_tip)
 	update_animation(0.,false,.01)
 func update_animation(speed: float,fishing: bool,delta: float) -> void:
-	var next: String="Hold" if holding_fish else ("Swim" if swimming else ("Fish" if fishing else ("Steer" if seated else ("Run" if speed>5. else ("Walk" if speed>.2 else "Idle")))))
+	var next: String="Hold" if holding_fish else ("Swim" if swimming else ("Fish" if fishing else ("Steer" if seated else ("Run" if speed>3. else ("Walk" if speed>.2 else "Idle")))))
 	if airborne and not swimming:next="Jump" if vertical_speed>0. else "Fall"
 	elif fishing_state==1:next="Cast"
 	elif fishing_state==4:next="Reel"
-	if next!=current:animation.play(next,.18);current=next
-	animation.speed_scale=clampf(speed/2.6,.65,1.8) if next in ["Walk","Run"] else 1.
+	if next!=current:animation.play(next,.3 if next in ["Idle","Walk","Run"] else .18);current=next
+	gait_speed=lerpf(gait_speed,speed,1.-exp(-delta*9.))
+	# Nominal gait: 1.5 m walking / 3.6 m running per 1.1-second cycle.
+	animation.speed_scale=clampf(gait_speed/(3.28 if next=="Run" else 1.36),.15,2.4) if next in ["Walk","Run"] else 1.
 	animation.advance(delta)
-	headwear.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()
+	headwear.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()*Transform3D(Basis.IDENTITY,Vector3(0,0,-.11))
 	backpack.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(chest_bone)*skeleton.get_bone_global_rest(chest_bone).affine_inverse()
 	# Fishing keeps its upper-body pose while the player can reposition on shore.
 	locomotion_phase+=delta*speed*2.6

@@ -39,6 +39,9 @@ func _draw() -> void:
 			for p: Vector3 in route:line.append(point(Vector2(p.x,p.z)))
 			draw_polyline(line,Color("dfbc80"),2.,true)
 	if game!=null:
+		var beacon: Vector3=game.world.harbor_lighthouse.position
+		var marker:=point(Vector2(beacon.x,beacon.z));draw_circle(marker,4.,Color("fff2bd"))
+		if not overview:draw_string(font,marker+Vector2(7,-5),"Farol da Entrada",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("f0e2c0"))
 		for item: Dictionary in game.world.village.landmarks:
 			var p:=point(Vector2(item.position.x,item.position.z));draw_circle(p,4.,Color("e9cb83"))
 			if not overview:draw_string(font,p+Vector2(7,-5),item.title,HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("f0e2c0"))

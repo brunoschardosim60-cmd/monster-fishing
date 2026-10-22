@@ -69,6 +69,8 @@ static func polygon_mesh(vertices: PackedVector3Array, indices: PackedInt32Array
 static func label(parent: Node3D, text: String, pos: Vector3, size: int = 32) -> Label3D:
 	var node := Label3D.new()
 	node.text = text
+	node.visibility_range_end=18.
+	node.visibility_range_end_margin=3.
 	node.rotation.y = PI
 	node.position = pos
 	node.font_size = size

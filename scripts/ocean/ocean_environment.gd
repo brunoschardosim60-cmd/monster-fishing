@@ -145,10 +145,13 @@ func _update_lighting(delta: float) -> void:
 	world.sun.rotation=Vector3(-asin(elevation),angle*.6+1.3,0)
 	world.sun.light_energy=daylight*lerpf(1.65,.23,weather.cloud)+flash*3.
 	world.sun.light_color=Color("ffbd80").lerp(Color("fff0ce"),smoothstep(.12,.6,elevation)).lerp(Color("a9bfd2"),weather.cloud*.85)
-	moon.rotation=Vector3(-asin(-elevation),angle*.6+1.3+PI,0);moon.light_energy=(1.-daylight)*.25*(1.-weather.cloud*.7)
+	moon.rotation=Vector3(-asin(-elevation),angle*.6+1.3+PI,0);moon.light_energy=(1.-daylight)*.42*(1.-weather.cloud*.55)
 	world.sky_material.set_shader_parameter("sun_direction",world.sun.global_basis.z.normalized())
 	world.sky_material.set_shader_parameter("moon_direction",moon.global_basis.z.normalized())
-	world.environment.ambient_light_energy=lerpf(.22,.55,daylight)
+	world.environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
+	world.environment.ambient_light_color=Color("8197b5").lerp(Color("c3d6e2"),daylight)
+	world.environment.ambient_light_sky_contribution=lerpf(.2,.85,daylight)
+	world.environment.ambient_light_energy=lerpf(.48,.55,daylight)
 	world.environment.fog_density=.055 if underwater else weather.fog+cold*.012
 	world.environment.fog_light_color=Color("0a5460") if underwater else Color("182d43").lerp(Color("7c9da8").lerp(Color("425967"),weather.cloud),daylight)
 	world.environment.fog_sky_affect=1. if underwater else .04+weather.rain*.45

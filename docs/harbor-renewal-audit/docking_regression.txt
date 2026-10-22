@@ -1,0 +1,21 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+PASS: pilot can return within the outer docking radius
+PASS: E disembarks after a manual approach
+PASS: manual disembarkation moors the launch in its reachable berth
+PASS: mooring clears residual motion
+PASS: the launch can be boarded again immediately after mooring
+PASS: test cast would actually hit the emerged distant beach
+PASS: distant island beach is recognised as land
+PASS: a cast onto the distant island cannot start fishing
+PASS: is_land includes island (0.0, 0.0, 230.0)
+PASS: is_land includes island (-690.0, 0.0, -510.0)
+PASS: is_land includes island (790.0, 0.0, -640.0)
+PASS: is_land includes island (20.0, 0.0, -1340.0)
+PASS: third-person orbit stays above the ocean
+PASS: first-person can still look upward safely
+PASS: logical-only F switches back to third person
+PASS: logical-only F switches into first person
+PASS: logical-only Escape pauses the game
+PASS: logical-only Escape resumes the game
+DOCKING REGRESSIONS: 18 checks, 0 failures

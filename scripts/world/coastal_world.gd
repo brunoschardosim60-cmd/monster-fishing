@@ -18,6 +18,8 @@ var village: Node3D
 var water_root: Node3D
 var life: Node3D
 var traffic: Node3D
+var lighthouse: Node3D
+var harbor_lighthouse: Node3D
 
 var rng := RandomNumberGenerator.new()
 var gulls: Array[Node3D] = []
@@ -49,13 +51,14 @@ func _ready() -> void:
 	_make_dock()
 	village=preload("res://scripts/world/harbor_village.gd").new();village.world=self;village.name="VilaDaAurora";add_child(village)
 	_make_lighthouse(Vector3(-65,Layout.height(Vector2(-65,490)),490))
+	harbor_lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();harbor_lighthouse.world=self;harbor_lighthouse.position=Vector3(174,Layout.height(Vector2(174,96)),96);harbor_lighthouse.name="FarolDaEntrada";add_child(harbor_lighthouse)
 	_make_sign()
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
 		_make_buoy(p)
 	var dynamic_roots: Array[Node3D] = []
 	dynamic_roots.append_array(gulls)
 	dynamic_roots.append_array(buoys)
-	dynamic_roots.append(region);dynamic_roots.append(village)
+	dynamic_roots.append(region);dynamic_roots.append(village);dynamic_roots.append(lighthouse);dynamic_roots.append(harbor_lighthouse)
 	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
 	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
@@ -387,15 +390,7 @@ func _make_rock(pos: Vector3, dimensions: Vector3) -> void:
 	node.rotation.y = rng.randf() * TAU
 
 func _make_lighthouse(pos: Vector3) -> void:
-	G.cylinder(self,pos + Vector3(0,4,0),1.8,8,cream,1.25,12)
-	G.cylinder(self,pos + Vector3(0,5.2,0),1.5,1.3,teal,1.4,12)
-	G.cylinder(self,pos + Vector3(0,8.25,0),2.0,0.3,dark_wood,2,12)
-	G.cylinder(self,pos + Vector3(0,9.1,0),1.1,1.5,cream,1.1,10)
-	G.cylinder(self,pos + Vector3(0,10.2,0),1.6,0.8,teal,0.03,12)
-	var lamp := G.material(Color("ffdca0"))
-	lamp.emission_enabled = true
-	lamp.emission = Color("ffdca0")
-	G.sphere(self,pos + Vector3(0,9.1,-1.1),Vector3(0.45,0.55,0.15),lamp)
+	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";add_child(lighthouse)
 
 func _make_wildlife() -> void:
 	var white := G.material(Color("eee6cf"))

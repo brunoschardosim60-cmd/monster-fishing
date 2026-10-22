@@ -55,22 +55,20 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
-	var top := _panel(root, Vector2(34, 28), Vector2(330, 100))
-	var box := _vbox(top)
-	_label(box, "MONSTER FISHING", 24, CREAM)
-	sea_label=_label(box, "COSTA DO FAROL   /   BRISA", 11, SEA)
-	hud_controls.append(top)
-	stats = _label(root, "", 19, CREAM)
+	sea_label=_label(root, "", 13, CREAM)
+	sea_label.position=Vector2(30,28)
+	hud_controls.append(sea_label)
+	stats = _label(root, "", 13, CREAM)
 	stats.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	stats.offset_left = -400
-	stats.offset_top = 36
+	stats.offset_top = 28
 	stats.offset_right = -40
 	stats.offset_bottom = 96
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hud_controls.append(stats)
 	objective = _label(root, "", 15, CREAM)
 	objective.position = Vector2(48, 151)
-	hud_controls.append(objective)
+	objective.hide()
 	compass = _label(root, "N  ·  000°", 15, CREAM)
 	compass.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	compass.offset_left = -90
@@ -79,23 +77,15 @@ func _ready() -> void:
 	compass.offset_bottom = 65
 	compass.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hud_controls.append(compass)
-	var controls := _label(root, "WASD mover · SHIFT correr · ESPAÇO pular · CLIQUE/Q pescar · E interagir · R convés · L luzes · G guardar · X soltar · M mapa · ESC pausa", 12, CREAM)
-	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	controls.offset_left = 30
-	controls.offset_right = -30
-	controls.offset_top = -39
-	controls.offset_bottom = -10
-	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hud_controls.append(controls)
-	prompt = _label(root, "", 20, CREAM)
+	prompt = _label(root, "", 16, CREAM)
 	prompt.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	prompt.offset_left = -450
-	prompt.offset_top = -97
+	prompt.offset_top = -62
 	prompt.offset_right = 450
-	prompt.offset_bottom = -57
+	prompt.offset_bottom = -28
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hud_controls.append(prompt)
-	toast = _label(root, "", 20, GOLD)
+	toast = _label(root, "", 16, GOLD)
 	toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	toast.offset_left = -460
 	toast.offset_top = 106
@@ -104,14 +94,14 @@ func _ready() -> void:
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	hud_controls.append(toast)
-	fishing_box = _panel(root, Vector2.ZERO, Vector2(480, 184))
+	fishing_box = _panel(root, Vector2.ZERO, Vector2(320, 120))
 	fishing_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	fishing_box.offset_left = -240
-	fishing_box.offset_top = -300
-	fishing_box.offset_right = 240
-	fishing_box.offset_bottom = -116
+	fishing_box.offset_left = -160
+	fishing_box.offset_top = -220
+	fishing_box.offset_right = 160
+	fishing_box.offset_bottom = -85
 	var fishing_content := _vbox(fishing_box)
-	fishing_title = _label(fishing_content, "A LINHA ESTÁ NA ÁGUA", 20, GOLD)
+	fishing_title = _label(fishing_content, "", 16, GOLD)
 	fishing_hint = _label(fishing_content, "Observe a boia.", 14, CREAM)
 	progress_bar = _bar(fishing_content, SEA)
 	tension_label = _label(fishing_content, "TENSÃO DA LINHA", 12, CREAM)
@@ -134,12 +124,15 @@ func _ready() -> void:
 	map_view=preload("res://scripts/ui/world_map.gd").new();root.add_child(map_view)
 	_set_hud(false)
 
-func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D) -> void:
-	id=id.replace("_oldport","")
+func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: Array[Dictionary]=[]) -> void:
+	id=id.replace("_oldport","").replace("_bridge","")
 	if service_panel!=null:service_panel.free()
 	service_open=true
-	service_panel=_panel(root,Vector2(450,180),Vector2(550,480));service_panel.mouse_filter=Control.MOUSE_FILTER_STOP
-	var box:=_vbox(service_panel)
+	service_panel=_panel(root,Vector2.ZERO,Vector2(580,570));service_panel.mouse_filter=Control.MOUSE_FILTER_STOP
+	service_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	service_panel.offset_left=-290;service_panel.offset_right=290;service_panel.offset_top=-285;service_panel.offset_bottom=285
+	var scroll:=ScrollContainer.new();scroll.custom_minimum_size=Vector2(540,530);service_panel.add_child(scroll)
+	var box:=VBoxContainer.new();box.size_flags_horizontal=Control.SIZE_EXPAND_FILL;box.add_theme_constant_override("separation",10);scroll.add_child(box)
 	_label(box,str(SERVICE_NAMES.get(id,id)).to_upper(),25,GOLD)
 	_label(box,"%d moedas · %d iscas · %d materiais\nCasco: %d%% · Capturas no armazém: %d"%[inventory.money,inventory.bait,inventory.materials,int(boat.integrity*100.),inventory.stored_catches.size()],16,CREAM)
 	var catalog: Dictionary=preload("res://scripts/inventory/harbor_economy.gd").CATALOG
@@ -150,6 +143,22 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D) -> voi
 		button.pressed.connect(func() -> void: service_action.emit(key))
 	var actions: Dictionary={}
 	if id=="market":actions={"sell":"Vender todas as capturas · %d moedas"%inventory.total_value()}
+	if id=="market":
+		for key: String in preload("res://scripts/inventory/harbor_economy.gd").GOODS:
+			var item: Dictionary=preload("res://scripts/inventory/harbor_economy.gd").GOODS[key]
+			var row:=HBoxContainer.new();box.add_child(row)
+			var label:=_label(row,"%s ×%d"%[item.title,inventory.goods.get(key,0)],15,CREAM);label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+			var buy_button:=_button(row,"Comprar %d"%item.buy);buy_button.custom_minimum_size=Vector2(110,38);buy_button.add_theme_font_size_override("font_size",14);buy_button.pressed.connect(func() -> void:service_action.emit("buy_goods:"+key))
+			var sell_button:=_button(row,"Vender %d"%item.sell);sell_button.custom_minimum_size=Vector2(110,38);sell_button.add_theme_font_size_override("font_size",14);sell_button.disabled=inventory.goods.get(key,0)<=0;sell_button.pressed.connect(func() -> void:service_action.emit("sell_goods:"+key))
+		if inventory.goods.get("tackle",0)>0:actions["use_tackle"]="Preparar 6 iscas artificiais"
+		if inventory.goods.get("canvas",0)>0 and inventory.materials>=2:actions["craft_kit"]="Montar kit · 1 lona + 2 materiais"
+		for index: int in mini(stock.size(),3):actions["buy_stock:"+str(index)]="Comprar %s · %.1f kg · %d"%[stock[index].name,stock[index].weight,ceili(float(stock[index].value)*1.25)]
+		if inventory.goods.get("repair_kit",0)>0:actions["use_kit"]="Usar kit de reparo · casco +35%"
+		if inventory.bait>0:actions["sell_bait"]="Vender uma isca · 1 moeda"
+		if inventory.materials>0:actions["sell_material"]="Vender um material · 3 moedas"
+		for index: int in mini(inventory.catches.size(),6):
+			var fish: Dictionary=inventory.catches[index]
+			actions["sell_fish:"+str(index)]="Vender %s · %.1f kg · %d"%[fish.name,fish.weight,fish.value]
 	if id in ["cabin","inn"]:actions={"rest":"Descansar até 08:00"}
 	if id in ["cabin","storage"]:actions.merge({"store":"Guardar capturas no armazém","withdraw":"Retirar capturas do armazém"})
 	for key: String in actions:
@@ -256,7 +265,7 @@ func hide_pause() -> void:
 
 func notify(message: String) -> void:
 	toast.text = message
-	toast_time = 5.0
+	toast_time = 3.2
 
 func _process(delta: float) -> void:
 	if not get_tree().paused:
@@ -271,17 +280,18 @@ func update_fishing(state: int, tension: float, progress: float, bite_left: floa
 	tension_label.modulate = Color("ff8b72") if tension > 0.73 else CREAM
 	match state:
 		1:
-			fishing_title.text = "LANÇANDO A LINHA"
-			fishing_hint.text = "A isca encontra a água…"
+			fishing_title.text = "Lançando"
+			fishing_hint.text = ""
 		2:
-			fishing_title.text = "O MAR TEM SEU TEMPO"
-			fishing_hint.text = "Aguarde a mordida. Não precisa segurar o botão."
+			fishing_title.text = "Aguardando…"
+			fishing_hint.text = ""
 		3:
-			fishing_title.text = "MORDIDA!   %.1f s" % bite_left
-			fishing_hint.text = "CLIQUE ou Q agora para fisgar!"
+			fishing_title.text = "Mordida!"
+			fishing_hint.text = "Clique para fisgar"
 		4:
-			fishing_title.text = "TRAGA O PEIXE ATÉ VOCÊ"
-			fishing_hint.text = "Segure CLIQUE / Q. Solte para aliviar a tensão."
+			fishing_title.text = "Recolhendo"
+			fishing_hint.text = "Segure o clique · solte para aliviar"
+	fishing_hint.visible=not fishing_hint.text.is_empty()
 	progress_bar.visible = state == 4
 	tension_bar.visible = state == 4
 	tension_label.visible = state == 4

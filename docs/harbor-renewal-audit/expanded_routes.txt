@@ -1,0 +1,6 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+PASS Walk entire new northern mountain loop: 8 waypoints
+PASS Walk continuously from village seafront to imported harbor fishing stall
+PASS E opens the actual fishing shop after the walk
+EXPANDED ROUTES 3 checks / 0 failures

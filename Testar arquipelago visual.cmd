@@ -11,5 +11,7 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 "%MF_GODOT%" --path . --script res://tests/render_benchmark.gd
 if errorlevel 1 exit /b 1
+"%MF_GODOT%" --path . --script res://tests/harbor_renewal_visual.gd
+if errorlevel 1 exit /b 1
 echo Capturas e metricas em tests\output\archipelago e tests\output\visual.
 pause

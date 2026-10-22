@@ -87,29 +87,31 @@ def key_pose(frame,kind,phase):
     for bone in arm.pose.bones:
         bone.rotation_mode='QUATERNION';bone.rotation_quaternion=(1,0,0,0);bone.location=(0,0,0)
     running=kind=='Run';moving=kind in ('Walk','Run')
-    swing=math.sin(phase);stride=.78 if running else .48
+    swing=math.sin(phase);stride=.88 if running else .58
     rotate_world('Hips',x=.10 if running else .015,y=math.sin(phase)*(.05 if moving else .008),z=swing*.07 if moving else .012*math.sin(phase))
     rotate_world('Spine',x=-.04 if running else .015,z=-swing*.10 if moving else .012*math.sin(phase))
-    rotate_world('Chest',x=.025*math.sin(phase),z=-swing*.055 if moving else .02*math.sin(phase*.5))
-    rotate_world('Head',z=.03*math.sin(phase*.5),x=.025*math.sin(phase))
-    arm.pose.bones['Hips'].location.y=(abs(math.sin(phase))*(.055 if running else .025)) if moving else math.sin(phase)*.008
+    rotate_world('Chest',x=.018*math.sin(phase*2),z=-swing*.08 if moving else .02*math.sin(phase))
+    rotate_world('Head',z=.02*math.sin(phase),x=.025*math.sin(phase))
+    arm.pose.bones['Hips'].location.y=((1-math.cos(phase*2))*(.023 if running else .009)) if moving else math.sin(phase)*.004
     for label,sign in [('Left',1),('Right',-1)]:
         rotate_world(label+'UpperArm',x=.02*math.sin(phase+sign),y=sign*.36)
         rotate_world(label+'ForeArm',x=.10)
         if moving:
             rotate_world(label+'UpperLeg',x=sign*swing*stride)
-            rotate_world(label+'LowerLeg',x=-max(0,-sign*swing)*(1.05 if running else .62))
-            rotate_world(label+'Foot',x=max(0,sign*swing)*.15)
-            rotate_world(label+'UpperArm',x=-sign*swing*(.72 if running else .55),y=sign*.27)
-            rotate_world(label+'ForeArm',x=(.85 if running else .20)+max(0,sign*swing)*.25)
+            leg_phase=phase if sign==1 else phase+math.pi
+            lift=max(0,math.sin(leg_phase-.18))**2
+            rotate_world(label+'LowerLeg',x=-(.08+lift*(1.15 if running else .85)))
+            rotate_world(label+'Foot',x=-sign*swing*.18+lift*.3)
+            rotate_world(label+'UpperArm',x=-sign*swing*(.65 if running else .48),y=sign*.40)
+            rotate_world(label+'ForeArm',x=(.85 if running else .18)+(.12+.10*math.sin(phase*sign-.4)))
             rotate_world(label+'Hand',x=-.1,z=sign*.06)
         if kind in ('Fish','Hold','Steer'):
-            rotate_world(label+'UpperArm',x=.50 if kind!='Hold' else (.64 if label=='Left' else .05),y=sign*.32)
-            rotate_world(label+'ForeArm',x=.65 if kind!='Hold' else (.7 if label=='Left' else .12),y=-sign*.12)
+            rotate_world(label+'UpperArm',x=.50 if kind!='Hold' else (.64 if label=='Left' else .05),y=sign*(.32 if kind=='Hold' else .55))
+            rotate_world(label+'ForeArm',x=.65 if kind!='Hold' else (.7 if label=='Left' else .12),y=sign*.8 if kind!='Hold' else -sign*.12)
             rotate_world('Chest',x=.035+math.sin(phase)*.025,z=math.sin(phase)*.03)
         if kind=='Reel':
-            rotate_world(label+'UpperArm',x=.72+math.sin(phase)*.07,y=sign*.35)
-            rotate_world(label+'ForeArm',x=.6+(math.sin(phase)*.28 if label=='Left' else .06),y=-sign*.18)
+            rotate_world(label+'UpperArm',x=.72+math.sin(phase)*.04,y=sign*.58)
+            rotate_world(label+'ForeArm',x=.6+(math.sin(phase)*.12 if label=='Left' else .06),y=sign*.85)
             rotate_world(label+'Hand',z=math.sin(phase)*.35 if label=='Left' else 0.)
             rotate_world('Spine',x=-.11+math.sin(phase)*.04)
         if kind=='Cast':
@@ -133,7 +135,7 @@ def key_pose(frame,kind,phase):
         bone.keyframe_insert('location',frame=frame,group=bone.name)
 for kind in ['Idle','Walk','Run','Fish','Hold','Steer','Swim','Cast','Reel','Jump','Fall']:
     action=bpy.data.actions.new(kind);arm.animation_data_create();arm.animation_data.action=action
-    for frame in range(1,34,2):key_pose(frame,kind,(frame-1)/32*math.tau)
+    for frame in range(1,34):key_pose(frame,kind,(frame-1)/32*math.tau)
     track=arm.animation_data.nla_tracks.new();track.name=kind;track.strips.new(kind,1,action)
 arm.animation_data.action=None
 for track in arm.animation_data.nla_tracks:track.mute=True

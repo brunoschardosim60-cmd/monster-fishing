@@ -1,0 +1,20 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+PASS Three moving vessels, including a 30 m support ship
+PASS Authored shipping lanes keep at least 35 m clearance from every island
+PASS All vessels physically advance along safe water routes
+PASS All three vessels reach every shipping leg (8780 simulated frames)
+PASS Actual ship trajectories stay off the beaches (minimum 76.7 m)
+PASS NPC vessel yields to the player boat
+PASS Deep daytime water selects ocean species
+PASS Night fishing unlocks the abyssal species pool
+PASS Starter harbor keeps the beginner fish pool
+PASS Lanternfish is selectable by the real fishing state machine
+PASS Visible school approaches an active fishing lure
+PASS Guardian dives away from a noisy boat
+PASS Slow observation records the guardian and awards discovery once
+PASS Guardian reward cannot be repeated
+PASS Sea arch has a physically open navigable passage
+PASS Low preset and render scaling apply immediately
+PASS Ultra enables longer shadows and detailed vegetation distance
+MARINE WORLD 17 checks / 0 failures

@@ -37,7 +37,7 @@ func run() -> void:
 	check(game.world.region.chunks.size()>40,"Modular large island terrain")
 	check(game.world.region.foliage_count>500,"Terrain-aware forest instances")
 	check(game.world.village.buildings.size()>=12,"Organized inhabited village")
-	check(game.world.village.services.size()==8,"Eight connected service locations including the full harbor")
+	check(game.world.village.services.size()==11,"Eleven connected service locations including full harbor and bridges")
 	check(await walk_to(Vector3(0,1.25,0)),"Walk from preserved pier to village")
 	var accessible:=0
 	for b: Node3D in game.world.village.buildings:

@@ -106,7 +106,7 @@ func begin_play() -> void:
 	boat.controls_enabled = true
 	hud.begin_play()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	hud.notify("Bem-vindo à Costa do Farol. O barco está à direita da ponta do cais.")
+	hud.notify("ESC · Controles e opções")
 
 func resume_play() -> void:
 	get_tree().paused = false
@@ -133,7 +133,7 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("boat_lights"):
 		boat.toggle_lights();hud.notify("Luzes do barco acesas." if boat.lights_enabled else "Luzes do barco apagadas.")
 	if event.is_action_pressed("observe_wildlife"):
-		hud.notify("Vigia Abissal registrado na enciclopédia. Descoberta: +40 moedas." if marine.observe_guardian() else "Aproxime-se devagar da criatura para observá-la. Cada descoberta é registrada uma vez.")
+		hud.notify("Vigia Abissal · +40 moedas" if marine.observe_guardian() else "Aproxime-se devagar para observar.")
 	if event.is_action_pressed("keep_catch"): finish_catch(false)
 	if event.is_action_pressed("release_catch"): finish_catch(true)
 	if event.is_action_pressed("world_map"):hud.map_view.visible=not hud.map_view.visible
@@ -192,17 +192,17 @@ func _process(delta: float) -> void:
 		var line_distance: float=player.global_position.distance_to(fishing_visual.target)
 		fishing.line_stretch=clampf((line_distance-42.-fishing.cast_range_bonus)/14.,0.,1.)
 		if player.swimming or line_distance>56.+fishing.cast_range_bonus:
-			fishing.cancel();hud.notify("Linha recolhida: você entrou na água ou ultrapassou o alcance da linha.")
+			fishing.cancel();hud.notify("Linha fora de alcance.")
 	fishing.set_reeling(Input.is_action_pressed("fish"))
 	fishing_visual.update_line(player.rod_tip(), fishing.state, delta)
-	hud.stats.text = "%d  MOEDAS     /     %d  CAPTURAS" % [inventory.money, inventory.count()]
+	hud.stats.text = "%d moedas · %d peixes" % [inventory.money, inventory.count()]
 	hud.sea_label.text = "%02d:%02d  /  %s"%[int(world.ocean.hour),int(fposmod(world.ocean.hour,1.)*60.),world.ocean.weather.LABELS[world.ocean.weather.state]]
 	var heading := wrapf(rad_to_deg(-player.yaw), 0, 360)
 	var directions := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 	hud.compass.text = "%s  ·  %03d°" % [directions[int((heading + 22.5) / 45.0) % 8], int(heading)]
 	hud.prompt.text = _interaction_hint()
 	hud.update_fishing(fishing.state, fishing.tension, fishing.progress, fishing.bite_time_remaining)
-	if fishing.state==Fishing.State.REELING and fishing.surging:hud.fishing_hint.text="ARRANCADA DO PEIXE · solte para aliviar a tensão!"
+	if fishing.state==Fishing.State.REELING and fishing.surging:hud.fishing_hint.text="Arrancada · solte!"
 	if not boarded_once:
 		hud.objective.text = "PRIMEIRA VIAGEM\nCaminhe até o barco e pressione E."
 	elif not sailed_once:
@@ -239,7 +239,7 @@ func _cast_target() -> Dictionary:
 func fish_action() -> void:
 	if fishing.state == Fishing.State.IDLE:
 		if not can_cast():
-			hud.notify("Guarde ou devolva a captura primeiro." if not pending_catch.is_empty() else ("Reduza para menos de 12 nós para lançar." if player.in_boat and absf(boat.speed)>=6. else "Olhe para água livre. Ajuste o alcance com a roda do mouse."))
+			hud.notify("Guarde ou devolva a captura primeiro." if not pending_catch.is_empty() else ("Reduza para menos de 12 nós para lançar." if player.in_boat and absf(boat.speed)>=6. else "Mire na água livre."))
 			return
 		var target: Vector3=_cast_target().position
 		fishing_visual.target = target
@@ -261,24 +261,24 @@ func interact() -> void:
 		player.set_boating(true)
 		player.yaw = boat.rotation.y
 		boarded_once = true
-		hud.notify("WASD navegar · R caminhar no convés · E desembarcar a qualquer momento.")
+		hud.notify("R · Convés    E · Sair")
 	elif near_market():
 		var earned: int = inventory.sell_all()
 		if earned > 0:
 			sold_once = true
 			audio.cue("catch")
-			hud.notify("Capturas vendidas! +%d moedas. Boa próxima viagem." % earned)
+			hud.notify("+%d moedas" % earned)
 		else:
-			hud.notify("O cesto está vazio. Traga um peixe e eu compro sua captura.")
+			hud.notify("Sem capturas para vender.")
 	else:
 		if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:
 			world.village.guardian.observe()
 			if not inventory.encyclopedia.has("island_guardian"):
 				inventory.record({"id":"island_guardian","name":"Guardião da Vigia","rarity":"Lendária","weight":0.,"observation":true})
-			hud.notify("Guardião da Vigia observado e registrado. Esta criatura não pode ser capturada com a vara.");return
+			hud.notify("Guardião registrado.");return
 		var service: String=world.village.nearby_service(player.global_position)
 		if not service.is_empty():
-			service_id=service;hud.open_service(service,inventory,boat);Input.mouse_mode=Input.MOUSE_MODE_VISIBLE;return
+			service_id=service;hud.open_service(service,inventory,boat,world.village.bridge_district.stock);Input.mouse_mode=Input.MOUSE_MODE_VISIBLE;return
 		var discovery: Dictionary=world.village.nearby_discovery(player.global_position)
 		if not discovery.is_empty():
 			world.village.discovered[discovery.id]=discovery.title
@@ -292,7 +292,7 @@ func toggle_deck() -> void:
 	player.visual.seated=not player.on_deck
 	if player.on_deck:player.deck_local=Vector3(0,1.12,2.4)
 	boat.set_occupied(not player.on_deck)
-	hud.notify("Caminhe com WASD · R assumir o leme · E sair do barco." if player.on_deck else "Você assumiu o leme.")
+	hud.notify("R · Assumir o leme" if player.on_deck else "Você assumiu o leme.")
 
 func disembark() -> void:
 	var target: Vector3=boat._hull.to_global(Vector3(-3.1,.2,2.2))
@@ -305,7 +305,7 @@ func disembark() -> void:
 			if not hit.is_empty() and hit.position.y>.15 and hit.position.y<2.7 and hit.normal.y>.65:
 				target=hit.position+Vector3.UP*.1;break
 	boat.set_occupied(false);player.set_boating(false);player.global_position=target;player.velocity=Vector3.ZERO
-	hud.notify("Desembarcou. Na água, use WASD para nadar e E junto ao barco para subir.")
+	hud.notify("Desembarcou.")
 
 func near_market() -> bool:
 	return Vector2(player.global_position.x - 6, player.global_position.z + 6).length() < 3.3
@@ -314,28 +314,21 @@ func near_dock() -> bool:
 	return Vector2(boat.global_position.x - 3.9, boat.global_position.z + 23).length() < 9.5
 
 func _interaction_hint() -> String:
-	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V  observar Vigia Abissal · aproxime-se abaixo de 6 nós · E sair do barco"
-	if aiming:return "SOLTE CLIQUE / Q para lançar · %.0f m · ESPAÇO pular · DIREITO cancelar"%cast_distance
-	if not pending_catch.is_empty():return "G  guardar %s   ·   X  devolver ao mar"%["no balde" if player.in_boat else "na mochila"]
-	if fishing.active():
-		return "WASD reposicionar · CLIQUE / Q fisgar/recolher · DIREITO cancelar · ESPAÇO pular"
+	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V · Observar"
+	if aiming:return "%.0f m · Solte para lançar"%cast_distance
+	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
+	if fishing.active():return ""
 	if player.in_boat:
-		if player.on_deck:return "WASD  caminhar no convés   ·   R  leme   ·   E  desembarcar   ·   CLIQUE / Q  pescar"
-		if near_dock() and absf(boat.speed) < 2.0:
-			return "E  desembarcar no cais   ·   CLIQUE / Q  lançar a linha"
-		return "%.0f nós · Casco %d%% · R convés · E sair · %s" % [absf(boat.speed) * 1.94,int(boat.integrity*100.), "CLIQUE / Q pescar · ESPAÇO pular · L luzes" if can_cast() else "S reduzir"]
-	if player.global_position.distance_to(boat.global_position + Vector3(0, 1, 0)) < 5.0:
-		return "E  embarcar no Aurora   ·   CLIQUE / Q  pescar no cais"
-	if near_market():
-		return "E  vender capturas  /  %d moedas" % inventory.total_value()
+		if player.on_deck:return "R · Leme    E · Sair"
+		return "%.0f nós · %d%% casco    R · Convés"%[absf(boat.speed)*1.94,int(boat.integrity*100.)]
+	if player.global_position.distance_to(boat.global_position+Vector3(0,1,0))<5.:return "E · Embarcar"
+	if near_market():return "E · Vender capturas"
 	var service: String=world.village.nearby_service(player.global_position)
-	if not service.is_empty():return "E  acessar %s"%hud.SERVICE_NAMES.get(service.replace("_oldport",""),service)
-	if can_cast():
-		return "CLIQUE / Q  lançar a linha   ·   M  mapa   ·   J  enciclopédia"
-	if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:return "E  observar Guardião da Vigia"
+	if not service.is_empty():return "E · %s"%hud.SERVICE_NAMES.get(service.replace("_oldport","").replace("_bridge",""),service)
 	var discovery: Dictionary=world.village.nearby_discovery(player.global_position)
-	if not discovery.is_empty():return "E  explorar "+str(discovery.title)
-	return "WASD  nadar · E  subir no barco" if player.swimming else "Explore as trilhas da ilha · M mapa · J enciclopédia"
+	if not discovery.is_empty():return "E · "+str(discovery.title)
+	if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:return "E · Observar"
+	return ""
 
 func _on_caught(data: Dictionary) -> void:
 	if stow_tween!=null: stow_tween.kill()
@@ -347,7 +340,7 @@ func _on_caught(data: Dictionary) -> void:
 	if catch_display != null:
 		catch_display.show_catch(data)
 		catch_display.held=true
-	hud.notify("Captura na mão. G guarda no balde/mochila; X devolve ao mar.")
+	hud.notify("Captura!")
 
 func finish_catch(release: bool) -> void:
 	if pending_catch.is_empty():return
@@ -355,7 +348,7 @@ func finish_catch(release: bool) -> void:
 	if release:
 		world.ocean.effects.splash(fishing_visual.target,.9,true)
 		surface_fish.breach(fishing_visual.target,fishing.species_current)
-		hud.notify("Peixe devolvido ao mar. A descoberta ficou registrada na enciclopédia.")
+		hud.notify("Peixe devolvido.")
 	else:
 		inventory.add_catch(pending_catch)
 		hud.notify("Captura guardada %s."%["no balde do barco" if player.in_boat else "na mochila"])
@@ -377,6 +370,14 @@ func _stow_frame(t: float) -> void:
 func _service_action(action: String) -> void:
 	var message: String=""
 	if Economy.CATALOG.has(action):message=Economy.buy(action,inventory,boat,fishing)
+	elif action.begins_with("buy_stock:"):
+		var index:=int(action.get_slice(":",1));var stock: Array=world.village.bridge_district.stock
+		if index>=0 and index<stock.size():
+			var price:=ceili(float(stock[index].value)*1.25)
+			if inventory.money>=price:
+				inventory.money-=price;inventory.add_catch(stock[index]);stock.remove_at(index);message="Peixe comprado."
+			else:message="Moedas insuficientes."
+	elif action.contains(":") or action in ["use_kit","use_tackle","craft_kit","sell_bait","sell_material"]:message=Economy.trade(action,inventory,boat)
 	elif action=="sell":
 		var amount: int=inventory.sell_all();sold_once=sold_once or amount>0;message="Venda: +%d moedas."%amount
 	elif action=="store":
@@ -384,11 +385,11 @@ func _service_action(action: String) -> void:
 	elif action=="withdraw":
 		inventory.catches.append_array(inventory.stored_catches);inventory.stored_catches.clear();inventory.changed.emit();message="Capturas retiradas do armazém."
 	elif action=="rest":world.ocean.hour=8.;message="Você descansou até a manhã."
-	hud.open_service(service_id,inventory,boat);hud.service_message.text=message
+	hud.open_service(service_id,inventory,boat,world.village.bridge_district.stock);hud.service_message.text=message
 
-func _on_fishing_message(message: String) -> void:
-	if is_instance_valid(hud):
-		hud.notify(message)
+func _on_fishing_message(_message: String) -> void:
+	if is_instance_valid(hud) and fishing.state==Fishing.State.ESCAPED:
+		hud.notify("O peixe escapou.")
 
 func _on_fishing_state(state: int) -> void:
 	if state in [Fishing.State.IDLE,Fishing.State.ESCAPED] and is_instance_valid(surface_fish): surface_fish.hide()
@@ -403,7 +404,7 @@ func _recover_player() -> void:
 	fishing.cancel()
 	player.global_position = world.safe_spawn()
 	player.velocity = Vector3.ZERO
-	hud.notify("Você voltou ao cais em segurança. Nenhuma captura foi perdida.")
+	hud.notify("De volta ao cais.")
 
 func return_to_harbor() -> void:
 	aiming=false
@@ -414,7 +415,7 @@ func return_to_harbor() -> void:
 	player.global_position = world.safe_spawn()
 	player.yaw = 0.0
 	resume_play()
-	hud.notify("De volta ao porto. Seu cesto e suas moedas continuam com você.")
+	hud.notify("De volta ao porto.")
 
 func _configure_input() -> void:
 	var bindings: Dictionary = {

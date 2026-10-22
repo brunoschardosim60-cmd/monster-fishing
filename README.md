@@ -24,6 +24,10 @@ Pesque de praias, cais, rochas ou do barco em baixa velocidade. O lançamento ve
 
 A costa tem sardinha, cavala e robalo; águas profundas acrescentam atum. À noite, o mar profundo também oferece peixe-lanterna. Cardumes aproximam-se da isca e fogem de motores próximos; lançar junto deles favorece sua espécie. O Vigia Abissal é uma descoberta por observação, sem captura ou combate.
 
+## Porto e interface atualizados
+
+Vila iluminada à noite, dois faróis com feixe giratório, pontes caminháveis com três bancas, pescadores abastecendo o mercado e compra/venda de itens. Moradores e cardumes usam movimento suavizado. A tela mostra menos texto; os controles completos ficam em ESC. Veja [implementação, referências e testes](docs/HARBOR_RENEWAL.md).
+
 ## Mundo e arte
 
 - 14 prédios com interiores e portas, mercado, loja, oficina, armazém, cabana e moradores caminhando.

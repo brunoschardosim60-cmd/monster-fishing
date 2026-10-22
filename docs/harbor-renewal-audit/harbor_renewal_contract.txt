@@ -1,0 +1,21 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+PASS Walk the full east bridge loop and return to shore without jumping
+PASS Walk arched western bridge into the market bay
+PASS E opens actual bridge market after physical approach
+PASS Market purchase consumes currency and repair kit restores 35 percent hull
+PASS Consumed item cannot be reused
+PASS Trade resale pays advertised price and cannot duplicate goods
+PASS Tackle box produces usable fishing bait
+PASS Bait can be sold individually
+PASS Canvas and gathered materials craft a real repair kit
+PASS Fish motion has bounded steps and turns: 0.012 m / 0.002 rad
+PASS Resting villagers hold their position
+PASS Walking accelerates gradually from rest
+PASS Working fishers cast, strike, reel, store fish and supply market stock
+PASS Buying NPC fish transfers a real catch and removes market stock
+PASS Individual capture sale removes the fish and credits its value
+PASS Night ambient fill and connected street lighting keep town readable
+PASS Night lighthouse rotates its actual beam
+PASS HUD hides tutorial blocks and keeps context prompts brief
+HARBOR RENEWAL 18 checks / 0 failures

@@ -9,6 +9,7 @@ var money: int = 0
 var equipment: Dictionary={"rod":0,"line":0,"hook":0,"engine":0,"reel":0,"searchlight":0,"hull":0}
 var bait: int=0
 var materials: int=0
+var goods: Dictionary={"repair_kit":0,"tackle":0,"canvas":0}
 var stored_catches: Array[Dictionary]=[]
 var encyclopedia: Dictionary={}
 

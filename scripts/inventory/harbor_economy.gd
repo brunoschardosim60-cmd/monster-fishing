@@ -1,4 +1,43 @@
 extends RefCounted
+const GOODS: Dictionary={
+	"repair_kit":{"title":"Kit de reparo","buy":24,"sell":12},
+	"tackle":{"title":"Caixa de anzóis","buy":16,"sell":8},
+	"canvas":{"title":"Lona naval","buy":20,"sell":10}}
+
+static func trade(action: String,inventory: RefCounted,boat: CharacterBody3D) -> String:
+	var parts:=action.split(":");var kind:=parts[0];var id:=parts[1] if parts.size()>1 else ""
+	if kind in ["buy_goods","sell_goods"]:
+		if not GOODS.has(id):return "Item indisponível."
+		var item: Dictionary=GOODS[id];var count: int=inventory.goods.get(id,0)
+		if kind=="buy_goods":
+			if inventory.money<int(item.buy):return "Moedas insuficientes."
+			inventory.money-=int(item.buy);inventory.goods[id]=count+1
+		else:
+			if count<=0:return "Você não possui este item."
+			inventory.goods[id]=count-1;inventory.money+=int(item.sell)
+	elif kind=="use_tackle":
+		if inventory.goods.get("tackle",0)<=0:return "Sem caixa de anzóis."
+		inventory.goods.tackle-=1;inventory.bait+=6
+	elif kind=="craft_kit":
+		if inventory.goods.get("canvas",0)<=0 or inventory.materials<2:return "Faltam materiais."
+		inventory.goods.canvas-=1;inventory.materials-=2;inventory.goods.repair_kit=inventory.goods.get("repair_kit",0)+1
+	elif kind=="use_kit":
+		if inventory.goods.get("repair_kit",0)<=0:return "Sem kit de reparo."
+		if boat.integrity>=.999:return "Casco intacto."
+		inventory.goods.repair_kit-=1;boat.integrity=minf(1.,boat.integrity+.35)
+	elif kind=="sell_bait":
+		if inventory.bait<=0:return "Sem iscas."
+		inventory.bait-=1;inventory.money+=1
+	elif kind=="sell_material":
+		if inventory.materials<=0:return "Sem materiais."
+		inventory.materials-=1;inventory.money+=3
+	elif kind=="sell_fish":
+		if not id.is_valid_int():return "Captura indisponível."
+		var index:=int(id)
+		if index<0 or index>=inventory.catches.size():return "Captura indisponível."
+		inventory.money+=int(inventory.catches[index].value);inventory.catches.remove_at(index)
+	else:return "Ação indisponível."
+	inventory.changed.emit();return "Concluído."
 const CATALOG: Dictionary={
 	"bait":{"title":"6 iscas frescas · mordidas 25% mais rápidas","price":12,"service":"gear"},
 	"rod":{"title":"Vara reforçada · recolhimento +15%","price":65,"service":"gear"},

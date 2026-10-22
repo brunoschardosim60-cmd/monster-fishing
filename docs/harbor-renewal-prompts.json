@@ -1,0 +1,24 @@
+{
+  "mode": "built-in image_gen",
+  "purpose": "Concept references; not screenshots of the running game",
+  "images": [
+    {
+      "file": "harbor-bridges-concept.png",
+      "prompt": "Use case: stylized-concept. Asset type: realistic 3D game environment concept reference for Monster Fishing. Design an original inhabited tropical harbor at blue hour, physically plausible weathered timber market bridges on piles, warm bronze lanterns, diagonal structural braces, softly arched handrails, clear wide walkways, small cloth-canopy fish and tackle stalls in side bays, fishing residents with rods and lines reaching the water, a cream masonry lighthouse with brass glass lantern and rotating light on a rocky hill behind. Ocean teal and lively, legible nighttime paths with warm pools of light and moonlit ambient fill. Modest fishing boats with teak decks, ivory hulls, navy trim, ropes and white fenders. One single detailed wide cinematic scene suitable as an architectural modeling reference, eye-level from a bridge. Premium realism, believable scale, no text, no UI, no logo. Avoid fantasy architecture, glowing neon, random decorative clutter, dark crushed shadows."
+    },
+    {
+      "file": "boat-outfitting-concept.png",
+      "prompt": "Use case: product-mockup. Asset type: original realistic fishing boat modeling reference for Monster Fishing game. A believable compact 8 meter inshore fishing launch, ivory hull with navy blue rubbing strake, aged teak aft deck with dark caulking seams, small cream wheelhouse forward, warm cabin lamps, stainless safety rails, white cylindrical fenders hung by hemp rope, brass mooring cleats, coiled ropes, a padded helm bench, tackle chest, bucket, rod holders. Three-quarter elevated stern view showing the usable interior and details clearly, entire boat within image. Neutral blue harbor background, golden side light, realistic PBR material detail and coherent human proportions. No people, no text, no logos, no collage, no huge yacht. Useful as close construction reference, no exaggerated hull."
+    }
+  ],
+  "references": [
+    {
+      "title": "Visit Bergen — compact waterfront streets, warehouses and wooden passages",
+      "url": "https://en.visitbergen.com/ideas-and-inspiration/explore-bergen/bergen-world-heritage-city"
+    },
+    {
+      "title": "Library of Congress — lighthouse lens and concentrated light",
+      "url": "https://www.loc.gov/everyday-mysteries/categories/technology/item/how-is-lighthouse-light-magnified/"
+    }
+  ]
+}

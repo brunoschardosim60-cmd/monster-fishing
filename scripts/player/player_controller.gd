@@ -91,7 +91,7 @@ func _physics_process(delta: float) -> void:
 		if deck_jump<=0.:deck_vertical_speed=0.
 		airborne=deck_jump>.01
 		global_position=deck_boat._hull.to_global(deck_local+Vector3.UP*deck_jump)
-		if axis.length()>.1: visual.rotation.y=lerp_angle(visual.rotation.y,yaw+atan2(-axis.x,-axis.y),delta*10.)
+		if axis.length()>.1: visual.rotation.y=lerp_angle(visual.rotation.y,yaw+atan2(-axis.x,-axis.y),1.-exp(-delta*8.))
 		velocity=direction*2.3
 	elif not in_boat:
 		var axis := Vector2.ZERO
@@ -102,8 +102,8 @@ func _physics_process(delta: float) -> void:
 		swimming=global_position.y<water-.35 and not is_on_floor()
 		var speed_now := (2.2 if swimming else walk_speed) * (1.65 if Input.is_action_pressed("sprint") else 1.0)
 		if fishing_active:speed_now=minf(speed_now,2.6)
-		velocity.x = move_toward(velocity.x, direction.x * speed_now, delta * 24.0)
-		velocity.z = move_toward(velocity.z, direction.z * speed_now, delta * 24.0)
+		velocity.x = move_toward(velocity.x, direction.x * speed_now, delta * 14.0)
+		velocity.z = move_toward(velocity.z, direction.z * speed_now, delta * 14.0)
 		coyote_time=.12 if is_on_floor() else maxf(0.,coyote_time-delta)
 		if jump_buffer>0. and coyote_time>0. and not swimming and not movement_locked:
 			velocity.y=JUMP_SPEED;jump_buffer=0.;coyote_time=0.
@@ -116,7 +116,7 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		airborne=not is_on_floor() and not swimming
 		if direction.length() > 0.1:
-			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-direction.x, -direction.z), delta * 12.0)
+			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-direction.x, -direction.z), 1.-exp(-delta*9.))
 		if global_position.y < -25.0:
 			fell_into_water.emit()
 	visual.holding_fish=holding_fish

@@ -11,9 +11,9 @@ var elapsed: float=0.
 var breach_clock: float=9.
 func _ready() -> void:
 	for data: Array in [[Vector3(-28,-3,-66),"mackerel"],[Vector3(250,-4,-170),"tuna"],[Vector3(480,-4,100),"tuna"]]:
-		var school:={"origin":data[0],"center":data[0],"species":data[1],"members":[],"mode":"cardume"}
+		var school:={"origin":data[0],"center":data[0],"species":data[1],"members":[],"velocities":[],"mode":"cardume"}
 		for i: int in 8:
-			var fish:=Visual.new();fish.species=data[1];fish.scale=Vector3.ONE*(.48 if data[1]=="mackerel" else 1.5);add_child(fish);school.members.append(fish)
+			var fish:=Visual.new();fish.species=data[1];fish.scale=Vector3.ONE*(.48 if data[1]=="mackerel" else 1.5);fish.position=data[0]+Vector3(sin(i*2.4)*3.,sin(i)*.4,cos(i*2.4)*3.);fish.swim_phase=i*2.4;fish.set_meta("school",true);add_child(fish);school.members.append(fish);school.velocities.append(Vector3(0,0,-1.))
 		schools.append(school)
 	guardian=Visual.new();guardian.species="abyssal_guardian";guardian.name="VigiaAbissal";guardian.position=Vector3(380,-6,-220);add_child(guardian)
 func region_at(at: Vector3) -> String:
@@ -42,13 +42,32 @@ func _physics_process(delta: float) -> void:
 			target=school.center+(school.center-game.boat.position).normalized()*20.;school.mode="fuga"
 		if Layout.coast(Vector2(target.x,target.z)).x>6.:school.center=school.center.move_toward(target,delta*(3.5 if school.mode=="fuga" else 1.3))
 		for i: int in school.members.size():
-			var fish: Node3D=school.members[i];var phase:=float(i)*2.4+elapsed*.28
-			var at: Vector3=school.center+Vector3(cos(phase)*(2.+i*.2),sin(phase*2.)*.45,sin(phase)*(2.+i*.2))
-			at.y=minf(at.y,Waves.height_at(at)-.7)
-			var direction: Vector3=at-fish.position
-			fish.position=at
-			if direction.length_squared()>.0001:fish.rotation.y=lerp_angle(fish.rotation.y,atan2(-direction.x,-direction.z),delta*5.)
+			var fish: Node3D=school.members[i];var phase:=float(i)*2.4+elapsed*.18
+			var at: Vector3=school.center+Vector3(cos(phase)*(3.+i*.3),sin(phase*1.3)*.6,sin(phase)*(3.+i*.3))
+			var separation:=Vector3.ZERO
+			for other: Node3D in school.members:
+				if other==fish:continue
+				var offset:=fish.position-other.position
+				if offset.length_squared()<1.4:separation+=offset/maxf(offset.length_squared(),.1)
+			var desired: Vector3=(at-fish.position)*.65+separation*.7
+			var limit:=4. if school.mode=="fuga" else 1.7
+			desired=desired.limit_length(limit)
+			var velocity: Vector3=school.velocities[i]
+			velocity=velocity.move_toward(desired,delta*1.6)
+			var next: Vector3=fish.position+velocity*delta
+			if Layout.coast(Vector2(next.x,next.z)).x>3.:fish.position=next
+			else:velocity=Vector3.ZERO
+			fish.position.y=minf(fish.position.y,Waves.height_at(fish.position)-.7)
+			school.velocities[i]=velocity
+			if velocity.length_squared()>.01:
+				var heading:=atan2(-velocity.x,-velocity.z)
+				var turn:=angle_difference(fish.rotation.y,heading)
+				fish.rotation.y+=clampf(turn,-delta*1.8,delta*1.8)
+				fish.rotation.x=lerpf(fish.rotation.x,atan2(velocity.y,Vector2(velocity.x,velocity.z).length()),1.-exp(-delta*3.))
+				fish.rotation.z=lerpf(fish.rotation.z,-clampf(turn*.18,-.22,.22),1.-exp(-delta*2.))
+			fish.set_swim(.45+velocity.length()*.55,delta)
 			fish.visible=fish.position.distance_squared_to(game.player.position)<160000.
+
 	var phase:=elapsed*.024;var target:=Vector3(380+cos(phase)*45.,-3.5,-220+sin(phase)*45.)
 	guardian_mode="patrulhando"
 	if guardian_in_range() and absf(game.boat.speed)>3.:target.y=-14.;guardian_mode="mergulhando"
