@@ -4,10 +4,10 @@ signal resume_requested
 signal return_requested
 signal quit_requested
 
-const INK := Color("102e35")
-const CREAM := Color("f5ebd4")
-const GOLD := Color("edbe78")
-const SEA := Color("6bc6b7")
+const INK := Color("071d2b")
+const CREAM := Color("e4edf1")
+const GOLD := Color("d4b17b")
+const SEA := Color("73c4e0")
 var root: Control
 var stats: Label
 var prompt: Label
@@ -216,7 +216,7 @@ func _label(parent: Node, text_value: String, font_size: int, color: Color) -> L
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_shadow_color", Color(0.01, 0.03, 0.04, 0.8))
 	label.add_theme_constant_override("shadow_offset_x", 1)
-	label.add_theme_constant_override("shadow_offset_y", 2)
+	label.add_theme_constant_override("shadow_offset_y", 1)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(label)
 	return label

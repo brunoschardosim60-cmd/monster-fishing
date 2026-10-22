@@ -3,7 +3,7 @@ extends SceneTree
 ## Run without --headless. Output is ignored by Git under tests/output/.
 
 const Fishing = preload("res://scripts/fishing/fishing_system.gd")
-const OUTPUT: String = "res://tests/output/visual"
+var OUTPUT: String = "res://tests/output/visual"
 var game: Node3D
 var failures: int = 0
 var checks: int = 0
@@ -54,10 +54,12 @@ func _sample(label: String) -> void:
 	print("PERFORMANCE_SAMPLE: " + JSON.stringify(sample))
 
 func _run() -> void:
+	if RenderingServer.get_current_rendering_method()=="gl_compatibility":
+		OUTPUT="res://tests/output/compatibility"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT))
 	print("GPU: ", RenderingServer.get_video_adapter_name(), " / ", RenderingServer.get_video_adapter_vendor())
 	print("RENDERER: ", RenderingServer.get_current_rendering_method(), " / ", RenderingServer.get_current_rendering_driver_name())
-	print("NOTICE: real rendered smoke samples, window off-screen, other apps active; not a benchmark.")
+	print("NOTICE: short real GPU observations; use render_benchmark.gd for frame-time measurements.")
 	var scene: PackedScene = load("res://scenes/main/main.tscn") as PackedScene
 	game = scene.instantiate()
 	root.add_child(game)
@@ -68,6 +70,8 @@ func _run() -> void:
 	await _frames(120)
 	await _capture("01_title")
 	game.begin_play()
+	game.set_process_input(false)
+	for action: StringName in InputMap.get_actions(): InputMap.action_erase_events(action)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	game.player.controls_enabled = false
 	await _frames(180)
@@ -111,7 +115,8 @@ func _run() -> void:
 	await _frames(10)
 	_hud_bounds("capture toast", game.hud.toast)
 	await _capture("04_catch_model")
-	game.fishing.advance(3.0)
+	game.fishing.advance(6.0)
+	await _frames(240)
 	game.player.global_position = Vector3(0.0, 1.55, -23.0)
 	game.interact()
 	_check(game.player.in_boat, "boat camera entered through interaction")
@@ -122,6 +127,24 @@ func _run() -> void:
 	await _frames(150)
 	_sample("boat_ocean")
 	await _capture("05_boat_ocean")
+	var inspection_camera:=Camera3D.new()
+	game.add_child(inspection_camera)
+	inspection_camera.fov=56.
+	inspection_camera.global_position=game.boat.global_position+Vector3(4.4,2.6,4.4)
+	inspection_camera.look_at(game.boat.global_position+Vector3(0,.85,0))
+	inspection_camera.current=true
+	game.hud.visible=false
+	await _frames(30)
+	await _capture("07_boat_detail")
+	game.boat.speed=7.
+	for frame: int in 45:
+		await process_frame
+		inspection_camera.global_position=game.boat.global_position+Vector3(5.,3.8,7.)
+		inspection_camera.look_at(game.boat.global_position+Vector3(0,0,1.5))
+	await _capture("10_boat_wake")
+	inspection_camera.current=false
+	game.player.camera.current=true
+	game.hud.visible=true
 	game.return_to_harbor()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	game.player.controls_enabled = false
@@ -130,6 +153,19 @@ func _run() -> void:
 	await _frames(150)
 	_sample("village")
 	await _capture("06_village")
+	inspection_camera.global_position=Vector3(15,1.65,-75)
+	inspection_camera.look_at(Vector3(22,-3.5,-100))
+	inspection_camera.fov=68.
+	inspection_camera.current=true
+	game.hud.visible=false
+	await _frames(90)
+	_sample("ocean_close")
+	await _capture("08_ocean_close")
+	inspection_camera.global_position=game.player.global_position+Vector3(1.7,1.35,-2.6)
+	inspection_camera.look_at(game.player.global_position+Vector3(0,.95,0))
+	inspection_camera.fov=48.
+	await _frames(30)
+	await _capture("09_angler_detail")
 	var report: FileAccess = FileAccess.open(OUTPUT.path_join("metrics.json"), FileAccess.WRITE)
 	if report != null:
 		report.store_string(JSON.stringify({"gpu": RenderingServer.get_video_adapter_name(), "renderer": RenderingServer.get_current_rendering_method(), "viewport": str(root.get_visible_rect()), "samples": samples, "checks": checks, "failures": failures, "visible_window": "--visible-visual" in OS.get_cmdline_user_args(), "limitations": "Short rendered smoke observations; other applications active. Not a sustained benchmark."}, "\t"))

@@ -1,4 +1,5 @@
 extends Node3D
+const Waves = preload("res://scripts/world/wave_field.gd")
 var line_mesh: ImmediateMesh
 var bobber: MeshInstance3D
 var ripple: MeshInstance3D
@@ -44,10 +45,11 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 	if not visible:
 		return
 	var end := target + Vector3(sin(elapsed * 1.8) * 0.15, 0.16 + sin(elapsed * 2.0) * 0.06, 0)
+	end.y = Waves.height_at(end) + .13
 	if state == 3:
 		end.y += sin(elapsed * 24.0) * 0.18
 	bobber.global_position = end
-	ripple.global_position = Vector3(end.x, 0.12, end.z)
+	ripple.global_position = Vector3(end.x, end.y - .07, end.z)
 	ripple.scale = Vector3.ONE * (0.7 + fmod(elapsed, 1.5) * 0.6)
 	line_mesh.clear_surfaces()
 	line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
