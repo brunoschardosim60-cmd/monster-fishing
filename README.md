@@ -4,6 +4,14 @@ Jogo local de pesca e exploração em **Godot 4.7.2**. A ilha inicial tem aproxi
 
 ## Jogar
 
+### Abrir a cópia do GitHub
+
+Clone este repositório ou use **Code → Download ZIP** e extraia a pasta. No **Godot 4.7.2 Standard**, escolha **Importar**, selecione `project.godot` e aguarde a importação dos modelos e texturas. Pressione **F6** somente para uma cena específica ou **F5** para iniciar o jogo completo.
+
+O repositório inclui código, cenas, dados, modelos, texturas e documentação. O executável do Godot, o cache `.godot/` e os resultados temporários dos testes ficam fora do Git. Os atalhos `.cmd` desta pasta usam a instalação portátil local em `tools/godot/`; sem essa instalação, abra e execute pelo editor Godot.
+
+### Instalação local com Godot portátil
+
 Abra **Jogar.cmd**. **Esc** permite mudar clima, horário, qualidade Baixa/Equilibrada/Alta/Ultra, resolução 3D e VSync. As preferências gráficas são salvas. **Jogar leve.cmd** usa OpenGL/Compatibility. **Abrir editor.cmd** abre o projeto no Godot portátil.
 
 | Controle | Ação |
