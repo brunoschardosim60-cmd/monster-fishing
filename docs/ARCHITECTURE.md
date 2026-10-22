@@ -18,3 +18,5 @@ Pesca segue IDLE → CASTING → WAITING → BITE → REELING → CAUGHT/ESCAPED
 6. Assets finais, animações, áudio profissional, opções, otimização por perfil, salvamento abrangente e testes finais.
 
 Não há singletons obrigatórios nem dependências online. A ilha pequena é carregada integralmente nesta fase; streaming e LOD complexo só devem ser introduzidos quando a escala justificar. Não marcar fases futuras como completas por existir um diretório.
+
+`world/static_batch.gd` agrupa malhas estáticas por material e células de 40 m para reduzir chamadas de desenho. Os corpos de colisão originais são preservados. Água, gaivotas e boias ficam fora dos grupos para continuar animadas. A bússola mostra a direção real da câmera.

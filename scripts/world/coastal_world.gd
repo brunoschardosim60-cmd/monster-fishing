@@ -40,13 +40,25 @@ func _ready() -> void:
 	_make_sign()
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
 		_make_buoy(p)
+	var dynamic_roots: Array[Node3D] = []
+	dynamic_roots.append_array(gulls)
+	dynamic_roots.append_array(buoys)
+	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
 
 func safe_spawn() -> Vector3:
 	return Vector3(0.0, 1.55, -17.0)
 
 func is_land(pos: Vector3) -> bool:
-	var radius := Vector2(pos.x / 29.0, (pos.z - 18.0) / 32.0).length()
-	return radius < 0.93 or (absf(pos.x) < 1.8 and pos.z > -26.5 and pos.z < -7.0)
+	# The same footprints as the four visible islands, including scenic shores.
+	var islands: Array[Vector4] = [
+		Vector4(0, 18, 29, 32), Vector4(-95, -95, 20, 24),
+		Vector4(115, -150, 29, 34), Vector4(35, -265, 32, 30),
+	]
+	for island: Vector4 in islands:
+		var radius := Vector2((pos.x - island.x) / island.z, (pos.z - island.y) / island.w).length()
+		if radius < 0.98:
+			return true
+	return absf(pos.x) < 1.8 and pos.z > -26.5 and pos.z < -7.0
 
 func _make_lighting() -> void:
 	var env_node := WorldEnvironment.new()
@@ -235,7 +247,7 @@ func _make_market() -> void:
 	var label := G.label(stall, "MERCADO  ·  PEIXE FRESCO", Vector3(0, 2.95, -1.28), 24)
 	label.rotation.y = PI
 	# Labels face toward the approach from the pier.
-	label.rotation.y = 0.0
+	label.rotation.y = PI
 	G.box(stall, Vector3(-0.8, 1.22, 0), Vector3(1.4, 0.2, 0.9), teal)
 	for i: int in range(4):
 		var fish := G.sphere(stall, Vector3(-1.25 + i * 0.3, 1.4, -0.1), Vector3(0.12, 0.1, 0.3), G.material(Color("8caaa4")))

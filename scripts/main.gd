@@ -83,8 +83,6 @@ func resume_play() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _input(event: InputEvent) -> void:
-	if "--trace-input" in OS.get_cmdline_user_args() and event is InputEventKey:
-		print("KEY_EVENT ", event.as_text(), " physical=", event.physical_keycode, " key=", event.keycode, " pressed=", event.pressed)
 	if event.is_action_pressed("pause") and started:
 		if get_tree().paused:
 			resume_play()
@@ -124,6 +122,9 @@ func _process(delta: float) -> void:
 	fishing.set_reeling(Input.is_action_pressed("fish"))
 	fishing_visual.update_line(player.rod_tip(), fishing.state, delta)
 	hud.stats.text = "%d  MOEDAS     /     %d  CAPTURAS" % [inventory.money, inventory.count()]
+	var heading := wrapf(rad_to_deg(-player.yaw), 0, 360)
+	var directions := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
+	hud.compass.text = "%s  ·  %03d°" % [directions[int((heading + 22.5) / 45.0) % 8], int(heading)]
 	hud.prompt.text = _interaction_hint()
 	hud.update_fishing(fishing.state, fishing.tension, fishing.progress, fishing.bite_time_remaining)
 	if not boarded_once:
@@ -168,6 +169,7 @@ func interact() -> void:
 	if player.in_boat:
 		if near_dock() and absf(boat.speed) < 2.0:
 			boat.set_occupied(false)
+			boat.reset_to_dock()
 			player.set_boating(false)
 			player.global_position = Vector3(0, 1.55, -23)
 			player.yaw = PI
@@ -254,6 +256,11 @@ func _configure_input() -> void:
 		var key := InputEventKey.new()
 		key.physical_keycode = int(bindings[action])
 		InputMap.action_add_event(action, key)
+		# Some Windows input sources expose a logical key with an unrelated scan
+		# code. Accept either representation for keyboard accessibility tools.
+		var logical_key := InputEventKey.new()
+		logical_key.keycode = int(bindings[action])
+		InputMap.action_add_event(action, logical_key)
 	var mouse := InputEventMouseButton.new()
 	mouse.button_index = MOUSE_BUTTON_LEFT
 	InputMap.action_add_event("fish", mouse)

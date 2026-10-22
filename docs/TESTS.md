@@ -42,6 +42,16 @@ O teste de pesca cobre também perda por mordida ignorada, excesso de tensão, l
 
 ## Verificação gráfica complementar
 
-Os testes headless validam controles, física e regras de jogo; não substituem inspeção visual e auditiva. Ao abrir o jogo, conferir legibilidade da interface, enquadramento das duas câmeras, aparência da água, animações, sincronização da linha/boia, volume dos sons e desempenho real. Confirmar também uma viagem e atracação manual usando o teclado e o mouse físicos.
+Resultados finais: pesca **24**, mundo **15**, integração **43** e regressões de atracação **18** verificações aprovadas: **100 verificações técnicas**, sem erros nos logs finais. O teste gráfico `visual_smoke.gd` adiciona **24 verificações**, incluindo limites da HUD dentro da tela, leitura/salvamento de seis imagens da viewport, pesca/captura real e representação do peixe 3D.
+
+O teste `docking_regression.gd` cobre aproximação pilotada e frenagem, desembarque no limite de distância, amarração automática, novo embarque, bloqueio de pesca em terra, quatro ilhas, câmera acima da água e teclas lógicas F/Esc. Execute com `--headless --fixed-fps 60 --script res://tests/docking_regression.gd`.
+
+Inspeção gráfica realizada na Radeon RX 580 2048SP com OpenGL/Compatibility: tela inicial, cais, HUD, pesca, captura, barco e vista da vila. Foram corrigidos elementos da HUD fora da tela, placas espelhadas e uma órbita de câmera submersa. O lançamento pela tecla Espaço foi confirmado também via automação nativa do Windows. O ciclo completo usa os testes no motor; não foi uma sessão humana longa de controle por mouse/teclado.
+
+O cenário estático é agrupado por material e célula espacial, preservando as colisões e os objetos animados. Na execução gráfica visível após essa otimização, foram observados **59–60 FPS** nas amostras de navegação e vila (janela física aproximadamente 1198×749; layout 1440×900). São amostras curtas, com outros aplicativos ativos, e não garantia de FPS nem benchmark sustentado. A janela de teste oculta teve resultados inferiores, portanto não deve ser usada para estimar o desempenho visível.
+
+Para repetir a inspeção gráfica: `--rendering-method gl_compatibility --audio-driver Dummy --max-fps 60 --script res://tests/visual_smoke.gd -- --visible-visual`. Imagens e métricas são gravadas em `tests/output/visual/`. O teste com Dummy não verifica a qualidade auditiva; os sons foram sintetizados e carregados, mas o volume e o conforto auditivo devem ser avaliados pelo jogador.
+
+Ainda recomendado: uma viagem longa com teclado/mouse físicos, ajuste subjetivo de sensibilidade, apreciação visual e auditiva e medição sustentada de desempenho. Isso é avaliação complementar de polimento, não substitui nem invalida os testes técnicos executados.
 
 O progresso desta Fase 1 é mantido apenas durante a sessão. Os testes de recuperação e retorno seguro preservam o estado em memória; não afirmam salvamento em disco.

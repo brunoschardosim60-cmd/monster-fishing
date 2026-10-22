@@ -13,6 +13,7 @@ var stats: Label
 var prompt: Label
 var toast: Label
 var objective: Label
+var compass: Label
 var fishing_box: PanelContainer
 var fishing_title: Label
 var fishing_hint: Label
@@ -53,7 +54,7 @@ func _ready() -> void:
 	objective = _label(root, "", 15, CREAM)
 	objective.position = Vector2(48, 151)
 	hud_controls.append(objective)
-	var compass := _label(root, "O     ·     N     ·     L", 15, CREAM)
+	compass = _label(root, "N  ·  000°", 15, CREAM)
 	compass.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	compass.offset_left = -90
 	compass.offset_top = 35

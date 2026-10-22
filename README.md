@@ -10,7 +10,7 @@ Um protótipo 3D jogável de pescaria e exploração, construído em Godot 4.7.2
 4. Acelere com **W**, vire com **A/D** e freie com **S**. Pare para pescar.
 5. Pressione **Espaço** para lançar. Aguarde **MORDIDA** e pressione novamente para fisgar.
 6. Segure **Espaço** ou o botão esquerdo para recolher. Solte para aliviar a tensão, antes de chegar a 100%. Repita até completar a captura.
-7. Volte devagar ao lado direito da ponta do cais e pressione **E**. Caminhe pela passarela em direção à ilha; o mercado fica à direita.
+7. Volte devagar ao lado direito da ponta do cais e pressione **E**. O barco é amarrado ao berço. Caminhe pela passarela em direção à ilha; o mercado fica à direita.
 8. Perto do balcão, pressione **E** para vender o cesto e receber moedas.
 
 Também é possível pescar diretamente do cais. Se perder a direção, **Esc → Voltar em segurança ao cais** recupera jogador e barco sem perder as capturas da sessão.

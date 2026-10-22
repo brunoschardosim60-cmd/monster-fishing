@@ -78,6 +78,9 @@ func _physics_process(delta: float) -> void:
 	_update_camera(delta)
 
 func _update_camera(delta: float) -> void:
+	# Orbit distance can otherwise push a third-person camera under the water.
+	if not first_person:
+		pitch = minf(pitch, 0.15)
 	pivot.rotation = Vector3(pitch, yaw, 0)
 	pivot.position.y = lerpf(pivot.position.y, 1.65 if not in_boat else 2.0, minf(delta * 8.0, 1.0))
 	arm.spring_length = lerpf(arm.spring_length, 0.0 if first_person else (10.5 if in_boat else 6.8), minf(delta * 10.0, 1.0))
