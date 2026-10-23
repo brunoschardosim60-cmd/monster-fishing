@@ -35,13 +35,13 @@ var rock: StandardMaterial3D
 
 func _ready() -> void:
 	rng.seed = 241019
-	wood = Materials.surface("weathered_wood", Color("d0b894"), 1.1)
-	dark_wood = Materials.surface("weathered_wood", Color("655646"), 1.5)
-	cream = Materials.surface("paint", Color("c4c4ac"), 1.8)
-	teal = Materials.surface("paint", Color("3a6467"), 1.4)
+	wood = Materials.surface("weathered_wood", Color("dcae78"), 1.1)
+	dark_wood = Materials.surface("weathered_wood", Color("7d5b3e"), 1.5)
+	cream = Materials.surface("paint", Color("eee2c3"), 1.8)
+	teal = Materials.surface("paint", Color("2f8c92"), 1.4)
 	leaf = G.material(Color("345e49"))
 	leaf_light = G.material(Color("527959"))
-	rock = Materials.surface("granite", Color("a5aaa3"), 1.2)
+	rock = Materials.surface("granite", Color("b3ab99"), 1.2)
 	_make_lighting()
 	_make_ocean()
 	region=preload("res://scripts/world/island_region.gd").new();region.world=self;region.name="AuroraIsland";add_child(region)
@@ -91,10 +91,10 @@ func _make_lighting() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.55
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 0.95
+	env.tonemap_exposure = 1.02
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.08
-	env.adjustment_saturation = 1.05
+	env.adjustment_saturation = 1.22
 	if RenderingServer.get_current_rendering_method() == "forward_plus":
 		get_viewport().use_taa = true
 		env.ssao_enabled = true
@@ -106,10 +106,10 @@ func _make_lighting() -> void:
 		env.glow_intensity = 0.35
 		env.glow_bloom = 0.0
 	else:
-		env.adjustment_contrast = 1.0
+		env.adjustment_contrast = 1.04
 		env.ambient_light_energy = .8
 	env.fog_enabled = true
-	env.fog_light_color = Color("7c9da8")
+	env.fog_light_color = Color("93cfd6")
 	env.fog_light_energy = 0.7
 	env.fog_density = 0.0023
 	env.fog_sky_affect = 0.04
@@ -168,7 +168,8 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 			vertices.append(center + Vector3(x, height, z))
 			var variation := rng.randf_range(-0.035, 0.035)
 			var col := Color("a99b76")
-			if radius < 0.68 and z > -18.0:
+			var shoreline:=.68+Layout.noise(Vector2(center.x+x,center.z+z),2.)*.08
+			if radius < shoreline and z > -18.0:
 				col = Color("506c4d")
 				if absf(x) < 2.6 or (absf(z + 10.0) < 2.6 and x > -13.0 and x < 14.0):
 					col = Color("998b67")
@@ -207,7 +208,7 @@ func _make_island(center: Vector3, size: Vector2, playable: bool) -> void:
 		for j: int in [0,1,3,4,5,6,7]:
 			var a:=float(j)*TAU/8.
 			_make_rock(center+Vector3(cos(a)*size.x*.99,-.05,sin(a)*size.y*.99),Vector3(2.8,2.1,3.5))
-		for i: int in range(12):
+		for i: int in range(22):
 			var angle := rng.randf() * TAU
 			var r := rng.randf_range(0.1, 0.56)
 			var x:=cos(angle)*r*size.x
@@ -227,6 +228,9 @@ func _island_height(x: float,z: float,radius: float,playable: bool) -> float:
 		h+=ridge*smoothstep(4.,14.,z)*(1.-smoothstep(.72,.98,radius))
 	else:
 		h+=pow(maxf(0.,1.-radius/.87),.95)*(18.+sin(x*.2+z*.13)*5.+cos(z*.24)*3.)
+		var variation:=Layout.noise(Vector2(x+37.,z-11.),1.7)*5.
+		var crags:=pow(1.-absf(Layout.noise(Vector2(x,z),1.5)),3.)*2.5
+		h+=(variation+crags)*(1.-smoothstep(.45,.84,radius))
 	if radius>.84:
 		h=lerpf(h,-.8,smoothstep(.84,1.,radius))
 	return h

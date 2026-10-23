@@ -7,6 +7,7 @@ var arm: SpringArm3D
 var camera: Camera3D
 var controls_enabled: bool = true
 var movement_locked: bool = false
+var flying: bool = false
 var in_boat: bool = false
 var first_person: bool = false
 var yaw: float = 0.0
@@ -26,7 +27,15 @@ var coyote_time: float=0.
 var deck_jump: float=0.
 var deck_vertical_speed: float=0.
 var airborne: bool=false
+var is_sprinting: bool=false
+var deck_velocity:=Vector3.ZERO
+var deck_sway:=Vector3.ZERO
+var prev_boat_speed: float=0.
+var lean:=Vector2.ZERO
+var previous_yaw: float=0.
+var was_airborne: bool=false
 const JUMP_SPEED: float=7.2
+const BASE_FOV: float=68.0
 signal fell_into_water
 
 func _ready() -> void:
@@ -72,12 +81,26 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	jump_buffer=maxf(0.,jump_buffer-delta)
+	is_sprinting=false
 	if controls_enabled:
 		yaw += Input.get_axis("look_right", "look_left") * delta * 1.5
-	if on_deck and is_instance_valid(deck_boat):
+	if flying:
+		var axis := Input.get_vector("move_left", "move_right", "move_forward", "move_back") if controls_enabled and not movement_locked else Vector2.ZERO
+		var vertical := Input.get_axis("fly_down", "jump") if controls_enabled and not movement_locked else 0.0
+		var direction := Basis(Vector3.UP, yaw) * Vector3(axis.x, vertical, axis.y)
+		var fly_speed := 90.0 if Input.is_action_pressed("sprint") else 24.0
+		velocity = direction.limit_length() * fly_speed
+		global_position += velocity * delta
+		global_position.y = clampf(global_position.y, 1.0, 600.0)
+		swimming = false; airborne = false; jump_buffer = 0.
+		visual.rotation.y = lerp_angle(visual.rotation.y, yaw, 1.-exp(-delta*8.))
+	elif on_deck and is_instance_valid(deck_boat):
 		var axis:=Input.get_vector("move_left","move_right","move_forward","move_back") if controls_enabled and not movement_locked else Vector2.ZERO
 		var direction:=Basis(Vector3.UP,yaw-deck_boat.rotation.y)*Vector3(axis.x,0,axis.y)
-		deck_local+=direction*delta*2.3
+		is_sprinting=Input.is_action_pressed("sprint") and axis.length()>.1 and not fishing_active
+		var deck_speed:=2.3*(1.7 if is_sprinting else 1.)
+		deck_velocity=deck_velocity.lerp(direction*deck_speed,1.-exp(-delta*8.))
+		deck_local+=deck_velocity*delta
 		deck_local.x=clampf(deck_local.x,-1.4,1.4);deck_local.z=clampf(deck_local.z,-3.3,3.1);deck_local.y=1.12
 		# The wheelhouse is a visible obstacle; side decks remain open around it.
 		if absf(deck_local.x)<1.13 and deck_local.z> -1.65 and deck_local.z<.9:
@@ -90,20 +113,33 @@ func _physics_process(delta: float) -> void:
 		deck_jump=maxf(0.,deck_jump+deck_vertical_speed*delta)
 		if deck_jump<=0.:deck_vertical_speed=0.
 		airborne=deck_jump>.01
-		global_position=deck_boat._hull.to_global(deck_local+Vector3.UP*deck_jump)
+		# A small local sway sells the boat's acceleration without separating the player from the deck.
+		var boat_speed: float=float(deck_boat.get("speed"))
+		var boat_accel: float=(boat_speed-prev_boat_speed)/maxf(delta,.0001)
+		prev_boat_speed=boat_speed
+		deck_sway=deck_sway.lerp(Vector3(0.,0.,clampf(boat_accel*.07,-.25,.25)),1.-exp(-delta*4.))
+		global_position=deck_boat._hull.to_global(deck_local+Vector3.UP*deck_jump+deck_sway)
 		if axis.length()>.1: visual.rotation.y=lerp_angle(visual.rotation.y,yaw+atan2(-axis.x,-axis.y),1.-exp(-delta*8.))
-		velocity=direction*2.3
+		velocity=deck_velocity
 	elif not in_boat:
+		deck_velocity=Vector3.ZERO
+		deck_sway=Vector3.ZERO
 		var axis := Vector2.ZERO
 		if controls_enabled and not movement_locked:
 			axis = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		var direction := Basis(Vector3.UP, yaw) * Vector3(axis.x, 0, axis.y)
 		var water: float=preload("res://scripts/world/wave_field.gd").height_at(global_position)
 		swimming=global_position.y<water-.35 and not is_on_floor()
-		var speed_now := (2.2 if swimming else walk_speed) * (1.65 if Input.is_action_pressed("sprint") else 1.0)
+		is_sprinting=Input.is_action_pressed("sprint") and axis.length()>.1 and not fishing_active and not swimming
+		var speed_now := (2.2 if swimming else walk_speed) * (1.65 if is_sprinting else 1.0)
 		if fishing_active:speed_now=minf(speed_now,2.6)
-		velocity.x = move_toward(velocity.x, direction.x * speed_now, delta * 14.0)
-		velocity.z = move_toward(velocity.z, direction.z * speed_now, delta * 14.0)
+		var wanted:=Vector3(direction.x,0.,direction.z)*speed_now
+		var horizontal:=Vector3(velocity.x,0.,velocity.z)
+		var response:=9.0 if direction.length()>.01 and (is_on_floor() or swimming) else (12.0 if is_on_floor() or swimming else 2.6)
+		horizontal=horizontal.lerp(wanted,1.-exp(-delta*response))
+		if wanted.length()<.01 and horizontal.length()<.06: horizontal=Vector3.ZERO
+		velocity.x=horizontal.x
+		velocity.z=horizontal.z
 		coyote_time=.12 if is_on_floor() else maxf(0.,coyote_time-delta)
 		if jump_buffer>0. and coyote_time>0. and not swimming and not movement_locked:
 			velocity.y=JUMP_SPEED;jump_buffer=0.;coyote_time=0.
@@ -113,8 +149,11 @@ func _physics_process(delta: float) -> void:
 			velocity.y -= 20.0 * delta
 		else:
 			velocity.y = -0.1
+		var fall_speed:=velocity.y
 		move_and_slide()
 		airborne=not is_on_floor() and not swimming
+		if was_airborne and not airborne and fall_speed<-4.5:
+			camera.position.y=-clampf(-fall_speed*.022,.05,.24)
 		if direction.length() > 0.1:
 			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-direction.x, -direction.z), 1.-exp(-delta*9.))
 		if global_position.y < -25.0:
@@ -125,13 +164,27 @@ func _physics_process(delta: float) -> void:
 	if "airborne" in visual:
 		visual.airborne=airborne;visual.vertical_speed=deck_vertical_speed if on_deck else velocity.y
 		visual.fishing_state=fishing_state;visual.cast_power=cast_power
-	visual.update_animation(Vector2(velocity.x, velocity.z).length() if not in_boat or on_deck else 0.0, fishing_active, delta)
-	if swimming: visual._rod.visible=false;visual.rotation.x=-.55
-	else: visual.rotation.x=0.
+	visual.update_animation(Vector2(velocity.x, velocity.z).length() if (not in_boat or on_deck) and not flying else 0.0, fishing_active, delta)
+	var planar_speed:=Vector2(velocity.x,velocity.z).length()
+	var turn_rate:=angle_difference(previous_yaw,visual.rotation.y)/maxf(delta,.0001)
+	previous_yaw=visual.rotation.y
+	var lean_target:=Vector2.ZERO
+	if not swimming and not airborne and not flying and (not in_boat or on_deck):
+		lean_target=Vector2(clampf(planar_speed/7.,0.,1.)*.13,clampf(turn_rate*.03,-.14,.14)*clampf(planar_speed/3.,0.,1.))
+	lean=lean.lerp(lean_target,1.-exp(-delta*7.))
+	was_airborne=airborne
+	if swimming:
+		visual._rod.visible=false
+		visual.rotation.x=-.55
+		visual.rotation.z=0.
+	else:
+		visual.rotation.x=-lean.x
+		visual.rotation.z=lean.y
 	_update_camera(delta)
 
 func _update_camera(delta: float) -> void:
-	camera.position.y=move_toward(camera.position.y,0.,delta*2.)
+	camera.position.y=move_toward(camera.position.y,0.,delta*(.3+absf(camera.position.y)*7.))
+	camera.fov=lerpf(camera.fov,BASE_FOV+(6. if is_sprinting and not first_person and not flying else 0.),minf(delta*5.,1.))
 	# Orbit distance can otherwise push a third-person camera under the water.
 	if not first_person:
 		pitch = minf(pitch, 0.15)
@@ -140,9 +193,22 @@ func _update_camera(delta: float) -> void:
 	arm.spring_length = lerpf(arm.spring_length, 0.0 if first_person else (10.5 if in_boat else 6.8), minf(delta * 10.0, 1.0))
 	visual.visible = not first_person
 
+func set_flying(value: bool) -> void:
+	flying = value
+	collision_layer = 0 if value else 4
+	collision_mask = 0 if value else 1
+	arm.collision_mask = 0 if value else 1
+	velocity = Vector3.ZERO
+	is_sprinting=false
+	deck_velocity=Vector3.ZERO
+	deck_sway=Vector3.ZERO
+	jump_buffer = 0.
+	coyote_time = 0.
+
 func set_boating(value: bool) -> void:
 	in_boat = value
 	deck_jump=0.;deck_vertical_speed=0.;airborne=false;jump_buffer=0.
+	deck_velocity=Vector3.ZERO;deck_sway=Vector3.ZERO;prev_boat_speed=0.;lean=Vector2.ZERO;was_airborne=false
 	on_deck=false;swimming=false
 	collision_layer = 0 if value else 4
 	collision_mask = 0 if value else 1

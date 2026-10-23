@@ -129,6 +129,20 @@ func _input(event: InputEvent) -> void:
 		return
 	if not started or get_tree().paused:
 		return
+	if event.is_action_pressed("fly_toggle") and not event.is_echo():
+		aiming = false
+		fishing.cancel()
+		if not player.flying:
+			boat.set_occupied(false)
+			boat.speed = 0.; boat.velocity = Vector3.ZERO
+			player.set_boating(false)
+		player.set_flying(not player.flying)
+		hud.notify("Voo · ESPAÇO sobe · CTRL desce · SHIFT acelera" if player.flying else "Voo desligado")
+		get_viewport().set_input_as_handled()
+		return
+	if player.flying:
+		if event.is_action_pressed("world_map"): hud.map_view.visible = not hud.map_view.visible
+		return
 	if event.is_action_pressed("deck"): toggle_deck()
 	if event.is_action_pressed("boat_lights"):
 		boat.toggle_lights();hud.notify("Luzes do barco acesas." if boat.lights_enabled else "Luzes do barco apagadas.")
@@ -290,7 +304,9 @@ func toggle_deck() -> void:
 	fishing.cancel()
 	player.on_deck=not player.on_deck;player.deck_boat=boat
 	player.visual.seated=not player.on_deck
-	if player.on_deck:player.deck_local=Vector3(0,1.12,2.4)
+	if player.on_deck:
+		player.deck_local=Vector3(0,1.12,2.4)
+		player.deck_velocity=Vector3.ZERO;player.deck_sway=Vector3.ZERO;player.prev_boat_speed=boat.speed
 	boat.set_occupied(not player.on_deck)
 	hud.notify("R · Assumir o leme" if player.on_deck else "Você assumiu o leme.")
 
@@ -314,6 +330,7 @@ func near_dock() -> bool:
 	return Vector2(boat.global_position.x - 3.9, boat.global_position.z + 23).length() < 9.5
 
 func _interaction_hint() -> String:
+	if player.flying:return "T · Encerrar voo"
 	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V · Observar"
 	if aiming:return "%.0f m · Solte para lançar"%cast_distance
 	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
@@ -407,6 +424,7 @@ func _recover_player() -> void:
 	hud.notify("De volta ao cais.")
 
 func return_to_harbor() -> void:
+	player.set_flying(false)
 	aiming=false
 	fishing.cancel()
 	boat.set_occupied(false)
@@ -423,6 +441,7 @@ func _configure_input() -> void:
 		"sprint": KEY_SHIFT, "interact": KEY_E, "fish": KEY_Q, "jump":KEY_SPACE,"boat_lights":KEY_L,"observe_wildlife":KEY_V,
 		"camera_toggle": KEY_F, "pause": KEY_ESCAPE, "inventory": KEY_TAB,
 		"look_left": KEY_LEFT, "look_right": KEY_RIGHT,
+		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,
 		"deck":KEY_R,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,
 	}
 	for action: String in bindings:

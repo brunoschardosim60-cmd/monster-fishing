@@ -7,8 +7,9 @@ uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
 #include "res://assets/shaders/ocean_common.gdshaderinc"
-uniform vec3 deep_color : source_color = vec3(0.015,0.25,0.27);
-uniform vec3 shallow_color : source_color = vec3(0.03,0.40,0.39);
+uniform vec3 deep_color : source_color = vec3(0.02,0.33,0.40);
+uniform vec3 shallow_color : source_color = vec3(0.07,0.58,0.55);
+uniform float sea_glow = 0.0; // luz difusa da água; ocean_environment liga de dia e desliga à noite
 varying vec3 world_pos;
 varying vec3 wave_normal;
 varying float crest;
@@ -60,6 +61,7 @@ void fragment() {
 	vec3 refract_color=textureLod(screen_tex,clamp(SCREEN_UV+distortion,vec2(.001),vec2(.999)),0.).rgb;
 	col=mix(col,refract_color*vec3(.65,.94,.92),shallow*.32);
 	ALBEDO=mix(col,vec3(.78,.85,.81),foam);
+	EMISSION=col*sea_glow*(1.-foam);
 	ROUGHNESS=mix(.11+wind_strength*.1+rain_strength*.08,.83,foam)+(.04*(1.-distance_fade));
 	METALLIC=.12;
 	SPECULAR=.65;

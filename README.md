@@ -26,6 +26,8 @@ Abra **Jogar.cmd**. **Esc** permite mudar clima, horário, qualidade Baixa/Equil
 | F | Primeira / terceira pessoa |
 | M / Z | Mapa / mudar escala |
 | J / Tab | Enciclopédia / capturas |
+| T | Ativar/desativar voo livre para explorar o mapa |
+| Espaço / Ctrl / Shift (voando) | Subir / descer / acelerar |
 | Esc | Pausa, retorno ao cais e configurações |
 
 Pesque de praias, cais, rochas ou do barco em baixa velocidade. O lançamento verifica água, alcance e obstáculos; é possível caminhar com a linha lançada. Solte para aliviar a tensão nas arrancadas. A captura entra no inventário ao guardar com **G**. Na água, aproxime-se do Aurora e use **E** para subir.

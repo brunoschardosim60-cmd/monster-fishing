@@ -15,6 +15,17 @@ const EAST_TRAIL: Array[Vector3]=[Vector3(0,1.25,32),Vector3(60,1.25,32),Vector3
 const NORTH_TRAIL: Array[Vector3]=[Vector3(-65,86,490),Vector3(-140,106,560),Vector3(-170,116,650),Vector3(-60,150,725),Vector3(50,150,775),Vector3(145,115,690),Vector3(130,83,540),Vector3(165,71,400),Vector3(90,63,345)]
 const OLD_PORT_TRAIL: Array[Vector3]=[Vector3(-30,1.4,-7),Vector3(-30,1.4,-4),Vector3(-60,1.4,-4),Vector3(-88,1.4,-4)]
 const PLOTS: Array[Vector4]=[Vector4(-14,7,8,7),Vector4(16,20,9,7),Vector4(-18,27,11,8),Vector4(-36,4,11,9),Vector4(35,5,9,7),Vector4(25,43,10,8),Vector4(-17,49,7,6),Vector4(14,52,8,7),Vector4(-42,23,7,6),Vector4(49,22,8,7),Vector4(52,46,9,7),Vector4(71,44,7,6),Vector4(-65,43,8,7),Vector4(-64,13,7,6)]
+static var terrain_noise: FastNoiseLite
+
+static func noise(p: Vector2, scale_value: float=1.) -> float:
+	if terrain_noise==null:
+		terrain_noise=FastNoiseLite.new()
+		terrain_noise.seed=441019
+		terrain_noise.noise_type=FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		terrain_noise.fractal_type=FastNoiseLite.FRACTAL_FBM
+		terrain_noise.fractal_octaves=3
+		terrain_noise.frequency=.014
+	return terrain_noise.get_noise_2d(p.x*scale_value,p.y*scale_value)
 
 static func plot_ground(p: Vector2) -> bool:
 	for plot: Vector4 in PLOTS:
@@ -60,7 +71,10 @@ static func height(p: Vector2) -> float:
 		ridge+=exp(-pow((p.x+115.)/65.,2.)-pow((p.y-465.)/90.,2.))*55.
 		ridge+=exp(-pow((p.x+50.)/170.,2.)-pow((p.y-740.)/170.,2.))*185.
 		var erosion:=sin(p.x*.033+p.y*.022)*6.+sin(p.y*.061-p.x*.045)*3.
-		h+=(ridge+erosion)*smoothstep(65.,125.,p.y)*smoothstep(8.,55.,-c)
+		# Broad variation makes the mountain mass read naturally while routes stay flattened below.
+		var hills:=noise(p)*5.5
+		var crags:=pow(1.-absf(noise(p,1.6)),4.)*5.*smoothstep(50.,120.,ridge)
+		h+=(ridge+erosion+hills+crags)*smoothstep(65.,125.,p.y)*smoothstep(8.,55.,-c)
 	var trail:=path_at(p)
 	h=lerpf(h,trail.y,1.-smoothstep(3.5,65.,trail.x))
 	# The old watch station occupies a level, accessible clearing beside the trail.

@@ -153,9 +153,10 @@ func _update_lighting(delta: float) -> void:
 	world.environment.ambient_light_sky_contribution=lerpf(.2,.85,daylight)
 	world.environment.ambient_light_energy=lerpf(.48,.55,daylight)
 	world.environment.fog_density=.055 if underwater else weather.fog+cold*.012
-	world.environment.fog_light_color=Color("0a5460") if underwater else Color("182d43").lerp(Color("7c9da8").lerp(Color("425967"),weather.cloud),daylight)
+	world.environment.fog_light_color=Color("0a5460") if underwater else Color("182d43").lerp(Color("93cfd6").lerp(Color("587886"),weather.cloud),daylight)
 	world.environment.fog_sky_affect=1. if underwater else .04+weather.rain*.45
-	world.environment.tonemap_exposure=.72 if underwater else .95
+	world.environment.tonemap_exposure=.72 if underwater else 1.02
+	if world.ocean_material!=null:world.ocean_material.set_shader_parameter("sea_glow",.085*daylight*(1.-weather.cloud*.55))
 	world.sky_material.set_shader_parameter("lightning",flash)
 	if light_clock>.35:
 		light_clock=0.

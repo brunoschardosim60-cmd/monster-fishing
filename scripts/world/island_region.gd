@@ -47,7 +47,7 @@ func _chunk(origin: Vector2) -> void:
 			vertices.append(Vector3(x*2.5,h,z*2.5))
 			normals.append(Vector3(Layout.height(p-Vector2(1,0))-Layout.height(p+Vector2(1,0)),2.,Layout.height(p-Vector2(0,1))-Layout.height(p+Vector2(0,1))).normalized())
 			var path:=Layout.path_at(p).x;var col:=Color("45653e")
-			if Layout.coast(p).x> -14. or path<3.4 or Layout.plot_ground(p): col=Color("a99b76")
+			if Layout.coast(p).x> -14.+Layout.noise(p,3.)*3.5 or path<3.4 or Layout.plot_ground(p): col=Color("a99b76")
 			colors.append(col)
 	for z: int in N:
 		for x: int in N:

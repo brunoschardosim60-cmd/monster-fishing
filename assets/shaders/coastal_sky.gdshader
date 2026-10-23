@@ -12,7 +12,7 @@ float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 void sky() {
 	vec3 d=normalize(EYEDIR);
 	float h=max(d.y,0.);
-	vec3 col=mix(vec3(.28,.43,.51),vec3(.018,.075,.17),pow(h,.45));
+	vec3 col=mix(vec3(.31,.58,.67),vec3(.025,.13,.36),pow(h,.42));
 	float day=smoothstep(-.16,.22,sun_direction.y);
 	col=mix(mix(vec3(.014,.027,.055),vec3(.001,.004,.014),h),col,day);
 	vec2 star_uv=vec2(atan(d.z,d.x)/6.283185+0.5,asin(d.y)/3.141593+0.5)*vec2(700.,350.);
