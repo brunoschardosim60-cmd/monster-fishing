@@ -9,6 +9,9 @@ uniform sampler2D rock_normal : hint_normal, filter_linear_mipmap_anisotropic, r
 uniform sampler2D meadow_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D floor_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D ground_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform vec3 biome_tint=vec3(1.);
+uniform float biome_snow=0.;
+uniform float biome_ash=0.;
 vec3 saturate_color(vec3 c,float s){return mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,s);}
 varying vec3 wp;
 varying vec3 wn;
@@ -35,8 +38,12 @@ void fragment(){
 	float cliff=smoothstep(.07,.40,1.-normalize(wn).y)*smoothstep(1.6,3.,wp.y);
 	stone=saturate_color(stone*.84,1.18);
 	ALBEDO=mix(ALBEDO,stone*mix(vec3(.9,.94,.9),vec3(1.2,1.1,.94),n),cliff*mix(.78,1.,n));
+	ALBEDO*=biome_tint;
 	float frost=(1.-smoothstep(120.,200.,length(wp.xz-vec2(790,-640))))*smoothstep(12.,28.,wp.y)*smoothstep(.35,.8,wn.y);
-	ALBEDO=mix(ALBEDO,vec3(.72,.82,.84),frost*.92);
+	float regional_snow=biome_snow*smoothstep(10.,30.,wp.y)*smoothstep(.35,.82,wn.y);
+	ALBEDO=mix(ALBEDO,vec3(.72,.82,.84),max(frost*.92,regional_snow*.94));
+	float ash=biome_ash*smoothstep(4.,18.,wp.y)*(1.-cliff*.45);
+	ALBEDO=mix(ALBEDO,vec3(.16,.15,.16),ash*.68);
 	NORMAL_MAP=mix(NORMAL_MAP,texture(rock_normal,wp.xz*.3).rgb,cliff);
 	NORMAL_MAP_DEPTH=.18;
 	ROUGHNESS=mix(.98,.68,wet);

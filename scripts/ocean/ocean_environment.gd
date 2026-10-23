@@ -1,5 +1,6 @@
 extends Node3D
 const Waves=preload("res://scripts/world/wave_field.gd")
+const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const Weather=preload("res://scripts/ocean/sea_weather.gd")
 const Effects=preload("res://scripts/ocean/water_effects.gd")
 const G=preload("res://scripts/world/geometry.gd")
@@ -68,11 +69,17 @@ func _make_seabed() -> void:
 	floor_mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _make_ice() -> void:
+	_make_ice_field(Vector2(506.,-622.),11,419)
+	_make_ice_field(Vector2(1530.,-1920.),18,917)
+
+func _make_ice_field(center: Vector2,count: int,seed_value: int) -> void:
 	var mat:=StandardMaterial3D.new(); mat.albedo_color=Color("a1c9cf")
 	mat.roughness=.28; mat.metallic=.12
-	var rng:=RandomNumberGenerator.new(); rng.seed=419
-	for i: int in 11:
-		var at:=Vector3(478.+float(i%4)*12.+rng.randf_range(-2,2),0,-606.-float(i/4)*12.)
+	var rng:=RandomNumberGenerator.new(); rng.seed=seed_value
+	for i: int in count:
+		var field_angle:=float(i)*TAU/float(count)+rng.randf_range(-.24,.24)
+		var field_radius:=rng.randf_range(24.,92.)
+		var at:=Vector3(center.x+cos(field_angle)*field_radius,0,center.y+sin(field_angle)*field_radius)
 		if Waves.coast(Vector2(at.x,at.z)).x<2.: continue
 		var floe:=Node3D.new(); add_child(floe); floe.position=at
 		var st:=SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -107,7 +114,9 @@ func _physics_process(delta: float) -> void:
 	world.water_root.position=Vector3(Waves.ocean_center.x,0,Waves.ocean_center.y)
 	seabed.position=world.water_root.position
 	Waves.bind(world.ocean_material)
-	cold=1.-smoothstep(60.,300.,Vector2(p.x,p.z).distance_to(Vector2(790,-640)))
+	var active_region:=Layout.region_at(Vector2(p.x,p.z))
+	var regional_cold:=1. if str(active_region.get("biome",""))=="frost" else 0.
+	cold=maxf(regional_cold,1.-smoothstep(60.,300.,Vector2(p.x,p.z).distance_to(Vector2(790,-640))))
 	underwater=p.y<Waves.height_at(p)-.08
 	rain_particles.global_position=p+Vector3(0,8,0)
 	rain_particles.emitting=weather.rain>.03 and not underwater and not world.village.indoors(p)

@@ -1,4 +1,5 @@
 extends SceneTree
+const Layout=preload("res://scripts/world/archipelago_layout.gd")
 
 var failures: int = 0
 
@@ -22,6 +23,12 @@ func run() -> void:
 	camera.current = true
 	for frame: int in range(8):
 		await physics_frame
+	check(Layout.WORLD_HALF>=3200.,"Expanded world spans at least 6.4 km")
+	check(world.remote_island_count==Layout.LOBES.size()-5,"Every planned distant island has terrain and collision")
+	for id: String in ["tropical","reef","volcanic","glacier","mountain","desert","mystic","tempest","shards"]:
+		check(world.get_node_or_null("Island_"+id)!=null,"Regional island exists: "+id)
+	var wrapped:=Layout.wrapped(Vector3(Layout.WORLD_HALF+18.,0,-Layout.WORLD_HALF-18.))
+	check(absf(wrapped.x)<Layout.WORLD_HALF and absf(wrapped.z)<Layout.WORLD_HALF,"Expanded ocean preserves continuous world wrapping")
 	var physics := world.get_world_3d().direct_space_state
 	for pos: Vector3 in [Vector3(0,5,-17),Vector3(0,5,-8),Vector3(0,5,-6),Vector3(6,5,-7)]:
 		var query := PhysicsRayQueryParameters3D.create(pos,pos - Vector3(0,8,0),1)

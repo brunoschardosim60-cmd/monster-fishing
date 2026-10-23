@@ -19,7 +19,10 @@ func _ready() -> void:
 			coastlines[0]=merged[0]
 		else:coastlines.append(polygon)
 func point(p: Vector2) -> Vector2:
-	return (p-(Vector2.ZERO if overview else Vector2(-40,480)))*(.14 if overview else .47)+Vector2(350,340)
+	if overview:
+		var scale:=minf((size.x-80.)/(Layout.WORLD_HALF*2.),(size.y-130.)/(Layout.WORLD_HALF*2.))
+		return p*scale+Vector2(size.x*.5,size.y*.5+18.)
+	return (p-Vector2(-40,480))*.47+Vector2(350,340)
 func _process(_delta: float) -> void:
 	if visible:queue_redraw()
 func _unhandled_input(event: InputEvent) -> void:
@@ -33,6 +36,13 @@ func _draw() -> void:
 		var polygon:=PackedVector2Array()
 		for p: Vector2 in coastlines[i]:polygon.append(point(p))
 		draw_colored_polygon(polygon,Color("4e756c"));polygon.append(polygon[0]);draw_polyline(polygon,Color("b5c7a4"),1.5,true)
+	if overview:
+		for i: int in Layout.REGIONS.size():
+			var region:=Layout.region_for_lobe(i)
+			if not bool(region.get("map_visible",false)): continue
+			var l:=Layout.LOBES[i];var marker:=point(Vector2(l.x,l.y));var color:=_region_color(str(region.get("biome","verdant")))
+			draw_circle(marker,4.,color)
+			draw_string(font,marker+Vector2(7,-7),str(region.get("map","")),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("f0e2c0"))
 	if not overview:
 		for route: Array[Vector3] in [Layout.TRAIL,Layout.WEST_TRAIL,Layout.EAST_TRAIL,Layout.NORTH_TRAIL,Layout.OLD_PORT_TRAIL]:
 			var line:=PackedVector2Array()
@@ -50,6 +60,17 @@ func _draw() -> void:
 		for ship: CharacterBody3D in game.world.traffic.vessels:
 			var at:=point(Vector2(ship.position.x,ship.position.z));draw_circle(at,3.,Color("e5a47c"))
 	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Dourado: descobertas",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
-	draw_string(font,Vector2(25,640),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 4,4 × 4,4 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
+	draw_string(font,Vector2(25,640),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 6,4 × 6,4 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
+
+func _region_color(biome: String) -> Color:
+	match biome:
+		"tropical": return Color("73d28d")
+		"frost": return Color("b9e5f1")
+		"volcanic": return Color("ff6e3d")
+		"mountain": return Color("9dc6aa")
+		"desert": return Color("edbf72")
+		"mystic": return Color("62e0d7")
+		"storm": return Color("bd7eee")
+		_: return Color("e9cb83")
 func _style() -> StyleBoxFlat:
 	var style:=StyleBoxFlat.new();style.bg_color=Color(.025,.09,.13,.96);style.border_color=Color("5c8c93");style.set_border_width_all(1);style.set_corner_radius_all(8);return style

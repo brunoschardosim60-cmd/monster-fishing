@@ -1,6 +1,6 @@
 # Monster Fishing — Arquipélago da Aurora
 
-Jogo local de pesca e exploração em **Godot 4.7.2**. A ilha inicial tem aproximadamente **700 × 1.100 m**, vila, porto antigo, interiores, trilhas de montanha, fauna marinha e embarcações em movimento. O oceano navegável ocupa 4,4 × 4,4 km e conecta as bordas opostas.
+Jogo local de pesca e exploração em **Godot 4.7.2**. A ilha inicial tem aproximadamente **700 × 1.100 m**, vila, porto antigo, interiores, trilhas de montanha, fauna marinha e embarcações em movimento. O oceano navegável ocupa **6,4 × 6,4 km**, conecta as bordas opostas e reúne regiões tropicais, vulcânicas, glaciais, montanhosas, desérticas, misteriosas e de tempestade.
 
 ## Jogar
 
@@ -44,6 +44,7 @@ Vila iluminada à noite, dois faróis com feixe giratório, pontes caminháveis 
 - Porto antigo com o **GLB completo enviado**, em escala de 58 m, conectado à vila por cais e duas bancas funcionais.
 - Compras reais de iscas, vara, linha, anzol, motor, reparo, molinete de maior alcance, proteção do casco e holofote de 65 m.
 - Trilha norte até o cume de 150 m, mirantes, gruta, ruínas, farol e arco rochoso com passagem navegável.
+- Carta náutica de mundo aberto com 12 ilhas remotas físicas: recifes tropicais, vulcão, geleira, cordilheira, deserto, ilhas misteriosas e região de tempestade.
 - Pesqueiro, rebocador e navio de apoio percorrem oito trechos ao redor da ilha, com flutuação, esteiras, luzes e desvio do jogador.
 - Todos os seis modelos enviados integrados: personagem, pesqueiro, rebocador, porto, cabra e dragão.
 - Personagem com rig local e 11 animações, incluindo braços/tronco, lançamento, recolhimento, salto e queda.

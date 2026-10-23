@@ -1,9 +1,32 @@
 extends RefCounted
 ## Metres, sea level = 0. Shared coastline contract with archipelago_coast.gdshaderinc.
-const WORLD_HALF: float = 2200.0
+const WORLD_HALF: float = 3200.0
 const LOBES: Array[Vector4]=[
 	Vector4(0,230,220,230),Vector4(-140,105,95,115),Vector4(150,110,100,130),Vector4(-65,540,330,480),
-	Vector4(-690,-510,220,260),Vector4(790,-640,250,320),Vector4(20,-1340,330,300),Vector4(-110,-18,30,29)]
+	Vector4(-690,-510,220,260),Vector4(790,-640,250,320),Vector4(20,-1340,330,300),Vector4(-110,-18,30,29),
+	Vector4(-1400,-720,390,290),Vector4(-960,-940,130,105),Vector4(-450,-2100,340,285),
+	Vector4(1530,-1920,440,340),Vector4(2080,720,430,470),Vector4(1650,-160,310,270),
+	Vector4(-2100,1050,410,385),Vector4(2250,1850,390,350),Vector4(-2350,-320,240,210)]
+## One record per lobe. The first four and the old-port lobe together form Aurora.
+## Distant entries drive real island geometry, map labels and future region systems.
+const REGIONS: Array[Dictionary]=[
+	{"id":"aurora","name":"Ilha Aurora","map":"Vila Aurora","biome":"harbor","map_visible":true},
+	{"id":"aurora_west","name":"Bosque Aurora","map":"","biome":"harbor","map_visible":false},
+	{"id":"aurora_east","name":"Costa Aurora","map":"","biome":"harbor","map_visible":false},
+	{"id":"aurora_north","name":"Montanha Aurora","map":"","biome":"harbor","map_visible":false},
+	{"id":"adverse","name":"Ilhas Adversas","map":"Ilhas Adversas","biome":"storm","map_visible":true},
+	{"id":"boreal","name":"Baía Boreal","map":"Baía Boreal","biome":"frost","map_visible":true},
+	{"id":"remote","name":"Ilha Remota","map":"Ilha Remota","biome":"mystic","map_visible":true},
+	{"id":"old_port","name":"Porto Antigo","map":"","biome":"harbor","map_visible":false},
+	{"id":"tropical","name":"Arquipélago das Marés","map":"Arquipélago Tropical","biome":"tropical","map_visible":true},
+	{"id":"reef","name":"Recifes Esmeralda","map":"Recifes","biome":"tropical","map_visible":true},
+	{"id":"volcanic","name":"Coroa Vulcânica","map":"Ilhas Vulcânicas","biome":"volcanic","map_visible":true},
+	{"id":"glacier","name":"Costa Glacial","map":"Ilha Gelada","biome":"frost","map_visible":true},
+	{"id":"mountain","name":"Cordilheira do Farol","map":"Ilhas Montanhosas","biome":"mountain","map_visible":true},
+	{"id":"desert","name":"Enseada de Âmbar","map":"Ilha Deserta","biome":"desert","map_visible":true},
+	{"id":"mystic","name":"Ilha dos Ecos","map":"Ilha Misteriosa","biome":"mystic","map_visible":true},
+	{"id":"tempest","name":"Círculo da Tempestade","map":"Região das Tempestades","biome":"storm","map_visible":true},
+	{"id":"shards","name":"Dentes do Mar","map":"Rochas Selvagens","biome":"storm","map_visible":true}]
 const TRAIL: Array[Vector3]=[
 	Vector3(0,1.25,-10),Vector3(0,1.25,32),Vector3(10,4,75),Vector3(-30,12,120),
 	Vector3(-70,21,170),Vector3(-55,29,220),Vector3(10,35,260),Vector3(70,47,295),
@@ -26,6 +49,20 @@ static func noise(p: Vector2, scale_value: float=1.) -> float:
 		terrain_noise.fractal_octaves=3
 		terrain_noise.frequency=.014
 	return terrain_noise.get_noise_2d(p.x*scale_value,p.y*scale_value)
+
+static func region_for_lobe(index: int) -> Dictionary:
+	if index<0 or index>=REGIONS.size(): return {}
+	return REGIONS[index]
+
+static func region_at(p: Vector2) -> Dictionary:
+	var closest:=0
+	var distance:=INF
+	for i: int in LOBES.size():
+		var l:=LOBES[i]
+		var candidate: float=(p-Vector2(l.x,l.y)).length_squared()
+		if candidate<distance:
+			distance=candidate;closest=i
+	return region_for_lobe(closest)
 
 static func plot_ground(p: Vector2) -> bool:
 	for plot: Vector4 in PLOTS:
