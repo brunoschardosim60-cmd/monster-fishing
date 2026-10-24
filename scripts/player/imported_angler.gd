@@ -16,6 +16,11 @@ var _rod: Node3D
 var _tip: Marker3D
 var current: String=""
 var gait_speed: float=0.
+## Ground speed (m/s) each locomotion clip covers at 1x, measured from the stance foot of the rig.
+const WALK_NOMINAL: float=1.99
+const RUN_NOMINAL: float=3.33
+## 0 idle, 1 walk, 2 run. Thresholds differ going up and down so the clip never flickers at a boundary.
+var gait_state: int=0
 var right_hand: int=-1
 var left_hand: int=-1
 var rod_grip_basis:=Basis.IDENTITY
@@ -49,19 +54,32 @@ func _ready() -> void:
 	_tip=Marker3D.new();_tip.position=Vector3(0,1.72,-1.8);_rod.add_child(_tip)
 	update_animation(0.,false,.01)
 func update_animation(speed: float,fishing: bool,delta: float) -> void:
-	var next: String="Hold" if holding_fish else ("Swim" if swimming else ("Fish" if fishing else ("Steer" if seated else ("Run" if speed>3. else ("Walk" if speed>.2 else "Idle")))))
+	gait_speed=lerpf(gait_speed,speed,1.-exp(-delta*9.))
+	match gait_state:
+		0: if gait_speed>.35: gait_state=1
+		1:
+			if gait_speed<.2: gait_state=0
+			elif gait_speed>3.05: gait_state=2
+		_: if gait_speed<2.5: gait_state=1
+	var locomotion: String=["Idle","Walk","Run"][gait_state]
+	var next: String="Hold" if holding_fish else ("Swim" if swimming else ("Fish" if fishing else ("Steer" if seated else locomotion)))
 	if airborne and not swimming:next="Jump" if vertical_speed>0. else "Fall"
 	elif fishing_state==1:next="Cast"
 	elif fishing_state==4:next="Reel"
-	if next!=current:animation.play(next,.3 if next in ["Idle","Walk","Run"] else .18);current=next
-	gait_speed=lerpf(gait_speed,speed,1.-exp(-delta*9.))
-	# Nominal gait: 1.5 m walking / 3.6 m running per 1.1-second cycle.
-	animation.speed_scale=clampf(gait_speed/(3.28 if next=="Run" else 1.36),.15,2.4) if next in ["Walk","Run"] else 1.
+	if next!=current:
+		# Walk and Run share one phase convention, so keep the cycle position and the feet do not pop.
+		var keep_phase: bool=current in ["Walk","Run"] and next in ["Walk","Run"]
+		var phase: float=animation.current_animation_position/maxf(animation.current_animation_length,.001) if keep_phase else 0.
+		animation.play(next,.25 if next in ["Idle","Walk","Run"] else .18);current=next
+		if keep_phase:animation.seek(phase*animation.current_animation_length,false)
+	if next=="Walk":animation.speed_scale=clampf(gait_speed/WALK_NOMINAL,.6,1.4)
+	elif next=="Run":animation.speed_scale=clampf(gait_speed/RUN_NOMINAL,.8,1.9)
+	else:animation.speed_scale=1.
 	animation.advance(delta)
 	headwear.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()*Transform3D(Basis.IDENTITY,Vector3(0,0,-.11))
 	backpack.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(chest_bone)*skeleton.get_bone_global_rest(chest_bone).affine_inverse()
 	# Fishing keeps its upper-body pose while the player can reposition on shore.
-	locomotion_phase+=delta*speed*2.6
+	locomotion_phase+=delta*speed*2.87
 	if (fishing or holding_fish) and speed>.2 and not airborne and not swimming:
 		for side: String in ["Left","Right"]:
 			var sign_value:=1. if side=="Left" else -1.

@@ -25,7 +25,7 @@ func run() -> void:
 		await physics_frame
 	check(Layout.WORLD_HALF>=3200.,"Expanded world spans at least 6.4 km")
 	check(world.remote_island_count==Layout.LOBES.size()-5,"Every planned distant island has terrain and collision")
-	for id: String in ["tropical","reef","volcanic","glacier","mountain","desert","mystic","tempest","shards"]:
+	for id: String in ["adverse","sombria","secreta","tropical","reef","volcanic","glacier","mountain","desert","mystic","tempest","shards","mountain_sea"]:
 		check(world.get_node_or_null("Island_"+id)!=null,"Regional island exists: "+id)
 	var wrapped:=Layout.wrapped(Vector3(Layout.WORLD_HALF+18.,0,-Layout.WORLD_HALF-18.))
 	check(absf(wrapped.x)<Layout.WORLD_HALF and absf(wrapped.z)<Layout.WORLD_HALF,"Expanded ocean preserves continuous world wrapping")

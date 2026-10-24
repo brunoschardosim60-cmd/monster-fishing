@@ -35,6 +35,17 @@ var lean:=Vector2.ZERO
 var previous_yaw: float=0.
 var was_airborne: bool=false
 const JUMP_SPEED: float=7.2
+## Ground control: linear ramps feel crisper than the old exponential tail. Metres per second squared.
+const GROUND_ACCEL: float=28.
+const SPRINT_ACCEL: float=24.
+const GROUND_DECEL: float=26.
+const WATER_ACCEL: float=12.
+const WATER_DECEL: float=9.
+const AIR_ACCEL: float=10.
+## Rising keeps the authored 20 m/s2 (jump height is part of the contract); falling is firmer.
+const RISE_GRAVITY: float=20.
+const FALL_GRAVITY: float=30.
+const TERMINAL_FALL: float=-32.
 const BASE_FOV: float=68.0
 signal fell_into_water
 
@@ -42,6 +53,8 @@ func _ready() -> void:
 	collision_layer = 4
 	collision_mask = 1
 	floor_snap_length = 0.5
+	floor_stop_on_slope = true
+	floor_constant_speed = true
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.3
@@ -135,9 +148,11 @@ func _physics_process(delta: float) -> void:
 		if fishing_active:speed_now=minf(speed_now,2.6)
 		var wanted:=Vector3(direction.x,0.,direction.z)*speed_now
 		var horizontal:=Vector3(velocity.x,0.,velocity.z)
-		var response:=9.0 if direction.length()>.01 and (is_on_floor() or swimming) else (12.0 if is_on_floor() or swimming else 2.6)
-		horizontal=horizontal.lerp(wanted,1.-exp(-delta*response))
-		if wanted.length()<.01 and horizontal.length()<.06: horizontal=Vector3.ZERO
+		var rate:=AIR_ACCEL
+		if is_on_floor() or swimming:
+			if direction.length()>.01: rate=WATER_ACCEL if swimming else (SPRINT_ACCEL if is_sprinting else GROUND_ACCEL)
+			else: rate=WATER_DECEL if swimming else GROUND_DECEL
+		horizontal=horizontal.move_toward(wanted,rate*delta)
 		velocity.x=horizontal.x
 		velocity.z=horizontal.z
 		coyote_time=.12 if is_on_floor() else maxf(0.,coyote_time-delta)
@@ -146,7 +161,7 @@ func _physics_process(delta: float) -> void:
 		elif swimming:
 			velocity.y=clampf((water-.7-global_position.y)*5.,-3.,3.)
 		elif not is_on_floor():
-			velocity.y -= 20.0 * delta
+			velocity.y=maxf(velocity.y-(FALL_GRAVITY if velocity.y<0. else RISE_GRAVITY)*delta,TERMINAL_FALL)
 		else:
 			velocity.y = -0.1
 		var fall_speed:=velocity.y

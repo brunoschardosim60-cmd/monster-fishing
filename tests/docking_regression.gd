@@ -1,6 +1,7 @@
 extends SceneTree
 ## Regressions for manual mooring, offshore islands and camera water clearance.
 ## --headless --fixed-fps 60 --script res://tests/docking_regression.gd
+const Layout=preload("res://scripts/world/archipelago_layout.gd")
 var game: Node3D
 var failures: int = 0
 var checks: int = 0
@@ -68,7 +69,20 @@ func run() -> void:
 	check(game.player.in_boat, "the launch can be boarded again immediately after mooring")
 	# A legal water position near a distant island, with the normal cast aimed
 	# at its emerged sloping beach. Test the real main-scene cast validation.
-	game.boat.position = Vector3(-690, 0, -369)
+	# Search the real layout for water just south of Ilhas Adversas whose beach lies within cast range
+	# (the boat faces -Z; the cast lands about 7 m ahead and 4 m to port of the boat).
+	var adverse: Vector4 = Layout.LOBES[4]
+	var berth := Vector3(adverse.x, 0, adverse.y + adverse.w * 1.4)
+	for step: int in range(0, 2400):
+		var z: float = adverse.y + adverse.w * 1.4 - float(step) * .25
+		var here := Layout.coast(Vector2(adverse.x, z))
+		var ahead := Layout.coast(Vector2(adverse.x - 4., z - 6.5))
+		var short_cast := Layout.coast(Vector2(adverse.x, z - 3.7))
+		if here.x > .5 and ahead.x < -2.5 and short_cast.x < -2.:
+			berth = Vector3(adverse.x, 0, z)
+			break
+	check(berth.z < adverse.y + adverse.w * 1.4, "found legal water beside a distant island beach")
+	game.boat.position = berth
 	game.boat.rotation.y = 0
 	game.boat.speed = 0
 	await frames(8)
@@ -79,8 +93,10 @@ func run() -> void:
 	check(game.world.is_land(target), "distant island beach is recognised as land")
 	game.fish_action()
 	check(game.fishing.state == 0, "a cast onto the distant island cannot start fishing")
-	for center: Vector3 in [Vector3(0,0,230),Vector3(-690,0,-510),Vector3(790,0,-640),Vector3(20,0,-1340)]:
-		check(game.world.is_land(center), "is_land includes island " + str(center))
+	for lobe: int in Layout.LOBES.size():
+		var l: Vector4 = Layout.LOBES[lobe]
+		var center := Vector3(l.x, 0, l.y)
+		check(game.world.is_land(center), "is_land includes island " + str(Layout.region_for_lobe(lobe).get("id", lobe)))
 	# Maximum upward mouse angle must not put the third-person camera beneath
 	# the ocean; first-person sky observation should remain available.
 	game.boat.position = Vector3(0,0,-70)

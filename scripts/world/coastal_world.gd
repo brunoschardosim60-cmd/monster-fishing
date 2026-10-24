@@ -50,7 +50,7 @@ func _ready() -> void:
 		if i==7: continue # This small lobe belongs to Aurora's old port terrain.
 		var island:=Layout.LOBES[i]
 		var region_data:=Layout.region_for_lobe(i)
-		_make_island(Vector3(island.x,0,island.y),Vector2(island.z,island.w),false,str(region_data.get("biome","verdant")),str(region_data.get("id","island")))
+		_make_island(Vector3(island.x,0,island.y),Vector2(island.z,island.w),false,str(region_data.get("biome","verdant")),str(region_data.get("id","island")),i)
 	_make_dock()
 	village=preload("res://scripts/world/harbor_village.gd").new();village.world=self;village.name="VilaDaAurora";add_child(village)
 	_make_lighthouse(Vector3(-65,Layout.height(Vector2(-65,490)),490))
@@ -162,10 +162,22 @@ func _biome_palette(biome: String) -> Dictionary:
 		"mountain": return {"ground":Color("456247"),"sand":Color("aaa37f"),"tint":Vector3(.92,1.03,.92),"snow":.12,"ash":0.,"trees":20}
 		"desert": return {"ground":Color("a9854c"),"sand":Color("d5ad65"),"tint":Vector3(1.16,.89,.61),"snow":0.,"ash":0.,"trees":2}
 		"mystic": return {"ground":Color("365d58"),"sand":Color("8ca17e"),"tint":Vector3(.72,1.06,1.05),"snow":0.,"ash":0.,"trees":16}
+		"shadow": return {"ground":Color("2d2a40"),"sand":Color("57536b"),"tint":Vector3(.72,.68,.92),"snow":0.,"ash":.38,"trees":4}
 		"storm": return {"ground":Color("334650"),"sand":Color("6b7472"),"tint":Vector3(.68,.77,.87),"snow":0.,"ash":.28,"trees":5}
 		_: return {"ground":Color("506c4d"),"sand":Color("a99b76"),"tint":Vector3.ONE,"snow":0.,"ash":0.,"trees":14}
 
-func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String="verdant", region_id: String="island") -> void:
+## The mesh outline is pushed out by this factor so that the waterline (height 0) lands exactly on the
+## Layout.coast contour that navigation, fishing, the map and the ocean shader all use.
+const SHORE_PAD: float = 1.07
+## Fraction of the raw biome relief that is kept (1 = the old tall cones).
+const RELIEF: Dictionary={"tropical":.3,"frost":.42,"volcanic":.38,"mountain":.4,"desert":.26,"mystic":.32,"storm":.32,"shadow":.34}
+
+## World-space offset from an island centre for a normalised radius (0 centre, 1 mesh rim) and angle.
+func _island_offset(lobe: int, size: Vector2, angle: float, radius: float) -> Vector2:
+	var edge:=Layout.edge_factor(lobe,angle) if lobe>=0 else 1.
+	return Vector2(cos(angle)*size.x,sin(angle)*size.y)*radius*edge*SHORE_PAD
+
+func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String="verdant", region_id: String="island", lobe: int=-1) -> void:
 	var vertices := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
@@ -176,15 +188,14 @@ func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String=
 		var radius := float(ring) / float(RINGS)
 		for segment: int in range(SEGMENTS):
 			var angle := float(segment) / float(SEGMENTS) * TAU
-			var edge := 1.0 + sin(angle * 5.0) * 0.025 + cos(angle * 9.0) * 0.016
-			var x := cos(angle) * radius * size.x * edge
-			var z := sin(angle) * radius * size.y * edge
-			var height := _island_height(x,z,radius,playable,biome)
+			var offset:=_island_offset(lobe,size,angle,radius)
+			var x:=offset.x;var z:=offset.y
+			var height := _island_height(x,z,radius,playable,biome,lobe)
 			vertices.append(center + Vector3(x, height, z))
 			var variation := rng.randf_range(-0.035, 0.035)
 			var col: Color=palette["sand"]
-			var shoreline:=.68+Layout.noise(Vector2(center.x+x,center.z+z),2.)*.08
-			if radius < shoreline-.07:
+			var shoreline:=1./SHORE_PAD-.02+Layout.noise(Vector2(center.x+x,center.z+z),2.)*.03
+			if radius < shoreline-.06:
 				col=palette["ground"]
 			col = col.lightened(variation) if variation > 0 else col.darkened(-variation)
 			colors.append(col)
@@ -220,10 +231,10 @@ func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String=
 	body.add_child(col)
 	island.add_child(body)
 	if not playable:
-		_decorate_remote_island(center,size,biome,palette)
+		_decorate_remote_island(center,size,biome,palette,lobe)
 		remote_island_count+=1
 
-func _island_height(x: float,z: float,radius: float,playable: bool,biome: String="verdant") -> float:
+func _island_height(x: float,z: float,radius: float,playable: bool,biome: String="verdant",lobe: int=-1) -> float:
 	var h:=1.25
 	if playable:
 		# The harbor, market and cabins retain their original flat circulation area.
@@ -238,43 +249,66 @@ func _island_height(x: float,z: float,radius: float,playable: bool,biome: String
 		var core:=pow(maxf(0.,1.-radius/.87),.93)
 		var variation:=Layout.noise(Vector2(x+37.,z-11.),1.7)
 		var crags:=pow(1.-absf(Layout.noise(Vector2(x,z),1.5)),3.)
+		var peak_scale:=14.
 		match biome:
-			"tropical": h+=core*(30.+variation*13.+crags*16.)+exp(-pow((x-45.)/75.,2.)-pow((z+25.)/65.,2.))*22.
-			"frost": h+=core*(72.+variation*22.+crags*26.)
-			"volcanic": h+=core*(76.+variation*17.)+exp(-pow((radius-.28)/.12,2.))*34.-exp(-pow(radius/.13,2.))*25.
-			"mountain": h+=core*(112.+variation*30.+crags*48.)
-			"desert": h+=core*(35.+variation*10.+sin(x*.05+z*.04)*8.)
-			"mystic": h+=core*(70.+variation*28.+crags*48.)
-			"storm": h+=core*(57.+variation*24.+crags*34.)
+			"tropical": h+=core*(30.+variation*13.+crags*16.)+exp(-pow((x-45.)/75.,2.)-pow((z+25.)/65.,2.))*22.;peak_scale=16.
+			"frost": h+=core*(72.+variation*22.+crags*26.);peak_scale=34.
+			"volcanic": h+=core*(76.+variation*17.)+exp(-pow((radius-.28)/.12,2.))*34.-exp(-pow(radius/.13,2.))*25.;peak_scale=8.
+			"mountain": h+=core*(112.+variation*30.+crags*48.);peak_scale=46.
+			"desert": h+=core*(35.+variation*10.+sin(x*.05+z*.04)*8.);peak_scale=12.
+			"mystic": h+=core*(70.+variation*28.+crags*48.);peak_scale=32.
+			"storm": h+=core*(57.+variation*24.+crags*34.);peak_scale=26.
+			"shadow": h+=core*(64.+variation*26.+crags*40.);peak_scale=30.
 			_: h+=core*(24.+variation*10.+crags*8.)
-	if radius>.84:
-		h=lerpf(h,-.8,smoothstep(.84,1.,radius))
+		if lobe>=0:
+			# Off-centre ridges: every island gets two shoulders at fixed angles so it is no longer a single cone.
+			var angle:=atan2(z,x)
+			for k: int in 2:
+				var a0:=float((lobe*5+k*4)%13)*.48
+				var r0:=.34+float((lobe*3+k*2)%5)*.07
+				var lobe_shape:=pow(.5+.5*cos(angle-a0),2.)
+				h+=peak_scale*exp(-pow((radius-r0)/.2,2.))*lobe_shape*(.7+variation*.5)
+	if playable:
+		if radius>.84:
+			h=lerpf(h,-.8,smoothstep(.84,1.,radius))
+	else:
+		# Islands are broad and low like the world-map art; only glacier and mountain islands keep real relief.
+		h=1.25+(h-1.25)*float(RELIEF.get(biome,.35))
+		# Land fades to exactly sea level on the contour shared with Layout.coast, then drops to the shelf.
+		var shore:=1./SHORE_PAD
+		h*=1.-smoothstep(.78,shore,radius)
+		if radius>shore: h=-.8*smoothstep(shore,1.,radius)
 	return h
 
-func _decorate_remote_island(center: Vector3,size: Vector2,biome: String,palette: Dictionary) -> void:
+func _decorate_remote_island(center: Vector3,size: Vector2,biome: String,palette: Dictionary,lobe: int=-1) -> void:
 	# Headlands make every island readable from the water; foliage density stays bounded for large-world performance.
 	for j: int in [0,1,3,4,5,6,7]:
 		var a:=float(j)*TAU/8.
-		_make_rock(center+Vector3(cos(a)*size.x*.99,-.05,sin(a)*size.y*.99),Vector3(2.8,2.1,3.5))
-	for i: int in int(palette["trees"]):
+		var rim:=_island_offset(lobe,size,a,1./SHORE_PAD)
+		_make_rock(center+Vector3(rim.x,-.05,rim.y),Vector3(2.8,2.1,3.5))
+	var tree_count:=int(float(palette["trees"])*clampf(size.x*size.y/90000.,.6,1.8))
+	for i: int in tree_count:
 		var angle:=rng.randf()*TAU;var r:=rng.randf_range(.12,.58)
-		var x:=cos(angle)*r*size.x;var z:=sin(angle)*r*size.y
-		_make_remote_tree(center+Vector3(x,_island_height(x,z,r,false,biome),z),rng.randf_range(.72,1.28),biome)
+		var offset:=_island_offset(lobe,size,angle,r)
+		var ground:=_island_height(offset.x,offset.y,r,false,biome,lobe)
+		if ground<1.5: continue
+		_make_remote_tree(center+Vector3(offset.x,ground,offset.y),rng.randf_range(.72,1.28),biome)
 	if biome=="volcanic":
 		var magma:=G.material(Color("ff5e2d"));magma.emission_enabled=true;magma.emission=Color("ff3716");magma.emission_energy_multiplier=1.8
-		G.cylinder(self,center+Vector3(0,_island_height(0,0,0.,false,biome)+.55,0),8.,.5,magma,5.6,24)
-	elif biome=="mystic" or biome=="storm":
+		G.cylinder(self,center+Vector3(0,_island_height(0,0,0.,false,biome,lobe)+.55,0),8.,.5,magma,5.6,24)
+	elif biome=="mystic" or biome=="storm" or biome=="shadow":
 		var glow_color:=Color("54d7d3") if biome=="mystic" else Color("b56cff")
 		var glow:=G.material(glow_color);glow.emission_enabled=true;glow.emission=glow_color;glow.emission_energy_multiplier=1.25
 		for i: int in 4:
-			var a:=float(i)*TAU/4.+.3;var p:=center+Vector3(cos(a)*size.x*.22,_island_height(cos(a)*size.x*.22,sin(a)*size.y*.22,.22,false,biome)+1.,sin(a)*size.y*.22)
+			var a:=float(i)*TAU/4.+.3;var off:=_island_offset(lobe,size,a,.22)
+			var p:=center+Vector3(off.x,_island_height(off.x,off.y,.22,false,biome,lobe)+1.,off.y)
 			G.sphere(self,p,Vector3(1.2,2.8,1.2),glow,12)
 
 func _make_remote_tree(pos: Vector3,tree_scale: float,biome: String) -> void:
 	var kind:=1
 	if biome=="tropical": kind=2 if rng.randf()<.58 else 3
 	elif biome in ["frost","mountain"]: kind=0
-	elif biome in ["desert","volcanic","storm"]: return
+	elif biome in ["desert","volcanic","storm","shadow"]: return
 	preload("res://scripts/world/nature_library.gd").plant(self,kind,pos,tree_scale*.68,rng.randf()*TAU)
 
 func home_surface_height(x: float,z: float) -> float:

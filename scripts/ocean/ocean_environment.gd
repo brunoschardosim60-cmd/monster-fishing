@@ -33,10 +33,12 @@ func _ready() -> void:
 	moon=DirectionalLight3D.new();moon.light_color=Color("7ca5d2");moon.light_energy=.14;add_child(moon)
 	effects=Effects.new(); effects.name="WaterInteractions"; add_child(effects)
 	_make_rain(); _make_seabed(); _make_ice()
-	for island: Vector4 in Waves.ISLANDS:
-		for i: int in 20:
-			var angle:=float(i)*TAU/20.
-			var edge:=1.+sin(angle*5.)*.025+cos(angle*9.)*.016
+	# Surf emitters sit on the same contour Layout.coast describes, so splashes follow the real beaches.
+	for lobe: int in Waves.ISLANDS.size():
+		var island: Vector4=Waves.ISLANDS[lobe]
+		for i: int in 24:
+			var angle:=float(i)*TAU/24.
+			var edge:=Layout.edge_factor(lobe,angle)
 			shore_points.append(Vector3(island.x+cos(angle)*island.z*edge,0,island.y+sin(angle)*island.w*edge))
 			previous_heights.append(0.)
 	for p: Vector3 in world.shore_rocks:
@@ -69,8 +71,10 @@ func _make_seabed() -> void:
 	floor_mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _make_ice() -> void:
-	_make_ice_field(Vector2(506.,-622.),11,419)
-	_make_ice_field(Vector2(1530.,-1920.),18,917)
+	var seeds: Array[int]=[419,917,1213,1511]
+	for i: int in Layout.ICE_FIELDS.size():
+		var field:=Layout.ICE_FIELDS[i]
+		_make_ice_field(Vector2(field.x,field.y),int(field.z),seeds[i%seeds.size()])
 
 func _make_ice_field(center: Vector2,count: int,seed_value: int) -> void:
 	var mat:=StandardMaterial3D.new(); mat.albedo_color=Color("a1c9cf")
@@ -116,7 +120,7 @@ func _physics_process(delta: float) -> void:
 	Waves.bind(world.ocean_material)
 	var active_region:=Layout.region_at(Vector2(p.x,p.z))
 	var regional_cold:=1. if str(active_region.get("biome",""))=="frost" else 0.
-	cold=maxf(regional_cold,1.-smoothstep(60.,300.,Vector2(p.x,p.z).distance_to(Vector2(790,-640))))
+	cold=maxf(regional_cold,1.-smoothstep(60.,300.,Vector2(p.x,p.z).distance_to(Layout.COLD_CENTER)))
 	underwater=p.y<Waves.height_at(p)-.08
 	rain_particles.global_position=p+Vector3(0,8,0)
 	rain_particles.emitting=weather.rain>.03 and not underwater and not world.village.indoors(p)

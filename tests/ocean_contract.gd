@@ -1,5 +1,6 @@
 extends SceneTree
 const Waves=preload("res://scripts/world/wave_field.gd")
+const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const Weather=preload("res://scripts/ocean/sea_weather.gd")
 var checks: int=0
 var failures: int=0
@@ -25,7 +26,7 @@ func _run() -> void:
 	check(Waves.exposure(Vector2(235,230))<Waves.exposure(Vector2(-235,230)),"lee protection changes with the coast normal and wind direction")
 	check(Waves.depth_at(Vector2(220,230))<Waves.depth_at(Vector2(350,-200)),"bathymetry deepens away from the island")
 	check(absf(Waves.height_at(Vector3(0,0,18)))<.0001,"wave displacement vanishes inside land")
-	check(Waves.channel_at(Vector2(504,-626))>.99 and Waves.channel_at(Vector2(30,-100))==0.,"authored ice passage guides local ripples without changing open water")
+	check(Waves.channel_at(Layout.ICE_PASSAGE)>.99 and Waves.channel_at(Vector2(30,-100))==0.,"authored ice passage guides local ripples without changing open water")
 	if DisplayServer.get_name()!="headless":
 		var probe:=SubViewport.new(); probe.size=Vector2i(16,16); probe.disable_3d=true
 		probe.render_target_update_mode=SubViewport.UPDATE_ALWAYS; root.add_child(probe)

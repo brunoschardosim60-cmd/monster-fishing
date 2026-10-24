@@ -44,7 +44,8 @@ Vila iluminada à noite, dois faróis com feixe giratório, pontes caminháveis 
 - Porto antigo com o **GLB completo enviado**, em escala de 58 m, conectado à vila por cais e duas bancas funcionais.
 - Compras reais de iscas, vara, linha, anzol, motor, reparo, molinete de maior alcance, proteção do casco e holofote de 65 m.
 - Trilha norte até o cume de 150 m, mirantes, gruta, ruínas, farol e arco rochoso com passagem navegável.
-- Carta náutica de mundo aberto com 12 ilhas remotas físicas: recifes tropicais, vulcão, geleira, cordilheira, deserto, ilhas misteriosas e região de tempestade.
+- Carta náutica de mundo aberto com 17 ilhas remotas físicas, dispostas como na arte do mapa (Ilha Principal a oeste; Gelada, Sombria e Tempestades ao norte; Arquipélago Tropical no centro; Montanhosas a leste; Vulcânicas, Deserta e Secreta ao sul; Adversas no canto inferior esquerdo). As ilhas são baixas e largas, com contornos irregulares; só Gelada e Montanhosas têm relevo forte. Na carta (M), **Z** alterna ilha, arquipélago e mundo inteiro.
+- O contorno das ilhas é um contrato único: `Layout.edge_factor` (GDScript) alimenta malha, colisão, navegação, mapa e o shader do oceano. Depois de editar `LOBES` em `scripts/world/archipelago_layout.gd`, rode `python scripts/pipeline/sync_coast_shader.py`; `tests/island_layout_contract.gd` falha se o shader sair de sincronia.
 - Pesqueiro, rebocador e navio de apoio percorrem oito trechos ao redor da ilha, com flutuação, esteiras, luzes e desvio do jogador.
 - Todos os seis modelos enviados integrados: personagem, pesqueiro, rebocador, porto, cabra e dragão.
 - Personagem com rig local e 11 animações, incluindo braços/tronco, lançamento, recolhimento, salto e queda.

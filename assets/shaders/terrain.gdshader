@@ -1,4 +1,5 @@
 shader_type spatial;
+#include "res://assets/shaders/archipelago_coast.gdshaderinc"
 uniform float sea_time=0.;
 uniform float wet_weather=0.;
 uniform sampler2D sand_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -39,7 +40,7 @@ void fragment(){
 	stone=saturate_color(stone*.84,1.18);
 	ALBEDO=mix(ALBEDO,stone*mix(vec3(.9,.94,.9),vec3(1.2,1.1,.94),n),cliff*mix(.78,1.,n));
 	ALBEDO*=biome_tint;
-	float frost=(1.-smoothstep(120.,200.,length(wp.xz-vec2(790,-640))))*smoothstep(12.,28.,wp.y)*smoothstep(.35,.8,wn.y);
+	float frost=(1.-smoothstep(120.,200.,length(wp.xz-COLD_CENTER)))*smoothstep(12.,28.,wp.y)*smoothstep(.35,.8,wn.y);
 	float regional_snow=biome_snow*smoothstep(10.,30.,wp.y)*smoothstep(.35,.82,wn.y);
 	ALBEDO=mix(ALBEDO,vec3(.72,.82,.84),max(frost*.92,regional_snow*.94));
 	float ash=biome_ash*smoothstep(4.,18.,wp.y)*(1.-cliff*.45);

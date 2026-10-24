@@ -15,6 +15,10 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 "%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/archipelago_contract.gd
 if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/island_layout_contract.gd
+if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/locomotion_contract.gd
+if errorlevel 1 exit /b 1
 "%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/exploration_journey.gd
 if errorlevel 1 exit /b 1
 "%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/living_world_contract.gd

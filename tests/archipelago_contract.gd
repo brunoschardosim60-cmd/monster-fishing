@@ -87,7 +87,7 @@ func run() -> void:
 	game.finish_catch(false);game.finish_catch(false);check(game.inventory.count()==1,"Keeping catch adds once to inventory")
 	game.fishing.species_current=game.fishing.SPECIES[0];game._on_caught(data);game.finish_catch(true)
 	check(game.inventory.count()==1 and game.inventory.encyclopedia.sardine.released==1,"Release preserves inventory and records encyclopedia")
-	game.boat.global_position=Vector3(2201,0,-400);await frames(3);check(game.boat.global_position.x< -2190.,"World can be crossed without radius wall")
+	game.boat.global_position=Vector3(Layout.WORLD_HALF+1.,0,-400);await frames(3);check(game.boat.global_position.x< -Layout.WORLD_HALF+10.,"World can be crossed without radius wall")
 	game.audio.stop_all();game.queue_free();await process_frame;OS.delay_msec(100)
 	print("ARCHIPELAGO ",checks," checks / ",failures," failures")
 	quit(1 if failures>0 else 0)
