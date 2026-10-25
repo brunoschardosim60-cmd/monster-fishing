@@ -84,7 +84,7 @@ func _run() -> void:
 	for species: Resource in Fishing.SPECIES:
 		_check(species.min_weight > 0.0 and species.max_weight >= species.min_weight and species.value_per_kg > 0.0, "valid species range: " + species.id)
 	var sampled: Dictionary = {}
-	for attempt: int in range(180):
+	for attempt: int in range(180*Fishing.SPECIES.size()):
 		var region: String=["coast","open_water","abyss"][attempt%3]
 		fishing.start_cast(region)
 		if not fishing.species_current.regions.has(region):
@@ -114,7 +114,7 @@ func _run() -> void:
 		fishing.advance(3.0)
 		if sampled.size() == Fishing.SPECIES.size():
 			break
-	_check(sampled.size() == Fishing.SPECIES.size(), "all five species can be encountered and caught in their habitats")
+	_check(sampled.size() == Fishing.SPECIES.size(), "every species can be encountered and caught in their habitats")
 	var encounters: Array[int]=[]
 	for preference: String in ["","mackerel"]:
 		var count:=0;fishing.rng.seed=941
