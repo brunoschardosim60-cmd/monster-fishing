@@ -1,7 +1,7 @@
 shader_type spatial;
 // Screen refraction uses the transparent pass. Explicit depth writes prevent
 // distant back faces from painting over the nearer wave surface.
-render_mode cull_disabled, depth_draw_always;
+render_mode cull_disabled, depth_draw_always, blend_mix;
 uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
@@ -60,10 +60,15 @@ void fragment() {
 	vec2 distortion=wn.xz*.018*min(thickness,2.);
 	vec3 refract_color=textureLod(screen_tex,clamp(SCREEN_UV+distortion,vec2(.001),vec2(.999)),0.).rgb;
 	col=mix(col,refract_color*vec3(.65,.94,.92),shallow*.32);
-	ALBEDO=mix(col,vec3(.78,.85,.81),foam);
+	// Clear shallow water lets the seabed and the schools drawn before the surface show through;
+	// deep water stays mostly opaque.
+	float clear=1.-smoothstep(4.,30.,thickness);
+	vec3 body=mix(col,refract_color*vec3(.7,.97,.95),clear*.75);
+	ALBEDO=mix(body,vec3(.78,.85,.81),foam);
 	EMISSION=col*sea_glow*(1.-foam);
 	ROUGHNESS=mix(.11+wind_strength*.1+rain_strength*.08,.83,foam)+(.04*(1.-distance_fade));
 	METALLIC=.12;
 	SPECULAR=.65;
-	if(!FRONT_FACING){ALBEDO=mix(vec3(.015,.12,.14),col,.3);NORMAL=-NORMAL;ROUGHNESS=.35;}
+	ALPHA=mix(.9,.3,clear)*(1.-foam)+.92*foam;
+	if(!FRONT_FACING){ALBEDO=mix(vec3(.015,.12,.14),col,.3);NORMAL=-NORMAL;ROUGHNESS=.35;ALPHA=.9;}
 }
