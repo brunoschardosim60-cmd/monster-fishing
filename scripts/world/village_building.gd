@@ -114,7 +114,7 @@ func _ready() -> void:
 	if use in ["shop","market","inn"]:
 		var awning:=G.box(self,Vector3(0,2.65,-back-.9),Vector3(width+.1,.08,1.6),M.surface("fabric",Color("ab9d77"),3.));awning.rotation.x=.14
 		for x: float in [-half+.15,half-.15]:G.cylinder(self,Vector3(x,1.3,-back-1.6),.07,2.6,dark)
-	if use in ["home","cabin","inn"]:_decorate_interior(half,back)
+	if use in ["home","cabin","inn"]:_decorate_interior(half,back);_furnish_room(half,back,depth)
 	var light:=OmniLight3D.new();light.position=Vector3(0,2.7,0);light.light_color=Color("ffd08a");light.omni_range=9.;light.light_energy=1.4;light.set_meta("interior",true);add_child(light);lamps.append(light)
 	var lamp_mat:=G.material(Color("ffe1a6"));lamp_mat.emission_enabled=true;lamp_mat.emission=Color("ffcb80")
 	G.sphere(self,Vector3(0,2.75,0),Vector3(.15,.23,.15),lamp_mat,12)
@@ -172,4 +172,37 @@ func _decorate_interior(half: float,back: float) -> void:
 	G.box(self,Vector3(-half+.13,1.9,1.55),Vector3(.02,.1,.2),cloth)
 	for r: int in 3:
 		G.cylinder(self,Vector3(-half+.5+float(r)*.15,.2,back-.4),.12,.06,twine,.12,12)
+
+## Room finish and the rest of the furniture: a wood wainscot on the side walls, a wardrobe in the back-right corner,
+## a bedside table with a lamp, and a framed sea painting above the wardrobe.
+func _furnish_room(half: float,back: float,depth: float) -> void:
+	var wood:=M.surface("teak",Color("9c7f5c"),1.2)
+	var dark:=M.surface("weathered_wood",Color("544d3c"),1.5)
+	var panel:=M.surface("teak",Color("c7a977"),1.2)
+	var iron:=G.material(Color("3a3f44"),.5)
+	var frame:=G.material(Color("d6ccb2"),.8)
+	var sea:=G.material(Color("2c6f8c"),.5)
+	var warm:=G.material(Color("ffe1a6"));warm.emission_enabled=true;warm.emission=Color("ffcb80");warm.emission_energy_multiplier=1.4
+	# Wainscot: vertical boards on the side walls, 0.9 m high, with a cap rail.
+	for side: float in [-1.,1.]:
+		G.box(self,Vector3(side*(half-.11),.45,0),Vector3(.03,.9,depth-.5),panel)
+		G.box(self,Vector3(side*(half-.11),.92,0),Vector3(.05,.05,depth-.5),wood)
+		for z_index: int in 6:
+			var z:=-back+.5+float(z_index)*(depth-1.)/5.
+			G.box(self,Vector3(side*(half-.1),.45,z),Vector3(.05,.9,.03),wood)
+	# Wardrobe in the back-right corner: carcass, two doors and a top cornice.
+	var wardrobe_z:=back-.75
+	G.box(self,Vector3(half-.4,1.05,wardrobe_z),Vector3(.8,2.1,1.1),dark,true)
+	G.box(self,Vector3(half-.8,1.05,wardrobe_z-.27),Vector3(.04,1.9,.5),wood)
+	G.box(self,Vector3(half-.8,1.05,wardrobe_z+.27),Vector3(.04,1.9,.5),wood)
+	G.box(self,Vector3(half-.8,1.05,wardrobe_z),Vector3(.05,.12,.06),iron)
+	G.box(self,Vector3(half-.4,2.2,wardrobe_z),Vector3(.9,.12,1.2),wood)
+	# Bedside table with a small lamp, next to the bed's foot.
+	var table_z:=back-2.6
+	G.box(self,Vector3(-half+.45,.35,table_z),Vector3(.5,.6,.5),wood)
+	G.cylinder(self,Vector3(-half+.45,.72,table_z),.035,.28,iron,.035,6)
+	G.cylinder(self,Vector3(-half+.45,.92,table_z),.14,.2,warm,.1,10)
+	# Framed sea painting on the right wall, above the wardrobe level.
+	G.box(self,Vector3(half-.1,2.5,back-1.6),Vector3(.04,.7,.9),frame)
+	G.box(self,Vector3(half-.12,2.5,back-1.6),Vector3(.02,.6,.8),sea)
 
