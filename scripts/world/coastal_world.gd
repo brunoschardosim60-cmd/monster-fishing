@@ -21,6 +21,7 @@ var village: Node3D
 var water_root: Node3D
 var life: Node3D
 var traffic: Node3D
+var sea_events: Node3D
 var lighthouse: Node3D
 var harbor_lighthouse: Node3D
 
@@ -70,6 +71,7 @@ func _ready() -> void:
 	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
 	traffic=preload("res://scripts/world/maritime_traffic.gd").new();traffic.name="TrafegoMaritimo";add_child(traffic)
+	sea_events=preload("res://scripts/world/sea_events.gd").new();sea_events.name="EventosMarinhos";add_child(sea_events)
 	life=preload("res://scripts/world/coastal_life.gd").new();life.world=self;life.name="CoastalLife";add_child(life)
 
 func safe_spawn() -> Vector3:

@@ -4,7 +4,7 @@ func run() -> void:
 	game=load("res://scenes/main/main.tscn").instantiate();root.add_child(game);game.begin_play();game.audio.stop_all();game.player.controls_enabled=false
 	for action: StringName in InputMap.get_actions():InputMap.action_erase_events(action)
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE;await frames(10)
-	check(game.world.traffic.vessels.size()==3,"Three moving vessels, including a 30 m support ship")
+	check(game.world.traffic.vessels.size()==5,"Five moving vessels, including a 30 m support ship and a 62 m cargo liner")
 	var route_clear:=true
 	var route: Array[Vector3]=game.world.traffic.ROUTE
 	for i: int in route.size():
@@ -19,7 +19,7 @@ func run() -> void:
 	for i: int in starts.size():
 		var ship: CharacterBody3D=game.world.traffic.vessels[i]
 		if ship.position.distance_to(starts[i])>100. and Layout.coast(Vector2(ship.position.x,ship.position.z)).x>20.:moved+=1
-	check(moved==3,"All vessels physically advance along safe water routes")
+	check(moved==starts.size(),"All vessels physically advance along safe water routes")
 	# Follow the actual CharacterBody controller through a complete shipping circuit.
 	Engine.time_scale=12.
 	var visited: Array[Dictionary]=[{},{},{}];var minimum_clearance:=10000.;var elapsed_frames:=0

@@ -3,6 +3,7 @@ extends Control
 ## Os contornos vêm de Layout.edge_factor, a mesma fórmula usada pela física, pela
 ## navegação, pela malha das ilhas e pelo shader do oceano.
 const Layout=preload("res://scripts/world/archipelago_layout.gd")
+const FishingSystem=preload("res://scripts/fishing/fishing_system.gd")
 const MODE_ISLAND: int = 0
 const MODE_ARCHIPELAGO: int = 1
 const MODE_WORLD: int = 2
@@ -109,8 +110,24 @@ func _draw() -> void:
 		draw_circle(point(Vector2(b.x,b.z)),5.,Color(.47,.8,.93));draw_circle(point(Vector2(p.x,p.z)),4.,Color.WHITE)
 		for ship: CharacterBody3D in game.world.traffic.vessels:
 			var at:=point(Vector2(ship.position.x,ship.position.z));draw_circle(at,3.,Color(.9,.64,.49))
+		# Predators and rare fish are always marked; a kraken or whale is marked only while it is out.
+		var rarity_of: Dictionary={}
+		for species: Resource in FishingSystem.SPECIES:rarity_of[str(species.id)]=str(species.rarity)
+		for school: Node3D in game.marine.fish_schools:
+			var rare:=str(rarity_of.get(school.species,"Comum"))!="Comum"
+			if not (school.predator or rare):continue
+			var at:=point(Vector2(school.center.x,school.center.z))
+			var color:=Color("e8584a") if school.predator else Color("b98cff")
+			draw_circle(at,4.5,color)
+			if zoom_mode==MODE_ISLAND:draw_string(font,at+Vector2(7,-5),str(school.species).replace("_"," ").capitalize(),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("f0e2c0"))
+		var events: Node3D=game.world.sea_events
+		if events.current!=null:
+			var ev: Vector3=events.current.global_position
+			var ev_at:=point(Vector2(ev.x,ev.z))
+			draw_circle(ev_at,6.,Color("ffd34e"))
+			draw_string(font,ev_at+Vector2(8,-6),"Kraken" if events.kind=="kraken" else "Baleia",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("ffd34e"))
 	_legend(font)
-	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Dourado: descobertas",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
+	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Vermelho: predadores · Roxo: peixes raros · Dourado: monstro",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
 	draw_string(font,Vector2(25,640),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 6,4 × 6,4 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
 
 func _screen(polygon: PackedVector2Array) -> PackedVector2Array:

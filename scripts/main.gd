@@ -51,6 +51,7 @@ func _ready() -> void:
 	_add_system(boat)
 	boat.water_effects=world.ocean.effects
 	world.traffic.set_player_boat(boat)
+	world.sea_events.set_player_boat(boat)
 	player = Player.new()
 	player.name = "Player"
 	player.position = world.safe_spawn()
@@ -74,6 +75,7 @@ func _ready() -> void:
 	_add_system(surface_fish); surface_fish.effects=world.ocean.effects
 	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
 	hud = HUD.new()
+	world.sea_events.event_started.connect(func(text: String) -> void: hud.notify(text))
 	add_child(hud)
 	hud.start_requested.connect(begin_play)
 	hud.resume_requested.connect(resume_play)
