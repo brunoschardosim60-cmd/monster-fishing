@@ -114,6 +114,7 @@ func _ready() -> void:
 	if use in ["shop","market","inn"]:
 		var awning:=G.box(self,Vector3(0,2.65,-back-.9),Vector3(width+.1,.08,1.6),M.surface("fabric",Color("ab9d77"),3.));awning.rotation.x=.14
 		for x: float in [-half+.15,half-.15]:G.cylinder(self,Vector3(x,1.3,-back-1.6),.07,2.6,dark)
+	if use in ["home","cabin","inn"]:_decorate_interior(half,back)
 	var light:=OmniLight3D.new();light.position=Vector3(0,2.7,0);light.light_color=Color("ffd08a");light.omni_range=9.;light.light_energy=1.4;light.set_meta("interior",true);add_child(light);lamps.append(light)
 	var lamp_mat:=G.material(Color("ffe1a6"));lamp_mat.emission_enabled=true;lamp_mat.emission=Color("ffcb80")
 	G.sphere(self,Vector3(0,2.75,0),Vector3(.15,.23,.15),lamp_mat,12)
@@ -129,3 +130,46 @@ func _chair(p: Vector3,material: Material) -> void:
 		for z: float in [-.25,.25]:G.cylinder(self,p+Vector3(x,.25,z),.035,.5,material)
 	for x: float in [-.25,.25]:G.cylinder(self,p+Vector3(x,.85,-.27),.03,.7,material)
 	for y: float in [.85,1.1]:G.box(self,p+Vector3(0,y,-.27),Vector3(.6,.12,.06),material)
+
+## Fishing-village details inside homes: a net and rods on the walls, a galley counter with a pot, tackle crates by the door,
+## framed sea charts and a coiled rope. Everything sits against walls or in corners so the doorway and the centre stay clear.
+func _decorate_interior(half: float,back: float) -> void:
+	var dark:=M.surface("weathered_wood",Color("544d3c"),1.5)
+	var wood:=M.surface("teak",Color("b7a180"),1.2)
+	var twine:=G.material(Color("c9b48a"),.95)
+	var net_mat:=G.material(Color("5e7f7a"),.9)
+	var cloth:=G.material(Color("e5dcc2"),.9)
+	var sea:=G.material(Color("2f6f86"),.6)
+	var iron:=G.material(Color("3a3f44"),.5)
+	var red:=G.material(Color("b3493c"),.8)
+	# Fishing net hung on the back wall, above the bed.
+	var wall_z:=back-.12
+	for i: int in 5:
+		var x:=-half+1.1+float(i)*.45
+		G.beam(self,Vector3(x,2.9,wall_z),Vector3(x,1.9,wall_z),.012,net_mat)
+	for j: int in 4:
+		var y:=1.9+float(j)*.33
+		G.beam(self,Vector3(-half+.8,y,wall_z),Vector3(-half+3.1,y,wall_z),.012,net_mat)
+	G.box(self,Vector3(-half+.8,2.92,wall_z),Vector3(2.4,.04,.04),dark)
+	# Two fishing rods leaning in the front-left corner.
+	for k: int in 2:
+		var base:=Vector3(-half+.25+float(k)*.22,.3,-back+.3)
+		G.beam(self,base,base+Vector3(.35,2.4,-.2),.03,dark)
+		G.beam(self,base+Vector3(.35,2.4,-.2),base+Vector3(.5,2.6,-.3),.008,twine)
+	# Tackle crates by the door, one stacked on the other.
+	G.box(self,Vector3(-half+.55,.35,-back+.7),Vector3(.8,.7,.6),wood,true)
+	G.box(self,Vector3(-half+.55,1.0,-back+.7),Vector3(.7,.55,.5),wood)
+	G.box(self,Vector3(-half+.55,1.0,-back+.7),Vector3(.72,.08,.52),red)
+	# Galley counter in the front-right corner with a stove top and a pot.
+	var galley_x:=half-.55;var galley_z:=-back+1.05
+	G.box(self,Vector3(galley_x,.5,galley_z),Vector3(.7,1.0,1.5),dark,true)
+	G.box(self,Vector3(galley_x,1.02,galley_z),Vector3(.75,.06,1.56),wood)
+	G.cylinder(self,Vector3(galley_x-.1,1.12,galley_z),.2,.18,iron,.2,14)
+	G.cylinder(self,Vector3(galley_x-.1,1.25,galley_z),.14,.12,red,.14,12)
+	# Framed sea chart and a coiled rope on the left wall, away from the bed.
+	G.box(self,Vector3(-half+.1,1.9,1.2),Vector3(.04,.7,.9),dark)
+	G.box(self,Vector3(-half+.13,1.9,1.2),Vector3(.02,.6,.8),sea)
+	G.box(self,Vector3(-half+.13,1.9,1.55),Vector3(.02,.1,.2),cloth)
+	for r: int in 3:
+		G.cylinder(self,Vector3(-half+.5+float(r)*.15,.2,back-.4),.12,.06,twine,.12,12)
+
