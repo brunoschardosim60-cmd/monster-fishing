@@ -139,7 +139,11 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: 
 	for key: String in catalog:
 		var item: Dictionary=catalog[key]
 		if item.service!=id:continue
-		var button:=_button(box,"%s  —  %d moedas"%[item.title,item.price]);button.custom_minimum_size.x=500.;button.add_theme_font_size_override("font_size",14)
+		var label_text:="%s  —  %d moedas"%[item.title,item.price]
+		if item.get("tiered",false):
+			var level:int=int(inventory.equipment.get(key,0))
+			label_text="%s  —  nível %d/3 · próximo: %d moedas"%[item.title,level,preload("res://scripts/inventory/harbor_economy.gd").next_cost(key,inventory)] if level<3 else "%s  —  nível máximo"%item.title
+		var button:=_button(box,label_text);button.custom_minimum_size.x=500.;button.add_theme_font_size_override("font_size",14)
 		button.pressed.connect(func() -> void: service_action.emit(key))
 	var actions: Dictionary={}
 	if id=="market":actions={"sell":"Vender todas as capturas · %d moedas"%inventory.total_value()}

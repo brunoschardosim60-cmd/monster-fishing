@@ -40,17 +40,34 @@ static func trade(action: String,inventory: RefCounted,boat: CharacterBody3D) ->
 	inventory.changed.emit();return "Concluído."
 const CATALOG: Dictionary={
 	"bait":{"title":"6 iscas frescas · mordidas 25% mais rápidas","price":12,"service":"gear"},
-	"rod":{"title":"Vara reforçada · recolhimento +15%","price":65,"service":"gear"},
-	"line":{"title":"Linha trançada · tensão -15%","price":55,"service":"gear"},
-	"hook":{"title":"Anzol de aço · recolhimento +8%","price":35,"service":"gear"},
-	"reel":{"title":"Molinete de longo alcance · lançamento +12 m","price":45,"service":"gear"},
+	"rod":{"title":"Vara reforçada · recolhimento +15% por nível","price":65,"service":"gear","tiered":true},
+	"line":{"title":"Linha trançada · tensão -15% por nível","price":55,"service":"gear","tiered":true},
+	"hook":{"title":"Anzol de aço · recolhimento +8% por nível","price":35,"service":"gear","tiered":true},
+	"reel":{"title":"Molinete de longo alcance · lançamento +12 m por nível","price":45,"service":"gear","tiered":true},
 	"engine":{"title":"Melhoria do motor · velocidade +15%","price":110,"service":"workshop"},
 	"searchlight":{"title":"Farol de proa · ilumina até 65 m · tecla L","price":60,"service":"workshop"},
 	"hull":{"title":"Proteção do casco · reduz dano por impacto 40%","price":80,"service":"workshop"},
 	"repair":{"title":"Reparar o casco · integridade 100%","price":18,"service":"workshop"}}
+## Gear upgrades come in three levels. Each level costs more than the last (base price x current level + 1).
+const MAX_LEVEL: int=3
+
+static func level_of(id: String,inventory: RefCounted) -> int:
+	return int(inventory.equipment.get(id,0))
+
+static func next_cost(id: String,inventory: RefCounted) -> int:
+	return int(CATALOG[id].price)*(level_of(id,inventory)+1)
+
 static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> String:
 	if not CATALOG.has(id): return "Produto indisponível."
 	var item: Dictionary=CATALOG[id]
+	if item.get("tiered",false):
+		var level:=level_of(id,inventory)
+		if level>=MAX_LEVEL: return "Nível máximo já alcançado."
+		var cost:=next_cost(id,inventory)
+		if inventory.money<cost: return "Moedas insuficientes para o nível %d (%d moedas)."%[level+1,cost]
+		inventory.money-=cost;inventory.equipment[id]=level+1
+		apply(inventory,boat,fishing);inventory.changed.emit()
+		return "Melhoria concluída: %s, nível %d/%d."%[str(item.title),level+1,MAX_LEVEL]
 	if id in inventory.equipment and inventory.equipment[id]>=1: return "Você já possui esta melhoria."
 	if id=="repair" and boat.integrity>=.999: return "O casco já está em boas condições."
 	if inventory.money<int(item.price): return "Moedas insuficientes. Venda capturas ou explore os baús da ilha."
