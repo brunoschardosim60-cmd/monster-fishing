@@ -19,6 +19,9 @@ var hull_protection: float=1.
 var deck_lights: Array[Light3D]=[]
 var lamp_materials: Array[StandardMaterial3D]=[]
 var searchlight: SpotLight3D
+## Searchlight aim relative to the bow, in radians. U/O swing it, I/K tilt it while you are at the helm.
+var light_yaw: float=0.
+var light_pitch: float=0.
 
 var occupied: bool = false
 var controls_enabled: bool = true
@@ -56,6 +59,15 @@ func _physics_process(delta: float) -> void:
 	if occupied and controls_enabled:
 		throttle = Input.get_axis("move_back", "move_forward")
 		steering = Input.get_axis("move_left", "move_right")
+	if occupied and controls_enabled and searchlight_upgraded:
+		var aim_step:=1.1*delta
+		if Input.is_physical_key_pressed(KEY_U): light_yaw=clampf(light_yaw+aim_step,-1.2,1.2)
+		if Input.is_physical_key_pressed(KEY_O): light_yaw=clampf(light_yaw-aim_step,-1.2,1.2)
+		if Input.is_physical_key_pressed(KEY_I): light_pitch=clampf(light_pitch+aim_step*.7,-.9,.25)
+		if Input.is_physical_key_pressed(KEY_K): light_pitch=clampf(light_pitch-aim_step*.7,-.9,.25)
+	light_yaw=clampf(light_yaw,-1.2,1.2);light_pitch=clampf(light_pitch,-.9,.25)
+	if searchlight!=null:
+		searchlight.rotation=Vector3(-.16+light_pitch,light_yaw,0.)
 	if throttle > 0.0:
 		var exposure:=Waves.exposure(Vector2(global_position.x,global_position.z))
 		var limit: float=max_speed*(.55+.45*integrity)*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)

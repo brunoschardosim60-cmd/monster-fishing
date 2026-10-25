@@ -127,7 +127,7 @@ static func make_birds(parent: Node3D,kind: String,centre: Vector3,radius: float
 	for i: int in count:
 		mm.set_instance_transform(i,Transform3D(Basis.IDENTITY,Vector3.ZERO))
 		var dir:=1. if i%5!=0 else -1.
-		mm.set_instance_custom_data(i,Color(radius*rng.randf_range(.45,1.1),dir*rng.randf_range(.05,.11)*(60./maxf(radius,40.)),rng.randf()*TAU,rng.randf_range(1.,1.5)*(1.8 if kind!="papagaio" else 1.)))
+		mm.set_instance_custom_data(i,Color(radius*rng.randf_range(.45,1.1),dir*rng.randf_range(.05,.11)*(60./maxf(radius,40.)),rng.randf()*TAU,rng.randf_range(2.2,3.0)))
 	var mat:=ShaderMaterial.new();mat.shader=CREATURE;mat.set_shader_parameter("fly",1.)
 	var node:=MultiMeshInstance3D.new();node.add_to_group("aves");node.name="aves_"+kind;node.multimesh=mm;node.material_override=mat;node.position=centre
 	node.custom_aabb=AABB(Vector3(-radius*1.3,-20,-radius*1.3),Vector3(radius*2.6,60,radius*2.6));node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -141,7 +141,7 @@ static func make_animals(parent: Node3D,kind: String,spots: Array[Vector3],rng: 
 	for i: int in spots.size():
 		mm.set_instance_transform(i,Transform3D(Basis.IDENTITY,spots[i]))
 		var r:=rng.randf_range(1.2,2.6)
-		mm.set_instance_custom_data(i,Color(r,(1. if i%2==0 else -1.)*rng.randf_range(.05,.1)/r*2.,rng.randf()*TAU,rng.randf_range(scale_range.x,scale_range.y)))
+		mm.set_instance_custom_data(i,Color(r,(1. if i%2==0 else -1.)*rng.randf_range(.05,.1)/r*2.,rng.randf()*TAU,rng.randf_range(scale_range.x,scale_range.y)*1.8))
 		low=low.min(spots[i]);high=high.max(spots[i])
 	var mat:=ShaderMaterial.new();mat.shader=CREATURE;mat.set_shader_parameter("fly",0.);mat.set_shader_parameter("bob",.04 if kind=="pinguim" else 0.)
 	var node:=MultiMeshInstance3D.new();node.add_to_group("fauna");node.name="fauna_"+kind;node.multimesh=mm;node.material_override=mat

@@ -425,14 +425,16 @@ func _scatter_ground_cover(center: Vector3,size: Vector2,biome: String,lobe: int
 
 ## Finds a flat spot (|slope| small over 3 m) on dry land within the radius band; Vector3.INF if none is found.
 func _flat_spot(center: Vector3,size: Vector2,biome: String,lobe: int,rmin: float,rmax: float,wet: float=0.) -> Vector3:
-	for attempt: int in 14:
+	# Gentle slopes are fine for grazing animals; the search widens over attempts so every herd finds a spot.
+	for attempt: int in 60:
 		var angle:=rng.randf()*TAU;var r:=rng.randf_range(rmin,rmax)
 		var o:=_island_offset(lobe,size,angle,r)
 		var g:=_island_height(o.x,o.y,r,false,biome,lobe)
 		if g<1.25 or _near_water(o.x,o.y,lobe,1.2):continue
+		var limit:=.5 if attempt<30 else 1.4
 		var flat:=true
 		for d: Vector2 in [Vector2(3,0),Vector2(-3,0),Vector2(0,3),Vector2(0,-3)]:
-			if absf(_island_height(o.x+d.x,o.y+d.y,r,false,biome,lobe)-g)>.5:flat=false
+			if absf(_island_height(o.x+d.x,o.y+d.y,r,false,biome,lobe)-g)>limit:flat=false
 		if flat:return center+Vector3(o.x,g,o.y)
 	return Vector3.INF
 

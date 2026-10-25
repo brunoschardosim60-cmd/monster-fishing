@@ -29,6 +29,10 @@ void vertex(){
 	NORMAL=vec3(NORMAL.x*cs+NORMAL.z*sn,NORMAL.y,-NORMAL.x*sn+NORMAL.z*cs);
 }
 void fragment(){
-	ALBEDO=pow(COLOR.rgb,vec3(2.2));
+	// Hand-built meshes may have inward winding; flip normals on back faces so lighting is correct from outside.
+	if(!FRONT_FACING)NORMAL=-NORMAL;
+	ALBEDO=COLOR.rgb;
+	// A little self-light keeps the small animals and birds readable against the bright ground.
+	EMISSION=COLOR.rgb*.22;
 	ROUGHNESS=.85;
 }
