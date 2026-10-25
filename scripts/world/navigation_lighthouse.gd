@@ -3,9 +3,21 @@ const G=preload("res://scripts/world/geometry.gd")
 const M=preload("res://scripts/visuals/materials.gd")
 var world: Node3D
 var rotor: Node3D
-var beacon: SpotLight3D
 var lens: StandardMaterial3D
 var elapsed: float=0.
+## Each lighthouse has its own light character so sailors can tell them apart: sweep period in seconds,
+## beam headings in degrees around the rotor (two beams close together read as a double flash), and a start phase.
+var period: float=12.
+var beam_angles: Array=[0.]
+var phase: float=0.
+var tint: Color=Color("ffe7af")
+var arms: Array[Node3D]=[]
+var spots: Array[SpotLight3D]=[]
+var beam_materials: Array[ShaderMaterial]=[]
+var glow: MeshInstance3D
+var glow_material: ShaderMaterial
+const BEAM_LENGTH: float=800.
+const BEAM_HALF_ANGLE: float=3.4
 func _ready() -> void:
 	var stone:=M.surface("lime_plaster",Color("ded9c3"),.7)
 	var metal:=G.material(Color("31484d"),.34);metal.metallic=.6
@@ -27,18 +39,36 @@ func _ready() -> void:
 	lens=G.material(Color("fff0bc"));lens.emission_enabled=true; lens.emission=Color("ffedbd");lens.emission_energy_multiplier=5.
 	for y: int in 9:
 		var ring:=TorusMesh.new();ring.inner_radius=.37;ring.outer_radius=.48;ring.rings=32;ring.ring_segments=6;G.mesh_node(rotor,ring,lens,Vector3(0,(y-4)*.13,0))
-	beacon=SpotLight3D.new();beacon.spot_range=650.;beacon.spot_angle=7.;beacon.light_energy=12.;beacon.light_color=Color("ffe7af");beacon.rotation.x=-.035;rotor.add_child(beacon)
-	# Visible scattered light; the real spot independently lights nearby surfaces.
-	var beam:=CylinderMesh.new();beam.top_radius=8.;beam.bottom_radius=.15;beam.height=150.;beam.radial_segments=24
-	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/lighthouse_beam.gdshader")
-	var cone:=G.mesh_node(rotor,beam,mat,Vector3(0,0,-75));cone.rotation.x=-PI*.5;cone.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Every beam is a real spotlight plus a matching visible shaft of the same cone.
+	var radius:=tan(deg_to_rad(BEAM_HALF_ANGLE))*BEAM_LENGTH
+	for angle_value: Variant in beam_angles:
+		var angle:=float(angle_value)
+		var arm:=Node3D.new();arm.rotation=Vector3(-.03,deg_to_rad(angle),0.);rotor.add_child(arm);arms.append(arm)
+		var spot:=SpotLight3D.new();spot.spot_range=BEAM_LENGTH;spot.spot_angle=BEAM_HALF_ANGLE+1.;spot.light_energy=12.;spot.light_color=tint;arm.add_child(spot);spots.append(spot)
+		var shaft:=CylinderMesh.new();shaft.top_radius=radius;shaft.bottom_radius=.15;shaft.height=BEAM_LENGTH;shaft.radial_segments=32;shaft.rings=1;shaft.cap_top=false;shaft.cap_bottom=false
+		var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/lighthouse_beam.gdshader");mat.set_shader_parameter("tint",Vector3(tint.r,tint.g,tint.b))
+		var cone:=G.mesh_node(arm,shaft,mat,Vector3(0,0,-BEAM_LENGTH*.5));cone.rotation.x=-PI*.5;cone.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		beam_materials.append(mat)
+	elapsed=phase
 	preload("res://scripts/world/static_batch.gd").build(self,[rotor])
+	# Added after batching so the flare is never merged into the tower mesh.
+	glow_material=ShaderMaterial.new();glow_material.shader=preload("res://assets/shaders/lighthouse_glow.gdshader");glow_material.set_shader_parameter("tint",Vector3(tint.r,tint.g,tint.b))
+	glow=G.mesh_node(self,QuadMesh.new(),glow_material,Vector3(0,14.9,0));glow.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	glow.custom_aabb=AABB(Vector3(-300,-300,-300),Vector3(600,600,600));glow.visibility_range_end=7000.
 func _process(delta: float) -> void:
-	elapsed+=delta;rotor.rotation.y=fposmod(elapsed*TAU/12.,TAU)
+	elapsed+=delta;rotor.rotation.y=fposmod(elapsed*TAU/period,TAU)
 	var darkness: float=1. if world.ocean==null else 1.-world.ocean.daylight
-	rotor.visible=darkness>.2;beacon.light_energy=12.*darkness
+	var night:=smoothstep(.08,.55,darkness)
+	# Rain, fog and cloud scatter more light, so the shaft is easier to see in bad weather.
+	var haze:=1.
+	if world.ocean!=null:haze=1.+clampf(world.ocean.weather.rain,0.,1.)*1.1+clampf(world.ocean.weather.fog*320.,0.,1.2)+world.ocean.weather.cloud*.3
+	rotor.visible=night>.01;glow.visible=rotor.visible
+	for spot: SpotLight3D in spots:spot.light_energy=12.*night
+	for mat: ShaderMaterial in beam_materials:mat.set_shader_parameter("strength",night*haze)
+	var flash:=0.
 	var camera:=get_viewport().get_camera_3d()
 	if camera!=null:
 		var to_camera: Vector3=(camera.global_position-rotor.global_position).normalized()
-		var alignment:=maxf(0.,(-rotor.global_basis.z).dot(to_camera))
-		lens.emission_energy_multiplier=(2.+pow(alignment,48.)*18.)*darkness
+		for arm: Node3D in arms:flash=maxf(flash,pow(maxf(0.,(-arm.global_basis.z).dot(to_camera)),40.))
+	lens.emission_energy_multiplier=(2.+flash*18.)*night
+	glow_material.set_shader_parameter("intensity",night*(.16+flash*1.5)*(1.+(haze-1.)*.5))
