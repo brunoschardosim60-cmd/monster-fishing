@@ -13,11 +13,17 @@ var hull: Node3D
 var trail: MeshInstance3D
 var waiting_for_player: bool=false
 var yield_side: float=1.
+## Procedural kind (vessel_models.gd); empty keeps the glTF model at asset_path.
+var kind: String=""
+## How fast the hull turns towards its next heading (rad/s-ish); big ships turn slowly.
+var turn_rate: float=.35
 func _ready() -> void:
 	collision_layer=1;collision_mask=3;motion_mode=CharacterBody3D.MOTION_MODE_FLOATING
 	var collision:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=Vector3(length_m*.28,2.,length_m*.9);collision.shape=box;collision.position.y=.2;add_child(collision)
 	hull=Node3D.new();add_child(hull)
-	var model:=preload("res://scripts/assets/external_model.gd").new();model.asset_path=asset_path;model.length_m=length_m;model.waterline_m=length_m*.08;model.material_family="boat";hull.add_child(model)
+	if kind!="":hull.add_child(preload("res://scripts/boats/vessel_models.gd").build(kind,length_m))
+	else:
+		var model:=preload("res://scripts/assets/external_model.gd").new();model.asset_path=asset_path;model.length_m=length_m;model.waterline_m=length_m*.08;model.material_family="boat";hull.add_child(model)
 	for side: float in [-1.,1.]:
 		var color:=Color("ef553e") if side<0. else Color("5ee5a5")
 		var material:=G.material(color);material.emission_enabled=true;material.emission=color;material.emission_energy_multiplier=2.
@@ -50,7 +56,7 @@ func _physics_process(delta: float) -> void:
 	var ahead:=position+desired*maxf(28.,length_m)
 	var coast:=Layout.coast(Vector2(ahead.x,ahead.z))
 	if coast.x<length_m:desired=Vector3(coast.y,0,coast.z)
-	rotation.y=lerp_angle(rotation.y,atan2(-desired.x,-desired.z),delta*.35)
+	rotation.y=lerp_angle(rotation.y,atan2(-desired.x,-desired.z),delta*turn_rate)
 	var safe:=Layout.coast(Vector2(position.x,position.z)).x>length_m*.5
 	var target_speed:=yield_speed if waiting_for_player else cruise_speed*(.7 if Waves.wind>.75 else 1.)
 	speed=move_toward(speed,target_speed if safe else 0.,delta*1.8)
