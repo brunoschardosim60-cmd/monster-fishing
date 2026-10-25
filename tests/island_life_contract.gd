@@ -16,7 +16,7 @@ func run() -> void:
 	check(dry,"every lake sits well inland")
 	var tufts:=0;var cells:=0
 	for n: Node in get_nodes_in_group("grama"):tufts+=(n as MultiMeshInstance3D).multimesh.instance_count;cells+=1
-	check(tufts>=3000,"%d grass tufts in %d cells"%[tufts,cells])
+	check(tufts>=20000,"%d grass tufts in %d cells"%[tufts,cells])
 	var birds:=0;var kinds:={}
 	for n: Node in get_nodes_in_group("aves"):birds+=(n as MultiMeshInstance3D).multimesh.instance_count;kinds[(n as MultiMeshInstance3D).multimesh.mesh]=true
 	check(birds>=60 and kinds.size()>=3,"%d birds of %d kinds orbit the islands"%[birds,kinds.size()])

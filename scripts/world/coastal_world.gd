@@ -401,7 +401,7 @@ func _near_water(x: float,z: float,lobe: int,margin: float) -> bool:
 func _scatter_ground_cover(center: Vector3,size: Vector2,biome: String,lobe: int) -> void:
 	var style: Array=Life.GRASS_STYLE.get(biome,Life.GRASS_STYLE["verdant"])
 	var area:=PI*size.x*size.y*.5
-	var count:=int(minf(area/1000.*float(style[2])*14.,20000.))
+	var count:=int(minf(area/1000.*float(style[2])*5.,6000.))
 	var points: Array[Vector3]=[]
 	var clusters: Array[Vector2]=[]
 	for c: int in 14:clusters.append(Vector2(rng.randf()*TAU,rng.randf_range(.15,.6)))
