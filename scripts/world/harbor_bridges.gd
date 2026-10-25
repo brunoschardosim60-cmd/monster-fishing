@@ -26,12 +26,12 @@ func _ready() -> void:
 	# Landing bays connect directly to the walk deck; fishing lines clear the rails.
 	for at: Vector3 in [Vector3(61,1.9,-22),Vector3(-43,1.8,-8.5)]:
 		G.box(self,at-Vector3.UP*.12,Vector3(4.,.24,5.6),wood,true)
-		var angler:=preload("res://scripts/world/working_fisher.gd").new();angler.position=at+Vector3(0,0,-1.6);angler.district=self;add_child(angler);fishers.append(angler)
+		var angler:=preload("res://scripts/world/working_fisher.gd").new();angler.position=at+Vector3(0,0,-1.6);angler.district=self;angler.look_id=9+fishers.size();add_child(angler);fishers.append(angler)
 	for x: float in [-61.,-49.,-37.,29.,42.,55.,69.]:
 		var at:=Vector3(x,1.5,-5.5 if x<0. else -16.4)
 		village._lamp(at,iron)
 	for i: int in 2:
-		var walker:=preload("res://scripts/world/village_resident.gd").new();walker.speed=1.1+float(i)*.15;walker.follow_terrain=false;walker.ground_sampler=deck_height
+		var walker:=preload("res://scripts/world/village_resident.gd").new();walker.speed=1.1+float(i)*.15;walker.look_id=7+i;walker.follow_terrain=false;walker.ground_sampler=deck_height
 		walker.route.assign([Vector3(34+i*13,1.5,-18),Vector3(69.5,1.4,-18),Vector3(70,1.4,-8),Vector3(70,1.4,-18),Vector3(32,1.5,-18)])
 		add_child(walker);walkers.append(walker)
 	# Batch only fixed fittings. Residents, rod lines and catches stay dynamic.
@@ -83,7 +83,7 @@ func _stall(at: Vector3,id: String,color: Color) -> void:
 	G.beam(self,at+Vector3(0,3.2,-2.4),at+Vector3(0,3.2,1.4),.035,iron)
 	for x: float in [-2.3,2.3]:G.beam(self,at+Vector3(x,2.9,-2.),at+Vector3(0,3.2,-2.4),.023,iron)
 	var marker:=Marker3D.new();marker.position=at+Vector3(0,0,1.);add_child(marker);village.services[id]=marker
-	var vendor:=preload("res://scripts/player/imported_angler.gd").new();vendor.position=at+Vector3(0,0,-1.6);vendor.rotation.y=PI;add_child(vendor);vendors.append(vendor)
+	var vendor:=preload("res://scripts/player/imported_angler.gd").new();vendor.position=at+Vector3(0,0,-1.6);vendor.rotation.y=PI;add_child(vendor);vendor.apply_look(preload("res://scripts/world/npc_look.gd").for_id(11+vendors.size()));vendors.append(vendor)
 	for i: int in 4:
 		var p:=at+Vector3(-1.3+i*.85,1.,-.65)
 		G.box(self,p,Vector3(.75,.08,.65),wood)

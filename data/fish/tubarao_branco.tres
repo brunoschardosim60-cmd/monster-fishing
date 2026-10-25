@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "tubarao_branco"
+display_name = "Tubarão-branco"
+rarity = "Épica"
+min_weight = 120.0
+max_weight = 320.0
+value_per_kg = 5.0
+difficulty = 0.94
+description = "A barbatana corta a superfície antes de qualquer sinal. Pesca só para quem tem equipamento e nervos."
+color = Color(0.420, 0.459, 0.502, 1)
+habitat = "Mar aberto, longe da costa"
+regions = PackedStringArray("open_water")
+encounter_weight = 0.16

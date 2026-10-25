@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cirurgiao"
+display_name = "Cirurgião-azul"
+rarity = "Incomum"
+min_weight = 0.4
+max_weight = 1.3
+value_per_kg = 38.0
+difficulty = 0.45
+description = "Azul elétrico com cauda amarela. Rápido nas curvas, derruba quem puxa a linha sem jeito."
+color = Color(0.169, 0.388, 0.847, 1)
+habitat = "Recifes tropicais"
+regions = PackedStringArray("coast")
+encounter_weight = 1.3

@@ -9,9 +9,11 @@ var catch_model: Node3D
 var caught_count: int=0
 var pending: Dictionary={}
 var stored: bool=false
+var look_id: int=-1
 var elapsed: float=0.
 func _ready() -> void:
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
+	if look_id>=0:visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
 	fishing=Fishing.new();add_child(fishing);fishing.rng.seed=9182+int(absf(position.x)*17.);fishing.caught.connect(_caught)
 	line=preload("res://scripts/fishing/fishing_visual.gd").new();line.top_level=true;add_child(line)
 	var metal:=G.material(Color("9ea89f"),.3)

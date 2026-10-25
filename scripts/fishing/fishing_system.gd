@@ -15,6 +15,15 @@ const SPECIES: Array[Resource] = [
 	preload("res://data/fish/seabass.tres"),
 	preload("res://data/fish/tuna.tres"),
 	preload("res://data/fish/lanternfish.tres"),
+	preload("res://data/fish/sargo.tres"),
+	preload("res://data/fish/cirurgiao.tres"),
+	preload("res://data/fish/pargo.tres"),
+	preload("res://data/fish/baiacu.tres"),
+	preload("res://data/fish/tubarao_recife.tres"),
+	preload("res://data/fish/peixe_serra.tres"),
+	preload("res://data/fish/atum_rei.tres"),
+	preload("res://data/fish/tubarao_branco.tres"),
+	preload("res://data/fish/peixe_lua.tres"),
 ]
 const BITE_WINDOW: float = 3.2
 const CAST_DURATION: float = 0.85

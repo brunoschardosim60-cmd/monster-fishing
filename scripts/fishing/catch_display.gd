@@ -5,6 +5,7 @@ var remaining: float = 0.0
 var fish_root: Node3D
 var _elapsed: float = 0.0
 var held: bool=false
+const Forms=preload("res://scripts/creatures/fish_forms.gd")
 
 func _ready() -> void:
 	visible = false
@@ -23,6 +24,14 @@ func show_catch(data: Dictionary) -> void:
 	elif species == "seabass":
 		size_factor = 1.12
 	fish_root.scale = Vector3.ONE * size_factor
+	if Forms.has_form(species):
+		# Procedural species: the same painted body that swims in the sea, scaled to a readable trophy size.
+		var shown:=MeshInstance3D.new();shown.mesh=Forms.mesh(species);shown.material_override=Forms.material(species,true)
+		var tail:=1.+float(Forms.FORMS[species].get("tail_len",.17))
+		shown.scale=Vector3.ONE*clampf(Forms.length_of(species),.9,1.5)/tail*1.35
+		shown.rotation.y=PI;fish_root.add_child(shown);fish_root.scale=Vector3.ONE
+		remaining=4.;_elapsed=0.;rotation.y=-.45;visible=true
+		return
 	if species in ["mackerel","tuna","lanternfish"]:
 		var imported:=preload("res://scripts/creatures/marine_visual.gd").new();imported.species=species;imported.face_forward=false;fish_root.add_child(imported)
 		if species=="tuna":fish_root.scale=Vector3.ONE*1.1

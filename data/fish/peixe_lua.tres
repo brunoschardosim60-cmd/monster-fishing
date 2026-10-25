@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "peixe_lua"
+display_name = "Peixe-lua-gigante"
+rarity = "Rara"
+min_weight = 150.0
+max_weight = 380.0
+value_per_kg = 4.0
+difficulty = 0.58
+description = "Pesado e dócil, flutua de lado para se aquecer. Difícil de erguer, não de fisgar."
+color = Color(0.553, 0.608, 0.639, 1)
+habitat = "Mar aberto, perto da superfície"
+regions = PackedStringArray("open_water")
+encounter_weight = 0.32

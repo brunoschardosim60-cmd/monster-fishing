@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "sargo"
+display_name = "Sargo-listrado"
+rarity = "Comum"
+min_weight = 0.3
+max_weight = 0.9
+value_per_kg = 22.0
+difficulty = 0.3
+description = "Listras escuras, nada em bandos junto às pedras. Mordisca a isca antes de engolir: fisgue na hora certa."
+color = Color(0.851, 0.769, 0.424, 1)
+habitat = "Recifes e baías rasas"
+regions = PackedStringArray("coast")
+encounter_weight = 2.6

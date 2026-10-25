@@ -4,6 +4,21 @@ const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const Visual=preload("res://scripts/creatures/marine_visual.gd")
 var game: Node3D
 var schools: Array[Dictionary]=[]
+const School=preload("res://scripts/creatures/fish_school.gd")
+## Procedural species. Entry: [form, lobe or -1, angle (deg), distance from shore (m), fish, spread (m), min depth, max depth, predator].
+## When lobe is -1 the entry is an absolute open-water point: [form, -1, x, z, fish, spread, min depth, max depth, predator].
+const SCHOOL_TABLE: Array=[
+	["sardine",0,120,55,22,50,1.5,7,false],["sardine",2,20,70,18,45,1.5,6,false],["seabass",3,200,60,10,40,3,12,false],
+	["sargo",9,200,45,16,35,1.2,5,false],["cirurgiao",9,300,40,14,32,1.5,6,false],["sargo",8,100,50,18,40,1.2,5,false],["cirurgiao",17,40,45,16,35,1.5,6,false],
+	["baiacu",8,250,60,2,30,1.5,5,false],["baiacu",18,90,40,2,25,1.5,5,false],
+	["pargo",10,240,45,16,40,3,12,false],["pargo",19,100,50,14,35,3,12,false],["pargo",12,120,60,14,40,3,12,false],
+	["sardine",11,100,60,22,50,2,8,false],["seabass",11,300,60,10,40,4,14,false],["sargo",13,60,50,16,40,1.2,5,false],["cirurgiao",20,300,50,12,35,2,8,false],
+	["tubarao_recife",9,60,70,2,90,2.5,6,true],["tubarao_recife",10,330,80,2,100,3,8,true],["peixe_serra",4,200,50,1,60,4,10,false],
+	["tubarao_branco",-1,1400,700,1,260,.4,.9,true],["tubarao_branco",-1,-1100,-300,1,260,.4,.9,true],
+	["peixe_lua",-1,-700,-500,2,80,.2,.7,false],["peixe_lua",-1,1950,-380,2,80,.2,.7,false],
+	["atum_rei",-1,1700,-250,5,120,3,14,false],["atum_rei",-1,-1600,1200,5,120,3,14,false]]
+var fish_schools: Array[Node3D]=[]
+var predators: Array[Node3D]=[]
 var guardian: Node3D
 var guardian_discovered: bool=false
 var guardian_mode: String="patrulhando"
@@ -15,12 +30,39 @@ func _ready() -> void:
 		for i: int in 8:
 			var fish:=Visual.new();fish.species=data[1];fish.scale=Vector3.ONE*(.48 if data[1]=="mackerel" else 1.5);fish.position=data[0]+Vector3(sin(i*2.4)*3.,sin(i)*.4,cos(i*2.4)*3.);fish.swim_phase=i*2.4;fish.set_meta("school",true);add_child(fish);school.members.append(fish);school.velocities.append(Vector3(0,0,-1.))
 		schools.append(school)
+	_build_schools()
 	guardian=Visual.new();guardian.species="abyssal_guardian";guardian.name="VigiaAbissal";guardian.position=Vector3(380,-6,-220);add_child(guardian)
+## Finds open water at roughly `distance` metres off the shore of a lobe, walking outward along `angle`.
+func _water_near(lobe: int,angle_deg: float,distance: float) -> Vector2:
+	var l:=Layout.LOBES[lobe];var dir:=Vector2(cos(deg_to_rad(angle_deg)),sin(deg_to_rad(angle_deg)))
+	var p:=Vector2(l.x,l.y)
+	for step: int in 400:
+		p+=dir*(maxf(l.z,l.w)*.01+2.)
+		if Layout.coast(p).x>=distance:return p
+	return p
+func _open_water(at: Vector2) -> Vector2:
+	var p:=at
+	for ring: int in 40:
+		if Layout.coast(p).x>90. and absf(p.x)<3000. and absf(p.y)<3000.:return p
+		p=at+Vector2(cos(float(ring)*2.4),sin(float(ring)*2.4))*float(ring)*40.
+	return at
+func _build_schools() -> void:
+	var seed_value:=11
+	for entry: Array in SCHOOL_TABLE:
+		var form: String=entry[0];var lobe: int=entry[1]
+		var water:Vector2=_water_near(lobe,float(entry[2]),float(entry[3])) if lobe>=0 else _open_water(Vector2(float(entry[2]),float(entry[3])))
+		var school:=School.new();add_child(school)
+		school.predator=bool(entry[8]);seed_value+=7
+		school.setup(form,int(entry[4]),Vector3(water.x,0,water.y),float(entry[5]),Vector2(float(entry[6]),float(entry[7])),seed_value)
+		fish_schools.append(school)
+		if school.predator:predators.append(school)
 func region_at(at: Vector3) -> String:
 	var depth:=Waves.depth_at(Vector2(at.x,at.z));var hour: float=game.world.ocean.hour
 	if depth>80. and (hour<6. or hour>20.):return "abyss"
 	return "open_water" if depth>50. else "coast"
 func school_at(at: Vector3) -> String:
+	for school: Node3D in fish_schools:
+		if Vector2(at.x-school.center.x,at.z-school.center.z).length()<22. and school.mmi.visible:return school.species
 	for school: Dictionary in schools:
 		if Vector2(at.x-school.center.x,at.z-school.center.z).length()<22.:return school.species
 	return ""
@@ -33,6 +75,10 @@ func observe_guardian() -> bool:
 	game.inventory.money+=40;game.inventory.changed.emit();return true
 func _physics_process(delta: float) -> void:
 	elapsed+=delta
+	var threats: Array[Vector3]=[]
+	for hunter: Node3D in predators:threats.append(hunter.center)
+	var ctx:={"boat":game.boat.position,"boat_speed":game.boat.speed,"player":game.player.global_position,"line_target":game.fishing_visual.target,"line_active":game.fishing.active(),"threats":threats}
+	for school: Node3D in fish_schools:school.step(delta,ctx)
 	for s: int in schools.size():
 		var school:=schools[s];var target: Vector3=school.origin+Vector3(cos(elapsed*.07+s)*10.,0,sin(elapsed*.07+s)*10.)
 		school.mode="cardume"

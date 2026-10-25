@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "atum_rei"
+display_name = "Atum-rei"
+rarity = "Épica"
+min_weight = 90.0
+max_weight = 220.0
+value_per_kg = 6.0
+difficulty = 0.9
+description = "O senhor do mar aberto. Faixa amarela no flanco e fôlego de sobra para uma longa disputa."
+color = Color(0.122, 0.247, 0.471, 1)
+habitat = "Mar aberto"
+regions = PackedStringArray("open_water")
+encounter_weight = 0.28

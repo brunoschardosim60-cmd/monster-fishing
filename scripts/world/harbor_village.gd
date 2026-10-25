@@ -50,9 +50,9 @@ func _ready() -> void:
 		var resident:=preload("res://scripts/world/village_resident.gd").new()
 		var x:=float(i)*1.1-.9
 		resident.route.assign([Vector3(x,1.3,13.+i*12.),Vector3(x,1.3,35),Vector3(x+1,1.3,57),Vector3(x+1,1.3,13)])
-		resident.speed=.8+float(i)*.12;add_child(resident);residents.append(resident)
+		resident.speed=.8+float(i)*.12;resident.look_id=1+i;add_child(resident);residents.append(resident)
 	for i: int in 3:
-		var resident:=preload("res://scripts/world/village_resident.gd").new();resident.speed=1.+float(i)*.15
+		var resident:=preload("res://scripts/world/village_resident.gd").new();resident.speed=1.+float(i)*.15;resident.look_id=4+i
 		resident.follow_terrain=false
 		resident.route.assign([Vector3(-24.+i*17,1.4,-7),Vector3(25,1.4,-7),Vector3(29,1.4,-23),Vector3(29,1.4,-7),Vector3(-25,1.4,-7)])
 		add_child(resident);residents.append(resident)

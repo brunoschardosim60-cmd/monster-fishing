@@ -9,12 +9,19 @@ var wait: float=0.
 var velocity:=Vector3.ZERO
 var visits: int=0
 var ground_sampler: Callable
+## Index into NpcLook so every person looks different; -1 keeps the default survivalist.
+var look_id: int=-1
 func _ready() -> void:
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
+	if look_id>=0:visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
 	if not route.is_empty(): position=route[0]
 func _process(delta: float) -> void:
-	if route.size()<2: return
 	var camera:=get_viewport().get_camera_3d()
+	if route.size()<2:
+		# A resident with no route simply stands (lighthouse keeper), still breathing in the idle clip.
+		visual.visible=camera!=null and camera.global_position.distance_squared_to(global_position)<3600.
+		if visual.visible:visual.update_animation(0.,false,delta);visual._rod.visible=false
+		return
 	visual.visible=camera!=null and camera.global_position.distance_squared_to(global_position)<3600.
 	wait=maxf(0.,wait-delta)
 	var target:=route[target_index];var diff:=target-position;diff.y=0.

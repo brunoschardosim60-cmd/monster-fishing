@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "pargo"
+display_name = "Pargo-vermelho"
+rarity = "Incomum"
+min_weight = 1.0
+max_weight = 4.0
+value_per_kg = 34.0
+difficulty = 0.55
+description = "Vermelho como brasa, gosta das águas aquecidas perto dos vulcões. Briga firme até o fim."
+color = Color(0.757, 0.220, 0.184, 1)
+habitat = "Águas quentes e vulcânicas"
+regions = PackedStringArray("coast")
+encounter_weight = 1.2

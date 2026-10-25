@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "tubarao_recife"
+display_name = "Tubarão-de-recife"
+rarity = "Épica"
+min_weight = 35.0
+max_weight = 90.0
+value_per_kg = 14.0
+difficulty = 0.85
+description = "Patrulha o recife de ponta a ponta. Os cardumes se desfazem quando ele passa."
+color = Color(0.420, 0.478, 0.525, 1)
+habitat = "Recifes e bordas de coral"
+regions = PackedStringArray("coast")
+encounter_weight = 0.22

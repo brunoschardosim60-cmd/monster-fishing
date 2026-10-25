@@ -13,6 +13,8 @@ var ocean: Node3D
 var terrain_materials: Array[ShaderMaterial]=[]
 var shore_rocks: Array[Vector3]=[]
 const Layout=preload("res://scripts/world/archipelago_layout.gd")
+const NatureLib=preload("res://scripts/world/nature_library.gd")
+const Flora=preload("res://scripts/world/biome_flora.gd")
 var region: Node3D
 var village: Node3D
 var water_root: Node3D
@@ -58,10 +60,11 @@ func _ready() -> void:
 	_make_sign()
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
 		_make_buoy(p)
+	trail_walkers=_make_trail_walkers()
 	var dynamic_roots: Array[Node3D] = []
 	dynamic_roots.append_array(gulls)
 	dynamic_roots.append_array(buoys)
-	dynamic_roots.append(region);dynamic_roots.append(village);dynamic_roots.append(lighthouse);dynamic_roots.append(harbor_lighthouse)
+	dynamic_roots.append(region);dynamic_roots.append(village);dynamic_roots.append(trail_walkers);dynamic_roots.append(lighthouse);dynamic_roots.append(harbor_lighthouse)
 	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
 	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
@@ -156,14 +159,14 @@ func _make_ocean() -> void:
 
 func _biome_palette(biome: String) -> Dictionary:
 	match biome:
-		"tropical": return {"ground":Color("3d7b4c"),"sand":Color("d8c488"),"tint":Vector3(1.04,1.12,.92),"snow":0.,"ash":0.,"trees":30}
-		"frost": return {"ground":Color("9ebec0"),"sand":Color("d9e2dd"),"tint":Vector3(.88,.98,1.08),"snow":1.,"ash":0.,"trees":8}
-		"volcanic": return {"ground":Color("4c302d"),"sand":Color("63473c"),"tint":Vector3(.78,.60,.54),"snow":0.,"ash":.72,"trees":3}
-		"mountain": return {"ground":Color("456247"),"sand":Color("aaa37f"),"tint":Vector3(.92,1.03,.92),"snow":.12,"ash":0.,"trees":20}
-		"desert": return {"ground":Color("a9854c"),"sand":Color("d5ad65"),"tint":Vector3(1.16,.89,.61),"snow":0.,"ash":0.,"trees":2}
-		"mystic": return {"ground":Color("365d58"),"sand":Color("8ca17e"),"tint":Vector3(.72,1.06,1.05),"snow":0.,"ash":0.,"trees":16}
-		"shadow": return {"ground":Color("2d2a40"),"sand":Color("57536b"),"tint":Vector3(.72,.68,.92),"snow":0.,"ash":.38,"trees":4}
-		"storm": return {"ground":Color("334650"),"sand":Color("6b7472"),"tint":Vector3(.68,.77,.87),"snow":0.,"ash":.28,"trees":5}
+		"tropical": return {"ground":Color("3d7b4c"),"sand":Color("d8c488"),"tint":Vector3(1.04,1.12,.92),"snow":0.,"ash":0.,"trees":36}
+		"frost": return {"ground":Color("9ebec0"),"sand":Color("d9e2dd"),"tint":Vector3(.88,.98,1.08),"snow":1.,"ash":0.,"trees":24}
+		"volcanic": return {"ground":Color("4c302d"),"sand":Color("63473c"),"tint":Vector3(.78,.60,.54),"snow":0.,"ash":.72,"trees":18}
+		"mountain": return {"ground":Color("456247"),"sand":Color("aaa37f"),"tint":Vector3(.92,1.03,.92),"snow":.12,"ash":0.,"trees":30}
+		"desert": return {"ground":Color("a9854c"),"sand":Color("d5ad65"),"tint":Vector3(1.16,.89,.61),"snow":0.,"ash":0.,"trees":22}
+		"mystic": return {"ground":Color("365d58"),"sand":Color("8ca17e"),"tint":Vector3(.72,1.06,1.05),"snow":0.,"ash":0.,"trees":26}
+		"shadow": return {"ground":Color("2d2a40"),"sand":Color("57536b"),"tint":Vector3(.72,.68,.92),"snow":0.,"ash":.38,"trees":22}
+		"storm": return {"ground":Color("334650"),"sand":Color("6b7472"),"tint":Vector3(.68,.77,.87),"snow":0.,"ash":.28,"trees":20}
 		_: return {"ground":Color("506c4d"),"sand":Color("a99b76"),"tint":Vector3.ONE,"snow":0.,"ash":0.,"trees":14}
 
 ## The mesh outline is pushed out by this factor so that the waterline (height 0) lands exactly on the
@@ -286,13 +289,7 @@ func _decorate_remote_island(center: Vector3,size: Vector2,biome: String,palette
 		var a:=float(j)*TAU/8.
 		var rim:=_island_offset(lobe,size,a,1./SHORE_PAD)
 		_make_rock(center+Vector3(rim.x,-.05,rim.y),Vector3(2.8,2.1,3.5))
-	var tree_count:=int(float(palette["trees"])*clampf(size.x*size.y/90000.,.6,1.8))
-	for i: int in tree_count:
-		var angle:=rng.randf()*TAU;var r:=rng.randf_range(.12,.58)
-		var offset:=_island_offset(lobe,size,angle,r)
-		var ground:=_island_height(offset.x,offset.y,r,false,biome,lobe)
-		if ground<1.5: continue
-		_make_remote_tree(center+Vector3(offset.x,ground,offset.y),rng.randf_range(.72,1.28),biome)
+	_plant_remote_flora(center,size,biome,palette,lobe)
 	if biome=="volcanic":
 		var magma:=G.material(Color("ff5e2d"));magma.emission_enabled=true;magma.emission=Color("ff3716");magma.emission_energy_multiplier=1.8
 		G.cylinder(self,center+Vector3(0,_island_height(0,0,0.,false,biome,lobe)+.55,0),8.,.5,magma,5.6,24)
@@ -304,12 +301,50 @@ func _decorate_remote_island(center: Vector3,size: Vector2,biome: String,palette
 			var p:=center+Vector3(off.x,_island_height(off.x,off.y,.22,false,biome,lobe)+1.,off.y)
 			G.sphere(self,p,Vector3(1.2,2.8,1.2),glow,12)
 
-func _make_remote_tree(pos: Vector3,tree_scale: float,biome: String) -> void:
-	var kind:=1
-	if biome=="tropical": kind=2 if rng.randf()<.58 else 3
-	elif biome in ["frost","mountain"]: kind=0
-	elif biome in ["desert","volcanic","storm","shadow"]: return
-	preload("res://scripts/world/nature_library.gd").plant(self,kind,pos,tree_scale*.68,rng.randf()*TAU)
+## Flora mix per biome: [kind, weight]. Kinds starting with "glb" use the imported meshes, the rest are procedural.
+const FLORA_MIX: Dictionary={
+	"tropical":[["glb2",.34],["glb3",.26],["shrub",.28],["reed",.12]],
+	"frost":[["snowpine",.55],["glb0",.2],["shrub",.1],["dead",.15]],
+	"mountain":[["pine",.55],["glb0",.2],["windpine",.15],["shrub",.1]],
+	"desert":[["cactus",.38],["agave",.4],["dead",.22]],
+	"volcanic":[["charred",.7],["dead",.12],["agave",.18]],
+	"storm":[["windpine",.55],["dead",.25],["shrub",.2]],
+	"shadow":[["twisted_violet",.6],["dead",.25],["reed",.15]],
+	"mystic":[["twisted_teal",.6],["glb1",.15],["reed",.25]],
+}
+
+func _plant_remote_flora(center: Vector3,size: Vector2,biome: String,palette: Dictionary,lobe: int) -> void:
+	var mix: Array=FLORA_MIX.get(biome,[["glb1",.45],["glb0",.2],["shrub",.25],["reed",.1]])
+	var count:=int(float(palette["trees"])*clampf(size.x*size.y/90000.,.6,4.5)*2.0)
+	var groups: Dictionary={}
+	var clusters: Array[Vector2]=[]
+	for c: int in 5:clusters.append(Vector2(rng.randf()*TAU,rng.randf_range(.2,.5)))
+	for i: int in count:
+		# Two thirds of the plants gather in groves, the rest scatter, so islands read as meadows and woods rather than noise.
+		var angle:=rng.randf()*TAU;var r:=rng.randf_range(.1,.6)
+		if i%3!=0:
+			var cl:=clusters[i%clusters.size()]
+			angle=cl.x+rng.randfn(0.,.35);r=clampf(cl.y+rng.randfn(0.,.09),.08,.64)
+		var offset:=_island_offset(lobe,size,angle,r)
+		var ground:=_island_height(offset.x,offset.y,r,false,biome,lobe)
+		if ground<1.4:continue
+		var roll:=rng.randf();var pick:=""
+		for entry: Array in mix:
+			roll-=float(entry[1])
+			if roll<=0.:pick=str(entry[0]);break
+		if pick=="":pick=str(mix[0][0])
+		var scale_value:=rng.randf_range(.85,1.5)
+		var at:=center+Vector3(offset.x,ground-.12,offset.y)
+		var basis:=Basis(Vector3.UP,rng.randf()*TAU)
+		if pick.begins_with("glb"):
+			basis=basis.scaled(Vector3.ONE*scale_value*.68)
+		else:
+			basis=basis.scaled(Vector3(scale_value*rng.randf_range(.9,1.1),scale_value,scale_value*rng.randf_range(.9,1.1)))
+		if not groups.has(pick):groups[pick]=[] as Array[Transform3D]
+		(groups[pick] as Array[Transform3D]).append(Transform3D(basis,at))
+	for pick: String in groups:
+		if pick.begins_with("glb"):NatureLib.grove(self,int(pick.substr(3)),groups[pick])
+		else:Flora.plant(self,pick,groups[pick],rng)
 
 func home_surface_height(x: float,z: float) -> float:
 	return Layout.height(Vector2(x,z))
@@ -468,6 +503,27 @@ func _make_rock(pos: Vector3, dimensions: Vector3) -> void:
 		shore_rocks.append(pos+Vector3(c.y,0,c.z)*maxf(dimensions.x,dimensions.z)*1.05)
 	var node := Details.stone(self, pos, dimensions, rock, rng.randi())
 	node.rotation.y = rng.randf() * TAU
+
+## People on the long trails plus a keeper at each lighthouse. They walk the authored paths the player uses,
+## out and back, staggered so the island does not feel empty outside the village.
+var trail_walkers: Node3D
+func _make_trail_walkers() -> Node3D:
+	var holder:=Node3D.new();holder.name="Caminhantes";add_child(holder)
+	var Resident:=preload("res://scripts/world/village_resident.gd")
+	var specs:=[[Layout.TRAIL,0,1.15],[Layout.TRAIL,7,.95],[Layout.WEST_TRAIL,2,1.05],[Layout.EAST_TRAIL,1,.9],[Layout.NORTH_TRAIL,3,1.0],[Layout.OLD_PORT_TRAIL,0,.85]]
+	for i: int in specs.size():
+		var points: Array=specs[i][0];var start: int=specs[i][1]
+		var out_and_back: Array[Vector3]=[]
+		for p: Vector3 in points:out_and_back.append(p)
+		for k: int in range(points.size()-2,0,-1):out_and_back.append(points[k])
+		var walker:=Resident.new();walker.route.assign(out_and_back);walker.speed=float(specs[i][2]);walker.look_id=14+i
+		holder.add_child(walker)
+		walker.target_index=mini(start,out_and_back.size()-1);walker.position=out_and_back[walker.target_index]
+	for keeper_spec: Array in [[Vector3(170.2,0,99.6),2.4],[Vector3(-61.,0,494.5),2.1]]:
+		var keeper:=Resident.new();keeper.look_id=20+(0 if keeper_spec[0].x>0. else 1)
+		var at: Vector3=keeper_spec[0];at.y=Layout.height(Vector2(at.x,at.z))+.08
+		keeper.position=at;keeper.rotation.y=float(keeper_spec[1]);holder.add_child(keeper)
+	return holder
 
 func _make_lighthouse(pos: Vector3) -> void:
 	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.period=16.;lighthouse.beam_angles=[0.,26.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");add_child(lighthouse)

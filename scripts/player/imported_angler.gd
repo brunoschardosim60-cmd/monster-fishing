@@ -53,6 +53,24 @@ func _ready() -> void:
 		var guide:=G.mesh_node(_rod,ring,steel,Vector3(0,.28,-.23).lerp(Vector3(0,1.72,-1.8),t));guide.rotation.x=-.7
 	_tip=Marker3D.new();_tip.position=Vector3(0,1.72,-1.8);_rod.add_child(_tip)
 	update_animation(0.,false,.01)
+## Cosmetic variation for NPCs. Keys: cloth_hue, cloth_sat_mul, cloth_sat_add, cloth_val_mul, skin (Vector3),
+## hair (Vector3), headwear ("fisher", "beanie", "straw", "bandana", "none"), headwear_tint, backpack (bool), height, build.
+func apply_look(look: Dictionary) -> void:
+	var body: MeshInstance3D=model.find_children("*","MeshInstance3D",true,false)[0]
+	var original: StandardMaterial3D=body.get_active_material(0)
+	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/npc_skin.gdshader");mat.set_shader_parameter("albedo_tex",original.albedo_texture)
+	mat.set_shader_parameter("cloth_hue",float(look.get("cloth_hue",0.)));mat.set_shader_parameter("cloth_sat_mul",float(look.get("cloth_sat_mul",1.)))
+	mat.set_shader_parameter("cloth_sat_add",float(look.get("cloth_sat_add",0.)));mat.set_shader_parameter("cloth_val_mul",float(look.get("cloth_val_mul",1.)))
+	mat.set_shader_parameter("skin_mul",look.get("skin",Vector3.ONE));mat.set_shader_parameter("hair_mul",look.get("hair",Vector3.ONE))
+	if ResourceLoader.exists("res://assets/characters/skin_zone_mask.png"):mat.set_shader_parameter("zone_tex",load("res://assets/characters/skin_zone_mask.png"))
+	body.set_surface_override_material(0,mat)
+	var kind: String=str(look.get("headwear","fisher"))
+	if kind!="fisher":
+		headwear.queue_free()
+		headwear=preload("res://scripts/player/character_accessories.gd").headwear(kind,look.get("headwear_tint",Color("40566b"))) if kind!="none" else Node3D.new()
+		add_child(headwear)
+	backpack.visible=bool(look.get("backpack",true))
+	scale=Vector3(float(look.get("build",1.)),float(look.get("height",1.)),float(look.get("build",1.)))
 func update_animation(speed: float,fishing: bool,delta: float) -> void:
 	gait_speed=lerpf(gait_speed,speed,1.-exp(-delta*9.))
 	match gait_state:
