@@ -14,8 +14,8 @@ func run() -> void:
 		if box.size.y<.5 or box.size.y>Flora.height_of(kind)*1.6 or box.size.y<Flora.height_of(kind)*.5:good=false;push_error("flora height off %s %.1f"%[kind,box.size.y])
 	check(good,"all %d procedural plant meshes are valid and sized sensibly"%Flora.KINDS.size())
 	var found:={};var instances:=0;var nodes:=0
-	for node: Node in game.world.find_children("flora_*","MultiMeshInstance3D",true,false):
-		found[node.name]=true;nodes+=1;instances+=(node as MultiMeshInstance3D).multimesh.instance_count
+	for node: Node in get_nodes_in_group("flora"):
+		found[(node as MultiMeshInstance3D).multimesh.mesh]=true;nodes+=1;instances+=(node as MultiMeshInstance3D).multimesh.instance_count
 	check(found.size()>=8,"%d plant kinds appear across the islands"%found.size())
 	check(instances>=150,"%d plants planted"%instances)
 	check(nodes<=120,"plants are batched (%d multimesh nodes for %d plants)"%[nodes,instances])

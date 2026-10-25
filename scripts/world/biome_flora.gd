@@ -7,7 +7,7 @@ static var material: StandardMaterial3D
 
 static func mat() -> StandardMaterial3D:
 	if material==null:
-		material=StandardMaterial3D.new();material.vertex_color_use_as_albedo=true;material.roughness=.92
+		material=StandardMaterial3D.new();material.vertex_color_use_as_albedo=true;material.vertex_color_is_srgb=true;material.roughness=.92
 		material.cull_mode=BaseMaterial3D.CULL_DISABLED
 	return material
 
@@ -130,6 +130,6 @@ static func plant(parent: Node3D,kind: String,transforms: Array[Transform3D],rng
 	for i: int in transforms.size():
 		mm.set_instance_transform(i,transforms[i])
 		var v:=rng.randf_range(.8,1.12);mm.set_instance_color(i,Color(v,v*rng.randf_range(.94,1.06),v*rng.randf_range(.92,1.06)))
-	var node:=MultiMeshInstance3D.new();node.name="flora_"+kind;node.multimesh=mm;node.material_override=mat()
+	var node:=MultiMeshInstance3D.new();node.add_to_group("flora");node.name="flora_"+kind;node.multimesh=mm;node.material_override=mat()
 	node.visibility_range_end=700.;node.visibility_range_end_margin=40.
 	parent.add_child(node);return node

@@ -15,6 +15,7 @@ var shore_rocks: Array[Vector3]=[]
 const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const NatureLib=preload("res://scripts/world/nature_library.gd")
 const Flora=preload("res://scripts/world/biome_flora.gd")
+const Life=preload("res://scripts/world/island_life.gd")
 var region: Node3D
 var village: Node3D
 var water_root: Node3D
@@ -173,6 +174,17 @@ func _biome_palette(biome: String) -> Dictionary:
 ## Layout.coast contour that navigation, fishing, the map and the ocean shader all use.
 const SHORE_PAD: float = 1.07
 ## Fraction of the raw biome relief that is kept (1 = the old tall cones).
+## How strongly each biome repaints its turf, how rocky its flat ground is, and its second colour.
+const BIOME_PAINT: Dictionary={
+	"tropical":{"paint":.45,"rock":.05,"accent":Color("8fb84a")},
+	"frost":{"paint":.85,"rock":.35,"accent":Color("e4eef0")},
+	"volcanic":{"paint":.95,"rock":.8,"accent":Color("2a1f1f")},
+	"mountain":{"paint":.55,"rock":.5,"accent":Color("7c8a63")},
+	"desert":{"paint":.9,"rock":.2,"accent":Color("b98a52")},
+	"mystic":{"paint":.75,"rock":.25,"accent":Color("3fa89c")},
+	"shadow":{"paint":.9,"rock":.45,"accent":Color("55407a")},
+	"storm":{"paint":.8,"rock":.6,"accent":Color("4f6b70")},
+}
 const RELIEF: Dictionary={"tropical":.3,"frost":.42,"volcanic":.38,"mountain":.4,"desert":.26,"mystic":.32,"storm":.32,"shadow":.34}
 
 ## World-space offset from an island centre for a normalised radius (0 centre, 1 mesh rim) and angle.
@@ -185,6 +197,7 @@ func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String=
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	var palette:=_biome_palette(biome)
+	if not playable and lobe>=0:_plan_water(lobe,size,biome)
 	const RINGS: int = 48
 	const SEGMENTS: int = 128
 	for ring: int in range(RINGS + 1):
@@ -201,6 +214,7 @@ func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String=
 			if radius < shoreline-.06:
 				col=palette["ground"]
 			col = col.lightened(variation) if variation > 0 else col.darkened(-variation)
+			col.a=0. if radius>=shoreline-.06 else 1.
 			colors.append(col)
 	for ring: int in range(RINGS):
 		for segment: int in range(SEGMENTS):
@@ -224,6 +238,14 @@ func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String=
 	mat.set_shader_parameter("biome_tint",palette["tint"])
 	mat.set_shader_parameter("biome_snow",palette["snow"])
 	mat.set_shader_parameter("biome_ash",palette["ash"])
+	if not playable:
+		var paint: Dictionary=BIOME_PAINT.get(biome,{"paint":.25,"rock":.0,"accent":Color("6f8c4c")})
+		mat.set_shader_parameter("biome_land",1.)
+		mat.set_shader_parameter("biome_paint",paint["paint"])
+		mat.set_shader_parameter("biome_rock",paint["rock"])
+		var ground_c: Color=(palette["ground"] as Color).srgb_to_linear();var accent_c: Color=(paint["accent"] as Color).srgb_to_linear()
+		mat.set_shader_parameter("biome_ground",Vector3(ground_c.r,ground_c.g,ground_c.b))
+		mat.set_shader_parameter("biome_accent",Vector3(accent_c.r,accent_c.g,accent_c.b))
 	var island := G.mesh_node(self, mesh, mat, Vector3.ZERO)
 	island.name = "HomeIsland" if playable else "Island_"+region_id
 	var body := StaticBody3D.new()
@@ -277,6 +299,7 @@ func _island_height(x: float,z: float,radius: float,playable: bool,biome: String
 	else:
 		# Islands are broad and low like the world-map art; only glacier and mountain islands keep real relief.
 		h=1.25+(h-1.25)*float(RELIEF.get(biome,.35))
+		h=_carve_water(h,x,z,lobe)
 		# Land fades to exactly sea level on the contour shared with Layout.coast, then drops to the shelf.
 		var shore:=1./SHORE_PAD
 		h*=1.-smoothstep(.78,shore,radius)
@@ -290,6 +313,9 @@ func _decorate_remote_island(center: Vector3,size: Vector2,biome: String,palette
 		var rim:=_island_offset(lobe,size,a,1./SHORE_PAD)
 		_make_rock(center+Vector3(rim.x,-.05,rim.y),Vector3(2.8,2.1,3.5))
 	_plant_remote_flora(center,size,biome,palette,lobe)
+	_build_water(center,size,biome,lobe)
+	_scatter_ground_cover(center,size,biome,lobe)
+	_populate_wildlife(center,size,biome,lobe)
 	if biome=="volcanic":
 		var magma:=G.material(Color("ff5e2d"));magma.emission_enabled=true;magma.emission=Color("ff3716");magma.emission_energy_multiplier=1.8
 		G.cylinder(self,center+Vector3(0,_island_height(0,0,0.,false,biome,lobe)+.55,0),8.,.5,magma,5.6,24)
@@ -313,9 +339,141 @@ const FLORA_MIX: Dictionary={
 	"mystic":[["twisted_teal",.6],["glb1",.15],["reed",.25]],
 }
 
+## Lakes and streams. Each water-bearing island gets one pond (an oasis in the desert) and, on every other island, a
+## stream running from it to the coast. The terrain is carved here and the water surface is built in _build_water.
+var pond_info: Dictionary={}
+func _plan_water(lobe: int,size: Vector2,biome: String) -> void:
+	if biome in ["volcanic","frost"]:return
+	var angle:=fposmod(float(lobe)*2.39996,TAU)
+	var pc:=_island_offset(lobe,size,angle,.33)
+	var radius:=clampf(minf(size.x,size.y)*.07,14.,34.)*(.55 if biome=="desert" else 1.)
+	var out:=pc.normalized()
+	pond_info[lobe]={"c":pc,"r":radius,"dir":out,"river":lobe%2==0 and biome!="desert"}
+
+func _carve_water(h: float,x: float,z: float,lobe: int) -> float:
+	if lobe<0 or not pond_info.has(lobe):return h
+	var info: Dictionary=pond_info[lobe]
+	var rel:=Vector2(x,z)-(info["c"] as Vector2);var rad: float=info["r"]
+	var d:=rel.length()
+	h=lerpf(h,1.6,smoothstep(rad*2.6,rad*1.4,d))
+	h=lerpf(h,.45,smoothstep(rad*1.15,rad*.7,d))
+	if info["river"]:
+		var dir: Vector2=info["dir"]
+		var t:=rel.dot(dir);var perp:=absf(rel.dot(Vector2(-dir.y,dir.x)))
+		h-=smoothstep(rad*.6,rad*1.5,t)*smoothstep(5.5,1.8,perp)*1.7
+	return h
+
+func _build_water(center: Vector3,size: Vector2,biome: String,lobe: int) -> void:
+	if lobe<0 or not pond_info.has(lobe):return
+	var info: Dictionary=pond_info[lobe];var pc: Vector2=info["c"];var rad: float=info["r"]
+	var ground:=_island_height(pc.x,pc.y,0.,false,biome,lobe)
+	var lake:=G.cylinder(self,center+Vector3(pc.x,1.0,pc.y),rad*1.02,.04,Life.water_material(),-1.,28)
+	lake.name="Lagoa";lake.add_to_group("lagoa");lake.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if not info["river"]:return
+	var dir: Vector2=info["dir"];var side:=Vector2(-dir.y,dir.x)
+	var verts:=PackedVector3Array();var level:=1.0;var steps:=0
+	var t:=rad*.9
+	while t<rad*9. and steps<80:
+		var c:=pc+dir*t
+		var bed:=_island_height(c.x,c.y,0.,false,biome,lobe)
+		if bed+.5<.28:break
+		level=minf(level,bed+.5)
+		for sgn: float in [-1.,1.]:
+			var q:=c+side*sgn*3.4
+			verts.append(center+Vector3(q.x,level,q.y))
+		t+=6.;steps+=1
+	if steps<3:return
+	var idx:=PackedInt32Array()
+	for i: int in steps-1:
+		var a:=i*2;idx.append_array(PackedInt32Array([a,a+1,a+2,a+1,a+3,a+2]))
+	var mesh:=G.polygon_mesh(verts,idx)
+	var ribbon:=G.mesh_node(self,mesh,Life.water_material(),Vector3.ZERO);ribbon.name="Riacho";ribbon.add_to_group("riacho");ribbon.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+func _near_water(x: float,z: float,lobe: int,margin: float) -> bool:
+	if lobe<0 or not pond_info.has(lobe):return false
+	var info: Dictionary=pond_info[lobe];var rel:=Vector2(x,z)-(info["c"] as Vector2)
+	if rel.length()<float(info["r"])*margin:return true
+	if info["river"]:
+		var dir: Vector2=info["dir"];var t:=rel.dot(dir)
+		return t>0. and absf(rel.dot(Vector2(-dir.y,dir.x)))<5. and t<float(info["r"])*9.
+	return false
+
+func _scatter_ground_cover(center: Vector3,size: Vector2,biome: String,lobe: int) -> void:
+	var style: Array=Life.GRASS_STYLE.get(biome,Life.GRASS_STYLE["verdant"])
+	var area:=PI*size.x*size.y*.5
+	var count:=int(minf(area/1000.*float(style[2])*14.,20000.))
+	var points: Array[Vector3]=[]
+	var clusters: Array[Vector2]=[]
+	for c: int in 14:clusters.append(Vector2(rng.randf()*TAU,rng.randf_range(.15,.6)))
+	for i: int in count:
+		var cl:=clusters[i%clusters.size()]
+		var angle:=cl.x+rng.randfn(0.,.28);var r:=clampf(cl.y+rng.randfn(0.,.07),.08,.64)
+		if i%5==0:angle=rng.randf()*TAU;r=rng.randf_range(.1,.62)
+		var o:=_island_offset(lobe,size,angle,r)
+		var g:=_island_height(o.x,o.y,r,false,biome,lobe)
+		if g<1.3 or _near_water(o.x,o.y,lobe,1.2):continue
+		points.append(center+Vector3(o.x,g-.05,o.y))
+	Life.plant_grass(self,biome,points,rng)
+	var rocks:int={"mountain":34,"storm":28,"volcanic":30,"frost":22,"desert":18,"shadow":20}.get(biome,12)
+	for i: int in rocks:
+		var angle:=rng.randf()*TAU;var r:=rng.randf_range(.12,.64)
+		var o:=_island_offset(lobe,size,angle,r)
+		var g:=_island_height(o.x,o.y,r,false,biome,lobe)
+		if g<1.6 or _near_water(o.x,o.y,lobe,1.3):continue
+		var w:=rng.randf_range(1.2,4.6)
+		_make_rock(center+Vector3(o.x,g-.3,o.y),Vector3(w,w*rng.randf_range(.5,.9),w*rng.randf_range(.8,1.3)))
+
+## Finds a flat spot (|slope| small over 3 m) on dry land within the radius band; Vector3.INF if none is found.
+func _flat_spot(center: Vector3,size: Vector2,biome: String,lobe: int,rmin: float,rmax: float,wet: float=0.) -> Vector3:
+	for attempt: int in 14:
+		var angle:=rng.randf()*TAU;var r:=rng.randf_range(rmin,rmax)
+		var o:=_island_offset(lobe,size,angle,r)
+		var g:=_island_height(o.x,o.y,r,false,biome,lobe)
+		if g<1.25 or _near_water(o.x,o.y,lobe,1.2):continue
+		var flat:=true
+		for d: Vector2 in [Vector2(3,0),Vector2(-3,0),Vector2(0,3),Vector2(0,-3)]:
+			if absf(_island_height(o.x+d.x,o.y+d.y,r,false,biome,lobe)-g)>.5:flat=false
+		if flat:return center+Vector3(o.x,g,o.y)
+	return Vector3.INF
+
+func _populate_wildlife(center: Vector3,size: Vector2,biome: String,lobe: int) -> void:
+	var holder:=Node3D.new();holder.name="Fauna";add_child(holder)
+	var span:=minf(size.x,size.y)
+	var high:=38.
+	if biome in ["mountain","frost","mystic","storm"]:high=85.
+	var flocks:Array=[]
+	match biome:
+		"tropical":flocks=[["papagaio",7],["gaivota",9]]
+		"mystic":flocks=[["papagaio",6],["gaivota",5]]
+		"mountain":flocks=[["corvo",5],["gaivota",6]]
+		"desert":flocks=[["urubu",5]]
+		"shadow","storm":flocks=[["corvo",9]]
+		"volcanic":flocks=[["corvo",5]]
+		"frost":flocks=[["gaivota",9]]
+		_:flocks=[["gaivota",11],["corvo",3]]
+	for f: Array in flocks:
+		Life.make_birds(holder,str(f[0]),center+Vector3(0,high,0),span*.8,int(f[1]),rng)
+	var herd: Array=[]
+	match biome:
+		"tropical":herd=[["capivara",5,.2,.55],["caranguejo",12,.58,.68]]
+		"mountain":herd=[["cabra",9,.2,.55]]
+		"frost":herd=[["pinguim",12,.56,.68]]
+		"storm":herd=[["cabra",4,.2,.5]]
+		"desert":herd=[["lagarto",9,.15,.6]]
+		"mystic":herd=[["cervo_mistico",5,.2,.55]]
+		"volcanic","shadow":herd=[]
+		_:herd=[["cabra",4,.2,.55],["cervo",4,.2,.55],["capivara",3,.2,.5]]
+	for h: Array in herd:
+		var spots: Array[Vector3]=[]
+		# Animals of one kind graze in a loose group: the first spot is the anchor, the rest are drawn near it.
+		for i: int in int(h[1]):
+			var spot:=_flat_spot(center,size,biome,lobe,float(h[2]),float(h[3]))
+			if spot!=Vector3.INF:spots.append(spot)
+		Life.make_animals(holder,str(h[0]),spots,rng)
+
 func _plant_remote_flora(center: Vector3,size: Vector2,biome: String,palette: Dictionary,lobe: int) -> void:
 	var mix: Array=FLORA_MIX.get(biome,[["glb1",.45],["glb0",.2],["shrub",.25],["reed",.1]])
-	var count:=int(float(palette["trees"])*clampf(size.x*size.y/90000.,.6,4.5)*2.0)
+	var count:=int(float(palette["trees"])*clampf(size.x*size.y/90000.,.6,4.5)*4.0)
 	var groups: Dictionary={}
 	var clusters: Array[Vector2]=[]
 	for c: int in 5:clusters.append(Vector2(rng.randf()*TAU,rng.randf_range(.2,.5)))

@@ -96,6 +96,8 @@ func _run() -> void:
 			var h: float = world._island_height(rim.x, rim.y, 1. / world.SHORE_PAD, false, biome, i)
 			worst_shore = maxf(worst_shore, absf(h))
 			var inland: Vector2 = world._island_offset(i, Vector2(l.z, l.w), a, .45)
+			# Lakes and streams are deliberate low spots; solid-land sampling skips them.
+			if world._near_water(inland.x, inland.y, i, 2.8): continue
 			worst_inland = minf(worst_inland, world._island_height(inland.x, inland.y, .45, false, biome, i))
 	check(worst_shore < .05, "mesh waterline sits exactly on the coast contour (worst %.3f m)" % worst_shore)
 	check(worst_inland > 2.5, "every island is solid land at 45%% radius (lowest %.1f m)" % worst_inland)
