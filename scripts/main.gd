@@ -29,6 +29,8 @@ var stowing: bool=false
 var stow_tween: Tween
 var stow_origin:=Vector3.ZERO
 var service_id: String=""
+## The boatyard shop opens once each time the boat comes to rest in its berth.
+var berth_opened: bool=false
 var aiming: bool=false
 var aim_manual: bool=false
 var cast_charge: float=0.
@@ -178,6 +180,7 @@ func _input(event: InputEvent) -> void:
 		hud.toggle_ledger(inventory.catches, inventory.total_value())
 
 func _physics_process(_delta: float) -> void:
+	_check_berth()
 	if not started or get_tree().paused:
 		return
 	if player.in_boat and not player.on_deck:
@@ -340,6 +343,16 @@ func hail_vessel(ship) -> void:
 	else:
 		hud.notify("%s acena e segue viagem."%ship.ship_name)
 
+func _check_berth() -> void:
+	var yard=world.village.get("shipyard") if world!=null and world.village!=null else null
+	if yard==null or boat==null:return
+	var inside: bool=yard.in_berth(boat.global_position)
+	if not inside:berth_opened=false;return
+	if berth_opened or hud==null or hud.service_open or not player.in_boat or absf(boat.speed)>1.5:return
+	berth_opened=true;service_id="shipyard"
+	hud.open_service("shipyard",inventory,boat,world.village.bridge_district.stock);Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
+	hud.notify("Barco na vaga do estaleiro.")
+
 func toggle_anchor() -> void:
 	if absf(boat.speed)>2.5 and boat.anchor.state=="up":
 		hud.notify("Reduza a velocidade para lançar a âncora.");return
@@ -415,6 +428,7 @@ func _stow_frame(t: float) -> void:
 func _service_action(action: String) -> void:
 	var message: String=""
 	if Economy.CATALOG.has(action):message=Economy.buy(action,inventory,boat,fishing)
+	elif action.begins_with("boat:"):message=Economy.buy_boat(action.get_slice(":",1),inventory,boat,fishing)
 	elif action.begins_with("buy_stock:"):
 		var index:=int(action.get_slice(":",1));var stock: Array=world.village.bridge_district.stock
 		if index>=0 and index<stock.size():

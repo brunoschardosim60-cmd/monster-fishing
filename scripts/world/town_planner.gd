@@ -175,6 +175,8 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 	if absf(at.x)<92.+reach and at.y>-28.-reach and at.y<70.+reach:return false
 	for k: Vector3 in KEEP_CLEAR:
 		if at.distance_to(Vector2(k.x,k.y))<k.z+reach:return false
+	var yard=village.get("shipyard")
+	if yard!=null and at.distance_to(Vector2(yard.footprint.x,yard.footprint.y))<float(yard.footprint.z)+reach:return false
 	for f: Vector3 in footprints:
 		if at.distance_to(Vector2(f.x,f.y))<f.z+reach+2.5:return false
 	for avenue: Array in _avenues:

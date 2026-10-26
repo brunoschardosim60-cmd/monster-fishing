@@ -25,6 +25,9 @@ var light_pitch: float=0.
 
 ## Anchor (Z): while it is out the engine is locked; once it bites the boat swings on its chain.
 var anchor
+## Hold and net size factor of the current hull (boatyard boats differ).
+var capacity: float=1.
+var livery_hull: Color=Color("e2d2ad")
 var occupied: bool = false
 var controls_enabled: bool = true
 var speed: float = 0.0
@@ -400,3 +403,18 @@ func _polygon_deck(points: PackedVector2Array, height: float, deck_scale: float,
 	instance.mesh = st.commit()
 	instance.material_override = material
 	_hull.add_child(instance)
+
+## Repaints the hull (main colour and upper works) and resizes it, for the boats sold at the boatyard.
+## Same height rule the imported model uses: antifouling stays dark, deck timber stays teak.
+func set_livery(hull_color: Color,top_color: Color,scale_value: float) -> void:
+	livery_hull=hull_color
+	if is_instance_valid(_hull):_hull.scale=Vector3.ONE*scale_value
+	if imported_model==null or not "meshes" in imported_model:return
+	for part: MeshInstance3D in imported_model.meshes:
+		var box:=part.get_aabb();var height:=box.get_center().y
+		if height<.13:continue
+		if box.size.y<.025 and height<.19:continue
+		if box.size.y>.3 and height<=.36:continue
+		var tint:=top_color if height>.36 else hull_color
+		if part.name in ["tripo_part_8","tripo_part_11","tripo_part_13","tripo_part_17","tripo_part_18"]:tint=top_color.darkened(.55)
+		part.material_override=Materials.surface("paint",tint,3.,false)

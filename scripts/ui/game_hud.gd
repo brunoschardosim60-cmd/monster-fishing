@@ -8,7 +8,7 @@ signal time_selected(hour: float)
 signal service_action(id: String)
 signal service_closed
 signal graphics_changed(level: int,scale_value: float,sync: bool)
-const SERVICE_NAMES: Dictionary={"gear":"loja de pesca","workshop":"oficina naval","cabin":"sua cabana","inn":"pousada","storage":"armazém","market":"mercado de peixes"}
+const SERVICE_NAMES: Dictionary={"shipyard":"estaleiro","gear":"loja de pesca","workshop":"oficina naval","cabin":"sua cabana","inn":"pousada","storage":"armazém","market":"mercado de peixes"}
 var service_open: bool=false
 var service_panel: PanelContainer
 var service_message: Label
@@ -138,7 +138,7 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: 
 	var catalog: Dictionary=preload("res://scripts/inventory/harbor_economy.gd").CATALOG
 	for key: String in catalog:
 		var item: Dictionary=catalog[key]
-		if item.service!=id:continue
+		if item.service!=id and not (id=="shipyard" and item.service=="workshop" and not item.has("craft")):continue
 		var label_text:="%s  —  %d moedas"%[item.title,item.price]
 		if item.has("craft"):label_text=str(item.title)
 		if item.get("tiered",false):
@@ -147,6 +147,15 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: 
 		var button:=_button(box,label_text);button.custom_minimum_size.x=500.;button.add_theme_font_size_override("font_size",14)
 		button.pressed.connect(func() -> void: service_action.emit(key))
 	var actions: Dictionary={}
+	if id=="shipyard":
+		_label(box,"BARCOS À VENDA",19,GOLD)
+		var boats: Dictionary=preload("res://scripts/inventory/harbor_economy.gd").BOATS
+		for key: String in boats:
+			var data: Dictionary=boats[key]
+			var state:="em uso" if inventory.boat_id==key else ("seu · usar" if key in inventory.owned_boats else "%d moedas"%int(data.price))
+			var boat_button:=_button(box,"%s  —  %s"%[data.title,state]);boat_button.custom_minimum_size.x=500.;boat_button.add_theme_font_size_override("font_size",14)
+			boat_button.disabled=inventory.boat_id==key
+			boat_button.pressed.connect(func() -> void: service_action.emit("boat:"+key))
 	if id=="market":actions={"sell":"Vender todas as capturas · %d moedas"%inventory.total_value()}
 	if id=="market":
 		for key: String in preload("res://scripts/inventory/harbor_economy.gd").GOODS:

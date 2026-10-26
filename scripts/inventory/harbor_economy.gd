@@ -50,7 +50,10 @@ const CATALOG: Dictionary={
 	"repair":{"title":"Reparar o casco · integridade 100%","price":18,"service":"workshop"},
 	"craft_tackle":{"title":"Montar caixa de anzóis · 2 materiais","price":0,"service":"workshop","craft":{"materials":2,"goods":{},"result":{"goods":{"tackle":1}}}},
 	"craft_canvas":{"title":"Costurar lona naval · 3 materiais","price":0,"service":"workshop","craft":{"materials":3,"goods":{},"result":{"goods":{"canvas":1}}}},
-	"craft_bait":{"title":"Preparar 6 iscas · 1 material","price":0,"service":"workshop","craft":{"materials":1,"goods":{},"result":{"bait":6}}}}
+	"craft_bait":{"title":"Preparar 6 iscas · 1 material","price":0,"service":"workshop","craft":{"materials":1,"goods":{},"result":{"bait":6}}},
+	"feed":{"title":"Saco de ração · 5 punhados para atrair cardumes (tecla C)","price":15,"service":"gear"},
+	"net":{"title":"Rede de arremesso · tecla N no barco","price":90,"service":"gear"},
+	"trap":{"title":"Covo para caranguejo e lagosta · tecla B em água rasa","price":40,"service":"gear"}}
 ## Crafting: spends materials (and any goods listed) to produce goods or bait. Recipes live in CATALOG under "craft".
 static func _craft(item: Dictionary,inventory: RefCounted) -> String:
 	var recipe: Dictionary=item.craft
@@ -69,6 +72,25 @@ static func _craft(item: Dictionary,inventory: RefCounted) -> String:
 
 ## Gear upgrades come in three levels. Each level costs more than the last (base price x current level + 1).
 const MAX_LEVEL: int=3
+## Boats sold at the boatyard. speed: base top speed (m/s); protection: impact damage factor;
+## capacity: net and hold size factor; scale: hull size; hull/top: paint.
+const BOATS: Dictionary={
+	"aurora":{"title":"Lancha Aurora · equilibrada","price":0,"speed":11.,"protection":1.,"capacity":1.,"scale":1.,"hull":Color("e2d2ad"),"top":Color("364c50")},
+	"veloz":{"title":"Lancha Veloz · +35% velocidade, casco leve","price":300,"speed":14.8,"protection":1.25,"capacity":.8,"scale":.94,"hull":Color("c0392b"),"top":Color("f2f2ee")},
+	"expedicao":{"title":"Barco de Expedição · farol de proa incluso, mais alcance","price":380,"speed":12.6,"protection":.8,"capacity":1.2,"scale":1.08,"hull":Color("2e6b4f"),"top":Color("efe6d2"),"searchlight":true},
+	"traineira":{"title":"Traineira Robusta · casco reforçado, rede 60% maior","price":450,"speed":9.6,"protection":.55,"capacity":1.6,"scale":1.18,"hull":Color("1f4e79"),"top":Color("e8e2d4")}}
+
+static func buy_boat(id: String,inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> String:
+	if not BOATS.has(id):return "Barco indisponível."
+	var data: Dictionary=BOATS[id]
+	if id in inventory.owned_boats:
+		if inventory.boat_id==id:return "Você já está usando %s."%str(data.title).get_slice(" ·",0)
+		inventory.boat_id=id;apply(inventory,boat,fishing);inventory.changed.emit()
+		return "Agora você navega com %s."%str(data.title).get_slice(" ·",0)
+	if inventory.money<int(data.price):return "Moedas insuficientes: %s custa %d."%[str(data.title).get_slice(" ·",0),int(data.price)]
+	inventory.money-=int(data.price);inventory.owned_boats.append(id);inventory.boat_id=id
+	boat.integrity=1.;apply(inventory,boat,fishing);inventory.changed.emit()
+	return "Barco novo: %s. Ele já está na vaga."%str(data.title).get_slice(" ·",0)
 
 static func level_of(id: String,inventory: RefCounted) -> int:
 	return int(inventory.equipment.get(id,0))
@@ -88,21 +110,26 @@ static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing:
 		inventory.money-=cost;inventory.equipment[id]=level+1
 		apply(inventory,boat,fishing);inventory.changed.emit()
 		return "Melhoria concluída: %s, nível %d/%d."%[str(item.title),level+1,MAX_LEVEL]
-	if id in inventory.equipment and inventory.equipment[id]>=1: return "Você já possui esta melhoria."
+	if id in inventory.equipment and inventory.equipment[id]>=1 and id!="trap": return "Você já possui esta melhoria."
 	if id=="repair" and boat.integrity>=.999: return "O casco já está em boas condições."
 	if inventory.money<int(item.price): return "Moedas insuficientes. Venda capturas ou explore os baús da ilha."
 	inventory.money-=int(item.price)
 	if id=="bait": inventory.bait+=6
+	elif id=="feed": inventory.feed+=5
+	elif id=="trap": inventory.traps+=1
 	elif id=="repair": boat.integrity=1.
 	else: inventory.equipment[id]=1
 	apply(inventory,boat,fishing);inventory.changed.emit()
 	return "Compra concluída: "+str(item.title)
 static func apply(inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> void:
-	boat.max_speed=11.*(1.+float(inventory.equipment.engine)*.15)
+	var hull_data: Dictionary=BOATS.get(inventory.boat_id,BOATS.aurora)
+	boat.max_speed=float(hull_data.speed)*(1.+float(inventory.equipment.engine)*.15)
 	fishing.rod_bonus=float(inventory.equipment.rod)*.15
 	fishing.line_bonus=float(inventory.equipment.line)*.15
 	fishing.hook_bonus=float(inventory.equipment.hook)*.08
 	fishing.cast_range_bonus=float(inventory.equipment.get("reel",0))*12.
-	boat.searchlight_upgraded=inventory.equipment.get("searchlight",0)>0
-	boat.hull_protection=.6 if inventory.equipment.get("hull",0)>0 else 1.
+	boat.searchlight_upgraded=inventory.equipment.get("searchlight",0)>0 or hull_data.get("searchlight",false)
+	boat.hull_protection=float(hull_data.protection)*(.6 if inventory.equipment.get("hull",0)>0 else 1.)
+	boat.capacity=float(hull_data.capacity)
+	if boat.has_method("set_livery"):boat.set_livery(hull_data.hull,hull_data.top,float(hull_data.scale))
 	boat.update_lights()
