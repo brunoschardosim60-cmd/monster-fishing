@@ -124,6 +124,8 @@ var rain: GPUParticles3D
 var rain_until: float=0.
 var rough_until: float=0.
 var rough_saved: float=-1.
+## Weather state before a rough-sea spell, restored afterwards (-1 means the cycle was automatic).
+var rough_previous: int=-1
 const AMBIENT_LIFE: Dictionary={"agua_viva":50.,"arraia":45.,"lula":40.}
 
 func _update_ambient(delta: float) -> void:
@@ -154,7 +156,10 @@ func _spawn_ambient(night: bool) -> void:
 	if roll<.18:
 		rain_until=clock+rng.randf_range(70.,120.);_say("Uma chuva forte começa a cair sobre o mar.");return
 	if roll<.3:
-		rough_saved=Waves.wind;rough_until=clock+rng.randf_range(60.,90.);Waves.wind=.85
+		# The weather owns the wind (Waves is rewritten from it every frame), so ask it for a rough sea.
+		var weather=get_parent().ocean.weather
+		rough_previous=-1 if weather.automatic else int(weather.state)
+		rough_saved=1.;rough_until=clock+rng.randf_range(60.,90.);weather.choose(2)
 		_say("O mar fica agitado: ondas grandes se formam.");return
 	var kinds: Array=["agua_viva","arraia"]
 	if night:kinds.append("lula")
@@ -239,4 +244,4 @@ func _update_rain() -> void:
 
 func _update_rough_sea() -> void:
 	if rough_saved>=0. and clock>=rough_until:
-		Waves.wind=rough_saved;rough_saved=-1.
+		get_parent().ocean.weather.choose(rough_previous);rough_saved=-1.

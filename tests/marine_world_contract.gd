@@ -4,7 +4,7 @@ func run() -> void:
 	game=load("res://scenes/main/main.tscn").instantiate();root.add_child(game);game.begin_play();game.audio.stop_all();game.player.controls_enabled=false
 	for action: StringName in InputMap.get_actions():InputMap.action_erase_events(action)
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE;await frames(10)
-	check(game.world.traffic.vessels.size()==7,"Seven moving vessels, including a 30 m support ship, a 62 m cargo liner and a 150 m tanker")
+	check(game.world.traffic.vessels.size()>=15,"A full fleet at sea, including a 30 m support ship, cargo liners and a 165 m tanker")
 	var route_clear:=true
 	var route: Array[Vector3]=game.world.traffic.ROUTE
 	for i: int in route.size():
@@ -13,11 +13,13 @@ func run() -> void:
 			if Layout.coast(Vector2(p.x,p.z)).x<35.:route_clear=false
 	check(route_clear,"Authored shipping lanes keep at least 35 m clearance from every island")
 	var starts: Array[Vector3]=[]
-	for ship: CharacterBody3D in game.world.traffic.vessels:starts.append(ship.position)
+	# Trade and ocean lanes (the first nine); coastal out-and-back routes are covered by fleet_contract.
+	var lane_ships: Array=game.world.traffic.vessels.slice(0,9)
+	for ship: CharacterBody3D in lane_ships:starts.append(ship.position)
 	await frames(1200)
 	var moved:=0
 	for i: int in starts.size():
-		var ship: CharacterBody3D=game.world.traffic.vessels[i]
+		var ship: CharacterBody3D=lane_ships[i]
 		if ship.position.distance_to(starts[i])>100. and Layout.coast(Vector2(ship.position.x,ship.position.z)).x>20.:moved+=1
 	check(moved==starts.size(),"All vessels physically advance along safe water routes")
 	# Follow the actual CharacterBody controller through a complete shipping circuit.

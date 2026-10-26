@@ -88,12 +88,32 @@ func cue(kind: String) -> void:
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = 22050
 	var samples := PackedByteArray()
-	var length: int = 9000 if kind == "catch" else 4000
+	var length: int = 9000 if kind == "catch" else (30000 if kind == "chain" else (14000 if kind == "splash" else (30000 if kind == "horn" else 4000)))
 	samples.resize(length * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var low := 0.0
 	for i in length:
 		var t := float(i) / 22050.0
-		var freq: float = 660.0 if kind == "bite" else (440.0 + floorf(t * 8.0) * 110.0)
-		var value := sin(t * freq * TAU) * exp(-t * 6.0) * 0.3
+		var value: float
+		if kind == "chain":
+			# Metal links running over the bow roller: a burst of short, bright, slightly detuned clicks.
+			var link := fposmod(t, 0.055)
+			var ring := sin(t * (2300.0 + sin(t * 3.0) * 400.0) * TAU) * 0.6 + sin(t * 3400.0 * TAU) * 0.4
+			value = ring * exp(-link * 120.0) * 0.28 * (1.0 - smoothstep(1.1, 1.36, t))
+		elif kind == "horn":
+			# A ship's horn: two detuned low saw-ish tones with a soft attack and release.
+			var env := smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(1.05, 1.35, t))
+			var a := fposmod(t * 98.0, 1.0) * 2.0 - 1.0
+			var b := fposmod(t * 147.5, 1.0) * 2.0 - 1.0
+			low = lerpf(low, (a * 0.6 + b * 0.4), 0.2)
+			value = low * env * 0.45
+		elif kind == "splash":
+			low = lerpf(low, rng.randf_range(-1.0, 1.0), 0.25)
+			value = low * exp(-t * 4.5) * 0.55
+		else:
+			var freq: float = 660.0 if kind == "bite" else (440.0 + floorf(t * 8.0) * 110.0)
+			value = sin(t * freq * TAU) * exp(-t * 6.0) * 0.3
 		samples.encode_s16(i * 2, int(value * 32767))
 	stream.data = samples
 	fx.stream = stream

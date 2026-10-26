@@ -5,7 +5,7 @@ func run() -> void:
 	game=load("res://scenes/main/main.tscn").instantiate();root.add_child(game);game.begin_play();game.audio.stop_all();game.player.controls_enabled=false
 	await frames(10)
 	var ships: Array=game.world.traffic.vessels
-	check(ships.size()==7,"%d vessels sail the lanes, from fishing boats to a 150 m tanker"%ships.size())
+	check(ships.size()>=15,"%d vessels at sea, from canoes to a 240 m container ship"%ships.size())
 	var big:=false
 	for ship: CharacterBody3D in ships:
 		if ship.length_m>=60.:big=true
