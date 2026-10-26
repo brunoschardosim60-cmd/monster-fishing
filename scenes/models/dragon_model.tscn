@@ -1,9 +1,0 @@
-[gd_scene load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/assets/external_model.gd" id="1"]
-[node name="DragonModel" type="Node3D"]
-script = ExtResource("1")
-asset_path = "res://assets/monsters/dragon.glb"
-length_m = 9.0
-heading_degrees = 0.0
-material_family = "creature"
-waterline_m = 0.0

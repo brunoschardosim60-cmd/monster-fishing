@@ -37,7 +37,7 @@ func run() -> void:
 	check(game.world.region.chunks.size()>40,"Modular large island terrain")
 	check(game.world.region.foliage_count>500,"Terrain-aware forest instances")
 	check(game.world.village.buildings.size()>=12,"Organized inhabited village")
-	check(game.world.village.services.size()==11,"Eleven connected service locations including full harbor and bridges")
+	check(game.world.village.services.size()==9,"Nine connected service locations including the bridges")
 	check(await walk_to(Vector3(0,1.25,0)),"Walk from preserved pier to village")
 	var accessible:=0
 	for b: Node3D in game.world.village.buildings:
@@ -57,10 +57,9 @@ func run() -> void:
 		if await walk_to(p):reached+=1
 		else:break
 	check(reached==Layout.WEST_TRAIL.size()-1,"Walk western grotto/ruins loop: %d waypoints"%reached)
-	game.player.global_position=Vector3(-110,38.3,310);game.interact()
-	check(game.inventory.encyclopedia.has("island_guardian"),"Guardian observation records real encyclopedia")
+	game.player.global_position=Vector3(-110,38.3,310)
 	var coins: int=game.inventory.money;game.interact();game.interact()
-	check(game.world.village.discovered.has("ruins") and game.inventory.money==coins+20,"Observation allows ruin chest discovery and cannot duplicate its reward")
+	check(game.world.village.discovered.has("ruins") and game.inventory.money==coins+20,"Ruin chest discovery pays once and cannot duplicate its reward")
 	game.inventory.money=0
 	Economy.buy("rod",game.inventory,game.boat,game.fishing)
 	check(game.inventory.money==0 and game.fishing.rod_bonus==0.,"Shop rejects insufficient funds")

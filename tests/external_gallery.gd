@@ -7,7 +7,7 @@ func run() -> void:
 	var env:=WorldEnvironment.new();var e:=Environment.new();e.background_mode=Environment.BG_COLOR;e.background_color=Color("879ba0");e.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;e.ambient_light_color=Color.WHITE;e.ambient_light_energy=.65;env.environment=e;scene.add_child(env)
 	var sun:=DirectionalLight3D.new();sun.rotation_degrees=Vector3(-35,-30,0);scene.add_child(sun)
 	var camera:=Camera3D.new();scene.add_child(camera);camera.current=true
-	for key: String in ["harbor","survivalist","goat","dragon","tugboat"]:
+	for key: String in ["survivalist","tugboat"]:
 		var asset:=preload("res://scripts/assets/external_model.gd").new()
 		var folder: String={"harbor":"environment","survivalist":"characters","goat":"props","dragon":"monsters","tugboat":"boats"}[key]
 		asset.asset_path="res://assets/"+folder+"/"+key+".glb";asset.material_family="original" if key in ["goat","survivalist"] else ("boat" if key=="tugboat" else "creature")

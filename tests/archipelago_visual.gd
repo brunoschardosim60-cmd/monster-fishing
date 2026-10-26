@@ -35,9 +35,6 @@ func run() -> void:
 	game.world.ocean.hour=6.7
 	await shot("08_dawn",Vector3(-65,118,490),Vector3(-220,0,280))
 	game.world.ocean.hour=15.
-	var guardian: Vector3=game.world.village.guardian.position
-	await shot("09_guardian",guardian+Vector3(-8,5,-12),guardian+Vector3(0,3,0))
-	await shot("10_goat",Vector3(-60,2.7,46),Vector3(-57,2.,49))
 	await shot("11_tugboat",Vector3(-43,4,-30),Vector3(-34,1.,-22))
 	game.hud.visible=true;game.hud.map_view.show()
 	await shot("12_map",Vector3(65,28,-70),Vector3(0,8,35));fits("map",game.hud.map_view)

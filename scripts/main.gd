@@ -52,6 +52,11 @@ func _ready() -> void:
 	boat.position = Vector3(3.9, 0, -23)
 	_add_system(boat)
 	boat.water_effects=world.ocean.effects
+	boat.anchor.floor_sampler=world.get_node("VidaNoFundo").floor_at
+	boat.anchor.changed.connect(func(state: String) -> void:
+		if hud==null:return
+		if state=="down":hud.notify("Âncora firme no fundo · %.0f m de corrente."%boat.anchor.rode_length);audio.cue("splash")
+		elif state=="up":hud.notify("Âncora a bordo. Pode navegar."))
 	world.traffic.set_player_boat(boat)
 	world.sea_events.set_player_boat(boat)
 	player = Player.new()
@@ -152,6 +157,7 @@ func _input(event: InputEvent) -> void:
 		if event.is_action_pressed("world_map"): hud.map_view.visible = not hud.map_view.visible
 		return
 	if event.is_action_pressed("deck"): toggle_deck()
+	if event.is_action_pressed("anchor") and player.in_boat:toggle_anchor()
 	if event.is_action_pressed("boat_lights"):
 		boat.toggle_lights();hud.notify("Luzes do barco acesas." if boat.lights_enabled else "Luzes do barco apagadas.")
 	if event.is_action_pressed("observe_wildlife"):
@@ -277,6 +283,9 @@ func interact() -> void:
 	if fishing.active():
 		fishing.cancel()
 	if player.in_boat:
+		var ship=world.traffic.hailable(boat.global_position)
+		if ship!=null:
+			hail_vessel(ship);return
 		disembark()
 	elif player.global_position.distance_to(boat.global_position + Vector3(0, 1, 0)) < 6.0:
 		boat.set_occupied(true)
@@ -293,11 +302,6 @@ func interact() -> void:
 		else:
 			hud.notify("Sem capturas para vender.")
 	else:
-		if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:
-			world.village.guardian.observe()
-			if not inventory.encyclopedia.has("island_guardian"):
-				inventory.record({"id":"island_guardian","name":"Guardião da Vigia","rarity":"Lendária","weight":0.,"observation":true})
-			hud.notify("Guardião registrado.");return
 		var service: String=world.village.nearby_service(player.global_position)
 		if not service.is_empty():
 			service_id=service;hud.open_service(service,inventory,boat,world.village.bridge_district.stock);Input.mouse_mode=Input.MOUSE_MODE_VISIBLE;return
@@ -331,6 +335,26 @@ func disembark() -> void:
 	boat.set_occupied(false);player.set_boating(false);player.global_position=target;player.velocity=Vector3.ZERO
 	hud.notify("Desembarcou.")
 
+## First E beside a vessel hails it (it heaves to and the crew answers); a second E takes its offer.
+func hail_vessel(ship) -> void:
+	if ship.activity!="saudado":
+		ship.hail();ship.set_meta("traded",false)
+		audio.cue("horn");hud.notify(world.traffic.greeting(ship))
+	elif not ship.get_meta("traded",false):
+		ship.set_meta("traded",true);hud.notify(world.traffic.trade(ship,self))
+		ship.activity_clock=minf(ship.activity_clock,8.)
+	else:
+		hud.notify("%s acena e segue viagem."%ship.ship_name)
+
+func toggle_anchor() -> void:
+	if absf(boat.speed)>2.5 and boat.anchor.state=="up":
+		hud.notify("Reduza a velocidade para lançar a âncora.");return
+	var state: String=boat.anchor.toggle()
+	match state:
+		"dropping":hud.notify("Âncora lançada.");audio.cue("chain")
+		"raising":hud.notify("Recolhendo a âncora…");audio.cue("chain")
+		"too_deep":hud.notify("Fundo muito profundo: a corrente da âncora não alcança (máx. 45 m).")
+
 func near_market() -> bool:
 	return Vector2(player.global_position.x - 6, player.global_position.z + 6).length() < 3.3
 
@@ -344,15 +368,17 @@ func _interaction_hint() -> String:
 	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
 	if fishing.active():return ""
 	if player.in_boat:
-		if player.on_deck:return "R · Leme    E · Sair"
-		return "%.0f nós · %d%% casco    R · Convés"%[absf(boat.speed)*1.94,int(boat.integrity*100.)]
+		var near_ship=world.traffic.hailable(boat.global_position)
+		if near_ship!=null:return ("E · Trocar com " if near_ship.activity=="saudado" and not near_ship.get_meta("traded",false) else "E · Saudar ")+near_ship.ship_name
+		var anchor_hint: String={"up":"Z · Âncora","dropping":"Âncora descendo…","down":"Ancorado · Z recolher","raising":"Recolhendo âncora…"}[boat.anchor.state]
+		if player.on_deck:return "R · Leme    E · Sair    "+anchor_hint
+		return "%.0f nós · %d%% casco    R · Convés    %s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),anchor_hint]
 	if player.global_position.distance_to(boat.global_position+Vector3(0,1,0))<5.:return "E · Embarcar"
 	if near_market():return "E · Vender capturas"
 	var service: String=world.village.nearby_service(player.global_position)
 	if not service.is_empty():return "E · %s"%hud.SERVICE_NAMES.get(service.replace("_oldport","").replace("_bridge",""),service)
 	var discovery: Dictionary=world.village.nearby_discovery(player.global_position)
 	if not discovery.is_empty():return "E · "+str(discovery.title)
-	if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:return "E · Observar"
 	return ""
 
 func _on_caught(data: Dictionary) -> void:
@@ -486,7 +512,7 @@ func _configure_input() -> void:
 		"camera_toggle": KEY_F, "pause": KEY_ESCAPE, "inventory": KEY_TAB,
 		"look_left": KEY_LEFT, "look_right": KEY_RIGHT,
 		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,"creative_toggle":KEY_C,
-		"deck":KEY_R,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,
+		"deck":KEY_R,"anchor":KEY_Z,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,
 	}
 	for action: String in bindings:
 		if not InputMap.has_action(action):

@@ -23,6 +23,8 @@ var searchlight: SpotLight3D
 var light_yaw: float=0.
 var light_pitch: float=0.
 
+## Anchor (Z): while it is out the engine is locked; once it bites the boat swings on its chain.
+var anchor
 var occupied: bool = false
 var controls_enabled: bool = true
 var speed: float = 0.0
@@ -51,6 +53,8 @@ func _ready() -> void:
 	_build_lights()
 	trail=preload("res://scripts/ocean/wake_trail.gd").new()
 	add_child(trail)
+	anchor=preload("res://scripts/boats/boat_anchor.gd").new();anchor.name="Ancora";anchor.boat=self
+	anchor.roller=Vector3(0,1.05,-float(hydrodynamics.waterline_length)*.48);add_child(anchor)
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
@@ -68,7 +72,11 @@ func _physics_process(delta: float) -> void:
 	light_yaw=clampf(light_yaw,-1.2,1.2);light_pitch=clampf(light_pitch,-.9,.25)
 	if searchlight!=null:
 		searchlight.rotation=Vector3(-.16+light_pitch,light_yaw,0.)
-	if throttle > 0.0:
+	var anchored: bool=anchor!=null and anchor.deployed()
+	if anchored:
+		throttle=0.;steering=0.
+		speed=move_toward(speed,0.,(2.5 if anchor.holding() else 1.2)*delta)
+	elif throttle > 0.0:
 		var exposure:=Waves.exposure(Vector2(global_position.x,global_position.z))
 		var limit: float=max_speed*(.55+.45*integrity)*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)
 		speed = move_toward(speed, limit, 2.7 * delta)
@@ -79,6 +87,7 @@ func _physics_process(delta: float) -> void:
 	if absf(speed) > 0.12:
 		rotation.y -= steering * signf(speed) * (0.3 + minf(absf(speed), 9.0) * 0.065) * delta
 	velocity = -global_transform.basis.z * speed
+	if anchored and anchor.holding():velocity+=anchor.restrain(delta)
 	velocity.y = 0.0
 	move_and_slide()
 	if get_slide_collision_count() > 0:

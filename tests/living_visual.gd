@@ -24,7 +24,7 @@ func run() -> void:
 	game.boat.searchlight_upgraded=true;game.boat.update_lights()
 	await shot("boat_lights",Vector3(10,4.6,-31),Vector3(3.9,1.8,-23))
 	game.world.ocean.hour=15.
-	game.hud.show();game.hud.open_service("workshop_oldport",game.inventory,game.boat)
+	game.hud.show();game.hud.open_service("workshop",game.inventory,game.boat)
 	await shot("accessories_shop",Vector3(-61,4.,1),Vector3(-78,2.8,-10))
 	game.hud.hide();game.audio.stop_all();game.world.life.birdsong.stop();game.queue_free();await process_frame
 	# Isolated actual palm renders at controlled wind times avoid false positives
