@@ -120,16 +120,25 @@ func _draw() -> void:
 			var color:=Color("e8584a") if school.predator else Color("b98cff")
 			draw_circle(at,4.5,color)
 			if zoom_mode==MODE_ISLAND:draw_string(font,at+Vector2(7,-5),str(school.species).replace("_"," ").capitalize(),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("f0e2c0"))
+		# Monster territories: a red ring with the lair's name; the guardian is drawn while it is up.
+		if game.get("lairs")!=null:
+			for lair: Dictionary in game.lairs.lairs:
+				var lc:=point(Vector2(lair.center.x,lair.center.z))
+				var edge:=point(Vector2(lair.center.x+float(lair.radius),lair.center.z))
+				var rr:=maxf(6.,lc.distance_to(edge))
+				draw_circle(lc,rr,Color(.85,.18,.15,.16));draw_arc(lc,rr,0.,TAU,40,Color("e8584a"),2.)
+				draw_string(font,lc+Vector2(-40,-rr-6),str(lair.name),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("ffb3a8"))
+				if (lair.node as Node3D).visible:draw_circle(point(Vector2(lair.pos.x,lair.pos.z)),5.,Color("ffd34e"))
 		var events: Node3D=game.world.sea_events
 		if events.current!=null:
 			var ev: Vector3=events.current.global_position
 			var ev_at:=point(Vector2(ev.x,ev.z))
 			draw_circle(ev_at,6.,Color("ffd34e"))
-			draw_string(font,ev_at+Vector2(8,-6),"Kraken" if events.kind=="kraken" else "Baleia",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("ffd34e"))
+			draw_string(font,ev_at+Vector2(8,-6),"Baleia",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("ffd34e"))
 	_legend(font)
 	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Vermelho: predadores",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
-	draw_string(font,Vector2(25,634),"Roxo: peixes raros · Dourado: monstro ativo",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
-	draw_string(font,Vector2(25,648),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 6,4 × 6,4 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
+	draw_string(font,Vector2(25,634),"Roxo: peixes raros · Dourado: monstro ativo · Círculo vermelho: território de monstro",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
+	draw_string(font,Vector2(25,648),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 10 × 10 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
 
 func _screen(polygon: PackedVector2Array) -> PackedVector2Array:
 	var result:=PackedVector2Array()

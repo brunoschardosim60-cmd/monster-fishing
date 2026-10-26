@@ -10,6 +10,8 @@ var water_effects: Node3D
 var imported_model: Node3D
 var bucket: Marker3D
 var integrity: float=1.
+## Extra roll from a blow (monster strike, rogue wave); decays back to the wave-driven attitude.
+var kick_roll: float=0.
 var trail: MeshInstance3D
 var heave_velocity: float=0.
 var impact_cooldown: float=0.
@@ -25,6 +27,9 @@ var light_pitch: float=0.
 
 ## Anchor (Z): while it is out the engine is locked; once it bites the boat swings on its chain.
 var anchor
+## Hold and net size factor of the current hull (boatyard boats differ).
+var capacity: float=1.
+var livery_hull: Color=Color("e2d2ad")
 var occupied: bool = false
 var controls_enabled: bool = true
 var speed: float = 0.0
@@ -113,7 +118,8 @@ func _physics_process(delta: float) -> void:
 		_hull.position.y+=heave_velocity*delta
 		_hull.position.y=clampf(_hull.position.y,target-.2,target+.2)
 		var blend: float=1.-exp(-delta*hydrodynamics.angular_response)
-		var roll: float=atan((right-left)/hydrodynamics.beam)-steering*wake_strength*.065
+		kick_roll=move_toward(kick_roll,0.,delta*.35)
+		var roll: float=atan((right-left)/hydrodynamics.beam)-steering*wake_strength*.065+kick_roll*sin(Time.get_ticks_msec()*.004)
 		var pitch: float=atan((front-back)/hydrodynamics.waterline_length)+wake_strength*.025
 		_hull.rotation.z=lerpf(_hull.rotation.z,clampf(roll,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
 		_hull.rotation.x=lerpf(_hull.rotation.x,clampf(pitch,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
@@ -127,6 +133,12 @@ func _physics_process(delta: float) -> void:
 		_foam_right.scale.z = 0.5 + wake_strength * 2.3
 		Waves.bind(_wake_material)
 		_wake_material.set_shader_parameter("strength", wake_strength)
+
+## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.
+func take_hit(damage: float,kick: float) -> void:
+	integrity=maxf(.05,integrity-damage*hull_protection)
+	kick_roll=clampf(kick_roll+absf(kick),0.,.55)
+	heave_velocity+=absf(kick)*2.5
 
 func set_occupied(value: bool) -> void:
 	occupied = value
@@ -400,3 +412,18 @@ func _polygon_deck(points: PackedVector2Array, height: float, deck_scale: float,
 	instance.mesh = st.commit()
 	instance.material_override = material
 	_hull.add_child(instance)
+
+## Repaints the hull (main colour and upper works) and resizes it, for the boats sold at the boatyard.
+## Same height rule the imported model uses: antifouling stays dark, deck timber stays teak.
+func set_livery(hull_color: Color,top_color: Color,scale_value: float) -> void:
+	livery_hull=hull_color
+	if is_instance_valid(_hull):_hull.scale=Vector3.ONE*scale_value
+	if imported_model==null or not "meshes" in imported_model:return
+	for part: MeshInstance3D in imported_model.meshes:
+		var box:=part.get_aabb();var height:=box.get_center().y
+		if height<.13:continue
+		if box.size.y<.025 and height<.19:continue
+		if box.size.y>.3 and height<=.36:continue
+		var tint:=top_color if height>.36 else hull_color
+		if part.name in ["tripo_part_8","tripo_part_11","tripo_part_13","tripo_part_17","tripo_part_18"]:tint=top_color.darkened(.55)
+		part.material_override=Materials.surface("paint",tint,3.,false)

@@ -195,6 +195,15 @@ func _update_lighting(delta: float) -> void:
 		var caustics: float=daylight*(1.-weather.cloud*.75)
 		var floor_mat:=seabed.get_active_material(0) as ShaderMaterial
 		if floor_mat!=null:floor_mat.set_shader_parameter("caustic_strength",caustics)
+		# Cloud shadows: strongest with broken cloud in daylight, gone under overcast and at night.
+		var shadow:=daylight*clampf(1.-absf(weather.cloud-.42)*2.1,0.,1.)*.95
+		var drift:=Vector2(Waves.direction.x,Waves.direction.y).normalized()*(.004+Waves.wind*.006) if Vector2(Waves.direction.x,Waves.direction.y).length()>.01 else Vector2(.006,.0025)
+		var shaded: Array[ShaderMaterial]=[];shaded.append_array(world.terrain_materials)
+		if world.ocean_material!=null:shaded.append(world.ocean_material)
+		for mat: ShaderMaterial in shaded:
+			mat.set_shader_parameter("cloud_shadow_strength",shadow)
+			mat.set_shader_parameter("cloud_shadow_cover",weather.cloud)
+			mat.set_shader_parameter("cloud_shadow_velocity",drift)
 		for mat: ShaderMaterial in world.terrain_materials:
 			mat.set_shader_parameter("sea_time",Waves.time)
 			mat.set_shader_parameter("caustic_strength",caustics)

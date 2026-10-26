@@ -49,6 +49,15 @@ static func sphere(parent: Node3D, pos: Vector3, size: Vector3, mat: Material, s
 	mesh.rings = 12
 	return mesh_node(parent, mesh, mat, pos, size)
 
+## Ellipsoid sized by its full diameters along x, y and z (G.sphere takes radii).
+static func ellipsoid(parent: Node3D, pos: Vector3, diameter: Vector3, mat: Material, segments: int = 12) -> MeshInstance3D:
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.5
+	mesh.height = 1.0
+	mesh.radial_segments = segments
+	mesh.rings = maxi(4, segments / 2)
+	return mesh_node(parent, mesh, mat, pos, diameter)
+
 static func beam(parent: Node3D, a: Vector3, b: Vector3, thickness: float, mat: Material) -> MeshInstance3D:
 	var node := cylinder(parent, (a + b) * 0.5, thickness, a.distance_to(b), mat, thickness, 7)
 	var direction := (b - a).normalized()

@@ -37,11 +37,11 @@ func run() -> void:
 	check(game.world.region.chunks.size()>40,"Modular large island terrain")
 	check(game.world.region.foliage_count>500,"Terrain-aware forest instances")
 	check(game.world.village.buildings.size()>=12,"Organized inhabited village")
-	check(game.world.village.services.size()==9,"Nine connected service locations including the bridges")
+	check(game.world.village.services.size()==12,"Twelve service locations: bridges, boatyard and the two district fishing shops")
 	check(await walk_to(Vector3(0,1.25,0)),"Walk from preserved pier to village")
 	var accessible:=0
 	for b: Node3D in game.world.village.buildings:
-		game.player.global_position=b.entry.global_position+Vector3(0,.2,-1.5);game.player.velocity=Vector3.ZERO;await frames(8)
+		game.player.global_position=b.entry.global_position+Vector3(0,.2,0)-b.global_basis.z*1.5;game.player.velocity=Vector3.ZERO;await frames(8)
 		if await walk_to(b.service.global_position,180):accessible+=1
 	check(accessible==game.world.village.buildings.size(),"Physically enter every house/shop: %d/%d"%[accessible,game.world.village.buildings.size()])
 	game.player.global_position=Vector3(0,1.55,32);game.player.velocity=Vector3.ZERO;await frames(8)

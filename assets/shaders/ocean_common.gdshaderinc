@@ -16,17 +16,22 @@ vec3 sea_surface(vec2 p) {
 	vec4 c=coast_data(p); float exposed=sea_exposure(p,c);
 	float channel=1.-smoothstep(.25,1.,length((p-vec2(504,-626))/vec2(12,34)));
 	float shore=smoothstep(-1.3,6.,c.x);
-	float lod=1.-smoothstep(185.,240.,max(abs(p.x-ocean_center.x),abs(p.y-ocean_center.y)));
+	// Short waves fade out past the fine grid; the long swells carry on over the mid ring towards the horizon.
+	float reach=max(abs(p.x-ocean_center.x),abs(p.y-ocean_center.y));
+	float lod=1.-smoothstep(185.,240.,reach);
+	float lod_long=1.-smoothstep(880.,1150.,reach);
+	// Far from land a storm builds much bigger swells.
+	float open_sea=smoothstep(80.,350.,c.x)*smoothstep(.45,1.,swell_energy);
 	vec3 result=vec3(0);
 	for(int i=0;i<8;i++) {
 		vec4 w=wave_data[i]; float bend=dot(p,vec2(.019,.027))+float(i);
 		float phase=dot(p,w.xy)-w.w+sin(bend)*.37;
-		float a=w.z*mix(i<3?.32:.1,1.,exposed)*shore*(1.-channel*(i<3?.2:.65));
+		float a=w.z*mix(i<3?.32:.1,1.,exposed)*shore*(1.-channel*(i<3?.2:.65))*(i<3?lod_long*(1.+open_sea*1.2):lod*(1.+open_sea*.4));
 		vec2 gradient=(w.xy+cos(bend)*vec2(.019,.027)*.37)*(cos(phase)+.3*cos(2.*phase))*a;
 		result+=vec3(-gradient.x,(sin(phase)+.15*sin(2.*phase))*a,-gradient.y);
 	}
-	result.y+=sin(c.x*.85-sea_time*1.15)*.12*(.3+swell_energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x);
-	result.y+=sin(p.y*1.8-sea_time*1.5)*.08*channel*shore;
-	result.z-=cos(p.y*1.8-sea_time*1.5)*.144*channel*shore;
-	return result*lod;
+	result.y+=(sin(c.x*.85-sea_time*1.15)*.12*(.3+swell_energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x))*lod;
+	result.y+=sin(p.y*1.8-sea_time*1.5)*.08*channel*shore*lod;
+	result.z-=cos(p.y*1.8-sea_time*1.5)*.144*channel*shore*lod;
+	return result;
 }

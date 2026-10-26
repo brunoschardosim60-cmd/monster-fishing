@@ -25,29 +25,36 @@ func _run() -> void:
 	await process_frame
 	var dt := 1. / 60.
 	for i: int in 30: angler.update_animation(0., false, dt)
-	check(angler.current == "Idle", "standing still plays Idle")
-	for i: int in 60: angler.update_animation(1.99, false, dt)
-	check(angler.current == "Walk" and absf(angler.animation.speed_scale - 1.) < .08, "walking at the Walk clip's own ground speed plays it at 1x (%.2f)" % angler.animation.speed_scale)
-	for i: int in 60: angler.update_animation(2.8, false, dt)
-	check(angler.current == "Walk", "2.8 m/s stays Walk when speeding up (no flicker at the boundary)")
+	check(angler.current == "ual/Idle", "standing still plays the UAL idle")
+	for i: int in 60: angler.update_animation(.87, false, dt)
+	check(angler.current == "ual/Walk" and absf(angler.animation.speed_scale - 1.) < .08, "walking at the Walk clip's own ground speed plays it at 1x (%.2f)" % angler.animation.speed_scale)
+	for i: int in 60: angler.update_animation(2.4, false, dt)
+	check(angler.current == "ual/Walk", "2.4 m/s stays Walk when speeding up (no flicker at the boundary)")
 	for i: int in 60: angler.update_animation(4.4, false, dt)
-	check(angler.current == "Run" and angler.animation.speed_scale > 1.2 and angler.animation.speed_scale < 1.45, "jogging speed plays Run slightly faster than 1x (%.2f)" % angler.animation.speed_scale)
-	for i: int in 60: angler.update_animation(2.8, false, dt)
-	check(angler.current == "Run", "2.8 m/s stays Run when slowing down (hysteresis)")
+	check(angler.current == "ual/Jog" and angler.animation.speed_scale > .85 and angler.animation.speed_scale < 1.05, "the player's 4.4 m/s plays Jog near 1x (%.2f)" % angler.animation.speed_scale)
+	for i: int in 60: angler.update_animation(2.4, false, dt)
+	check(angler.current == "ual/Jog", "2.4 m/s stays Jog when slowing down (hysteresis)")
 	for i: int in 60: angler.update_animation(7.3, false, dt)
-	check(angler.animation.speed_scale <= 1.9 + .001, "sprint playback is capped so the legs do not blur (%.2f)" % angler.animation.speed_scale)
+	check(angler.current == "ual/Sprint" and angler.animation.speed_scale <= 1.5 + .001, "sprint speed plays Sprint, capped so the legs do not blur (%.2f)" % angler.animation.speed_scale)
 	for i: int in 90: angler.update_animation(0., false, dt)
-	check(angler.current == "Idle", "stopping returns to Idle")
-	# Switching Walk -> Run keeps the cycle position, so feet do not pop.
+	check(angler.current == "ual/Idle", "stopping returns to Idle")
+	# Switching Walk -> Jog keeps the cycle position, so feet do not pop.
 	for i: int in 60: angler.update_animation(2., false, dt)
 	angler.update_animation(2., false, dt)
 	var before: float = angler.animation.current_animation_position / angler.animation.current_animation_length
 	for i: int in 3: angler.update_animation(4.4, false, dt)
 	var guard := 0
-	while angler.current != "Run" and guard < 120:
+	while angler.current != "ual/Jog" and guard < 120:
 		angler.update_animation(4.4, false, dt); guard += 1
 	var after: float = angler.animation.current_animation_position / angler.animation.current_animation_length
-	check(angler.current == "Run" and absf(fposmod(after - before, 1.) ) < .75, "Walk to Run switch happens without restarting the cycle")
+	check(angler.current == "ual/Jog" and absf(fposmod(after - before, 1.) ) < .75, "Walk to Jog switch happens without restarting the cycle")
+	# NPC clips: work and seated poses.
+	angler.work_clip = "ual/Chop"
+	for i: int in 30: angler.update_animation(0., false, dt)
+	check(angler.current == "ual/Chop", "a worker standing still plays its work clip")
+	angler.work_clip = ""; angler.seated = true
+	for i: int in 30: angler.update_animation(0., false, dt)
+	check(angler.current == "ual/Drive", "seated at the helm plays the driving clip")
 	angler.queue_free()
 	# --- Controller: acceleration, braking, jump and fall on a flat floor -------------------------
 	for action: String in ["move_left", "move_right", "move_forward", "move_back", "sprint", "jump", "look_left", "look_right", "camera_toggle", "fly_down"]:

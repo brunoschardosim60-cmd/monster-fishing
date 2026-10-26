@@ -1,6 +1,6 @@
 # Monster Fishing — Arquipélago da Aurora
 
-Jogo local de pesca e exploração em **Godot 4.7.2**. A ilha inicial tem aproximadamente **700 × 1.100 m**, vila, porto antigo, interiores, trilhas de montanha, fauna marinha e embarcações em movimento. O oceano navegável ocupa **6,4 × 6,4 km**, conecta as bordas opostas e reúne regiões tropicais, vulcânicas, glaciais, montanhosas, desérticas, misteriosas e de tempestade.
+Jogo local de pesca e exploração em **Godot 4.7.2**. A ilha inicial tem aproximadamente **700 × 1.100 m**, vila, porto antigo, interiores, trilhas de montanha, fauna marinha e embarcações em movimento. O oceano navegável ocupa **10 × 10 km**, conecta as bordas opostas e reúne regiões tropicais, vulcânicas, glaciais, montanhosas, desérticas, misteriosas e de tempestade, além de três territórios de monstros em águas profundas.
 
 ## Jogar
 
@@ -24,7 +24,11 @@ Abra **Jogar.cmd**. **Esc** permite mudar clima, horário, qualidade Baixa/Equil
 | G / X | Guardar a captura na mão / devolver ao mar |
 | L / V | Luzes do barco / observar criatura próxima com o barco lento |
 | F | Primeira / terceira pessoa |
-| M / Z | Mapa / mudar escala |
+| Z | Lançar / recolher a âncora (no barco) |
+| C | Jogar ração na água: atrai cardumes, tartarugas e, se demorar, tubarões |
+| N | Lançar a tarrafa com o barco parado (comprada na loja de pesca) |
+| B | Baixar um covo (armadilha) com boia; volte depois e pressione B junto à boia para recolher |
+| M / Z (no mapa) | Mapa / mudar escala |
 | J / Tab | Enciclopédia / capturas |
 | T | Ativar/desativar voo livre para explorar o mapa |
 | Espaço / Ctrl / Shift (voando) | Subir / descer / acelerar |
@@ -47,8 +51,12 @@ Vila iluminada à noite, dois faróis com feixe giratório, pontes caminháveis 
 - Carta náutica de mundo aberto com 17 ilhas remotas físicas, dispostas como na arte do mapa (Ilha Principal a oeste; Gelada, Sombria e Tempestades ao norte; Arquipélago Tropical no centro; Montanhosas a leste; Vulcânicas, Deserta e Secreta ao sul; Adversas no canto inferior esquerdo). As ilhas são baixas e largas, com contornos irregulares; só Gelada e Montanhosas têm relevo forte. Na carta (M), **Z** alterna ilha, arquipélago e mundo inteiro.
 - O contorno das ilhas é um contrato único: `Layout.edge_factor` (GDScript) alimenta malha, colisão, navegação, mapa e o shader do oceano. Depois de editar `LOBES` em `scripts/world/archipelago_layout.gd`, rode `python scripts/pipeline/sync_coast_shader.py`; `tests/island_layout_contract.gd` falha se o shader sair de sincronia.
 - Pesqueiro, rebocador e navio de apoio percorrem oito trechos ao redor da ilha, com flutuação, esteiras, luzes e desvio do jogador.
-- Todos os seis modelos enviados integrados: personagem, pesqueiro, rebocador, porto, cabra e dragão.
-- Personagem com rig local e 11 animações, incluindo braços/tronco, lançamento, recolhimento, salto e queda.
+- Cidade em cinco bairros, estaleiro com vaga que abre a loja e vende barcos, três lojas de pesca com interior (balcão, varas, aquário de isca viva, peixe no gelo e lojista), carregadores levando peixe ao mercado, lenhadores e carpinteiros em obras.
+- Águas rasas transparentes com cardumes pequenos visíveis de cima, tartarugas que sobem para respirar, arraias, mantas e águas-vivas que brilham à noite.
+- Kraken esculpido com tentáculos contínuos e ventosas, tartarugas com casco de escudos e arraias que ondulam as asas.
+- Territórios do Kraken, da Serpente Marinha e do Leviatã: entrar acorda o monstro; devagar e de luzes apagadas ele só observa, com luzes ou motor ele ataca o casco.
+- Ondas longas até o horizonte, tempestades com ondulação muito maior em mar aberto e sombras de nuvens sobre a terra e o mar.
+- Personagem e moradores animados com a Universal Animation Library da Quaternius (CC0), adaptada ao rig do jogo por `scripts/pipeline/bake_ual_animations.gd`: andar, correr, pular, nadar, pescar (lançar, esperar, recolher), pilotar sentado, encostar na amurada, atender no balcão, carregar caixa, cortar lenha, martelar e consertar o casco.
 - Novos modelos no Blender: detalhes das casas, arco, boné, mochila, três peixes e criatura marinha. Folhas e materiais gerados também são utilizados no jogo.
 - Árvores, samambaias, rochedos e materiais CC0: **Powered by Poly Haven**. Fontes em docs/asset-audit/.
 

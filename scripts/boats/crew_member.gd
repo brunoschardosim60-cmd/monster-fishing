@@ -22,7 +22,10 @@ func _ready() -> void:
 	_rng.seed=look_id*7919+int(absf(position.z)*13.)
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
 	visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
-	visual.seated=role in ["helm","rower"]
+	visual.seated=role in ["helm","rower"] or has_meta("on_seat")
+	# Passengers lean on the rail; deckhands haul when the boat is fishing; helm and rower sit at the wheel or oars.
+	visual.idle_clip=["ual/Rail","ual/IdleLook","ual/FoldArms"][look_id%3] if role=="passenger" else "ual/Idle"
+	visual.seated_clip="ual/Drive" if role in ["helm","rower"] else "ual/Sit"
 	# Sailors do not carry the survivalist backpack.
 	if visual.backpack!=null:visual.backpack.visible=false
 	rotation.y=facing;_target=walk_b;_wait=_rng.randf_range(0.,3.)
@@ -49,4 +52,5 @@ func _process(delta: float) -> void:
 			_turn_clock-=delta
 			if _turn_clock<=0.:_turn_clock=_rng.randf_range(4.,10.);_target=Vector3(0,_rng.randf_range(-1.2,1.2),0)
 			rotation.y=lerp_angle(rotation.y,facing+_target.y,1.-exp(-delta*1.2))
-	visual.update_animation(moving,role=="fisher" or (role=="deckhand" and vessel_fishing and moving==0.),delta)
+	visual.work_clip="ual/FishReel" if role=="deckhand" and vessel_fishing else ""
+	visual.update_animation(moving,role=="fisher",delta)

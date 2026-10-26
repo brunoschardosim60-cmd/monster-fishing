@@ -26,7 +26,8 @@ func _process(delta: float) -> void:
 	if clock<SEARCH_INTERVAL:return
 	clock=0.
 	for a in residents:
-		if a.talk_timer>0. or a.meet_with!=null or a.route.size()<2:continue
+		# Someone resting at a destination stays put; only walkers start a meeting.
+		if a.talk_timer>0. or a.meet_with!=null or a.route.size()<2 or a.wait>0.:continue
 		for b in residents:
 			if b==a or b.talk_timer>0. or b.route.size()<2:continue
 			if a.position.distance_to(b.position)>MEET_RANGE:continue

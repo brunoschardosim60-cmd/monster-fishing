@@ -55,15 +55,19 @@ static func height_at(p: Vector3) -> float:
 	var shore:=smoothstep(-1.3,6.,c.x)
 	var exposed:=exposure(v)
 	var channel:=channel_at(v)
-	var lod:=1.-smoothstep(185.,240.,maxf(absf(p.x-ocean_center.x),absf(p.z-ocean_center.y)))
+	var reach:=maxf(absf(p.x-ocean_center.x),absf(p.z-ocean_center.y))
+	var lod:=1.-smoothstep(185.,240.,reach)
+	var lod_long:=1.-smoothstep(880.,1150.,reach)
+	var open_sea:=smoothstep(80.,350.,c.x)*smoothstep(.45,1.,energy)
 	var h:=0.
 	for i: int in 8:
 		var w:=waves[i]
 		var phase:=v.dot(Vector2(w.x,w.y))-w.w+sin(v.dot(Vector2(.019,.027))+float(i))*.37
-		h+=(sin(phase)+.15*sin(2.*phase))*w.z*lerpf(.32 if i<3 else .1,1.,exposed)*(1.-channel*(.2 if i<3 else .65))
+		var fade:=lod_long*(1.+open_sea*1.2) if i<3 else lod*(1.+open_sea*.4)
+		h+=(sin(phase)+.15*sin(2.*phase))*w.z*lerpf(.32 if i<3 else .1,1.,exposed)*(1.-channel*(.2 if i<3 else .65))*fade
 	var wash:=sin(c.x*.85-time*1.15)*.12*(.3+energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x)
 	var guided:=sin(v.y*1.8-time*1.5)*.08*channel*shore
-	return (h*shore+wash+guided)*lod
+	return h*shore+(wash+guided)*lod
 
 static func bind(mat: ShaderMaterial) -> void:
 	if waves.is_empty(): advance(0.,wind,energy,rain,direction)

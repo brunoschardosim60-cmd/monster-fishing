@@ -1,5 +1,6 @@
 shader_type spatial;
 #include "res://assets/shaders/archipelago_coast.gdshaderinc"
+#include "res://assets/shaders/cloud_shadow.gdshaderinc"
 uniform float sea_time=0.;
 uniform float wet_weather=0.;
 uniform float caustic_strength=1.;
@@ -76,5 +77,6 @@ void fragment(){
 	ALBEDO*=1.+caustic*1.1*caustic_strength;
 	// Water absorbs red first: deeper ground shifts towards blue-green.
 	ALBEDO*=mix(vec3(1.),vec3(.52,.8,.84),smoothstep(0.,10.,depth));
+	ALBEDO*=mix(1.,.58,cloud_shadow(noise_tex,wp.xz));
 	ROUGHNESS=mix(.98,.68,wet);
 }

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "manjuba"
+display_name = "Manjuba"
+rarity = "Comum"
+min_weight = 0.03
+max_weight = 0.08
+value_per_kg = 70.0
+difficulty = 0.08
+description = "Peixinho prateado que anda em nuvens nas águas rasas e transparentes. Jogue ração e o cardume inteiro sobe; a tarrafa traz dezenas."
+color = Color(0.62, 0.82, 0.78, 1)
+habitat = "Águas rasas junto às praias"
+regions = PackedStringArray("coast")
+encounter_weight = 1.5

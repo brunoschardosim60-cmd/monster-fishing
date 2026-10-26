@@ -69,8 +69,8 @@ func _make_crew() -> void:
 		var person:=Crew.new();person.look_id=seed_value*3+i*5
 		if not seats.is_empty():
 			var seat: Array=seats[i%seats.size()]
-			person.role="rower" if kind=="bote_remo" and i==0 else ("helm" if i==0 else "passenger")
-			person.position=seat[0];person.facing=seat[1]
+			person.role="rower" if kind in ["bote_remo","canoa"] and i==0 else ("helm" if i==0 else "passenger")
+			person.position=seat[0];person.facing=seat[1];person.set_meta("on_seat",true)
 		elif i==0:
 			person.role="helm";person.position=model.get_meta("helm",Vector3(0,1,0));person.facing=0.
 		elif i==1 and walk.size()==2:

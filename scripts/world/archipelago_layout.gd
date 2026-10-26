@@ -2,7 +2,7 @@ extends RefCounted
 ## Metres, sea level = 0. Shared coastline contract with archipelago_coast.gdshaderinc.
 ## The shader include is generated from this file: run scripts/pipeline/sync_coast_shader.py
 ## after editing LOBES or the harmonics below (tests/island_layout_contract.gd checks it).
-const WORLD_HALF: float = 3200.0
+const WORLD_HALF: float = 5000.0
 ## x, z, half-width, half-depth of every island lobe. Indices 0-3 and 7 are the Aurora
 ## home island; everything else is a distant island placed to follow the world-map art:
 ## north = -z, with the Ilha Principal on the west and the biome ring spreading east.
@@ -13,7 +13,9 @@ const LOBES: Array[Vector4]=[
 	Vector4(273,-926,410,330),Vector4(2456,270,400,430),Vector4(1679,1190,370,330),
 	Vector4(2567,1650,240,220),Vector4(2345,-972,380,320),Vector4(-2250,700,230,210),
 	Vector4(1480,282,150,120),Vector4(1180,-291,110,95),Vector4(812,1680,140,120),
-	Vector4(2426,990,170,150),Vector4(-316,2040,120,110)]
+	Vector4(2426,990,170,150),Vector4(-316,2040,120,110),
+	Vector4(3900,-400,300,260),Vector4(-3800,-3300,260,240),Vector4(-4000,1600,320,280),
+	Vector4(1200,-4200,340,300),Vector4(3600,3900,300,280),Vector4(-1600,4200,340,300)]
 ## One record per lobe. The first four and the old-port lobe together form Aurora.
 ## Distant entries drive real island geometry, map labels and future region systems.
 const REGIONS: Array[Dictionary]=[
@@ -38,11 +40,20 @@ const REGIONS: Array[Dictionary]=[
 	{"id":"tropical_north","name":"Arquipélago das Marés","map":"","biome":"tropical","map_visible":false},
 	{"id":"volcanic_south","name":"Coroa Vulcânica","map":"","biome":"volcanic","map_visible":false},
 	{"id":"mountain_sea","name":"Ilhas do Mar Montanhoso","map":"Ilhas do Mar Montanhoso","biome":"mountain","map_visible":true},
-	{"id":"adverse_north","name":"Ilhas Adversas","map":"","biome":"storm","map_visible":false}]
+	{"id":"adverse_north","name":"Ilhas Adversas","map":"","biome":"storm","map_visible":false},
+	{"id":"far_reef","name":"Corais do Levante","map":"Corais do Levante","biome":"tropical","map_visible":true},
+	{"id":"lost_atoll","name":"Atol Perdido","map":"Atol Perdido","biome":"tropical","map_visible":true},
+	{"id":"mist","name":"Ilha da Bruma","map":"Ilha da Bruma","biome":"mystic","map_visible":true},
+	{"id":"north_rock","name":"Rochedo Boreal","map":"Rochedo Boreal","biome":"frost","map_visible":true},
+	{"id":"old_fire","name":"Ilha do Fogo Antigo","map":"Fogo Antigo","biome":"volcanic","map_visible":true},
+	{"id":"wreck_bay","name":"Baía dos Náufragos","map":"Baía dos Náufragos","biome":"desert","map_visible":true}]
 ## Open-water zones that have no island but appear on the map and host big creatures.
 const SEA_ZONES: Array[Dictionary]=[
 	{"name":"Oceano Profundo","position":Vector2(976,2156)},
-	{"name":"Oceano Aberto","position":Vector2(-1500,-700)}]
+	{"name":"Oceano Aberto","position":Vector2(-1500,-700)},
+	{"name":"Mar do Levante","position":Vector2(3400,1500)},
+	{"name":"Mar Boreal","position":Vector2(-600,-3600)},
+	{"name":"Mar do Poente Distante","position":Vector2(-3600,-200)}]
 ## Where the cold-water tint, glacier snow and floating ice fields are centred (Ilha Gelada).
 const COLD_CENTER: Vector2=Vector2(273,-926)
 ## Floating ice fields (x, z, floe count) and the authored calm passage between the
@@ -90,6 +101,13 @@ static func region_at(p: Vector2) -> Dictionary:
 		if candidate<distance:
 			distance=candidate;closest=i
 	return region_for_lobe(closest)
+
+## Town districts on the main island (x, z, radius). Trees keep out of them; town_planner builds them.
+const TOWN: Array[Vector3]=[Vector3(-160,30,62),Vector3(165,22,58),Vector3(205,112,36),Vector3(-80,108,26),Vector3(-128,-24,30)]
+static func in_town(p: Vector2) -> bool:
+	for t: Vector3 in TOWN:
+		if p.distance_to(Vector2(t.x,t.y))<t.z+6.:return true
+	return false
 
 static func plot_ground(p: Vector2) -> bool:
 	for plot: Vector4 in PLOTS:
