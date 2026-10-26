@@ -37,22 +37,29 @@ func _mat(color: Color,rough: float=.7) -> StandardMaterial3D:
 
 func _add_turtle(home: Vector3,size: float) -> void:
 	var root:=Node3D.new();root.name="Tartaruga_%d"%turtles.size();add_child(root)
-	var shell_mat:=_mat(Color("5d5a2e").lerp(Color("7a5a32"),_rng.randf()),.55)
-	var scute:=_mat(Color("3f3a1e"),.6);var skin:=_mat(Color("7f8a66"),.8);var belly:=_mat(Color("d9c98f"),.8)
+	# Dark olive-brown carapace with big, lighter scute plates; dark flippers.
+	var shell_mat:=_mat(Color("3d3220").lerp(Color("4a3a1c"),_rng.randf()),.45)
+	var scute:=_mat(Color("6b5228").lerp(Color("7a5c2c"),_rng.randf()),.5);var skin:=_mat(Color("4c4a3a"),.7)
+	var belly:=_mat(Color("d9c98f"),.8)
 	var body:=Node3D.new();body.scale=Vector3.ONE*size;root.add_child(body)
-	G.sphere(body,Vector3(0,0,0),Vector3(.9,.32,1.15),shell_mat,18)
-	G.sphere(body,Vector3(0,-.08,0),Vector3(.82,.14,1.05),belly,14)
-	for k: int in 5:G.sphere(body,Vector3(0,.13,-.38+float(k)*.19),Vector3(.2,.06,.16),scute,8)
-	for s: float in [-1.,1.]:
-		for k: int in 3:G.sphere(body,Vector3(s*.24,.1,-.25+float(k)*.24),Vector3(.18,.05,.17),scute,8)
-	var head:=G.sphere(body,Vector3(0,.02,-.68),Vector3(.24,.2,.3),skin,12)
-	G.sphere(body,Vector3(0,.0,-.78),Vector3(.16,.14,.18),skin,10)
+	G.ellipsoid(body,Vector3(0,0,0),Vector3(.92,.34,1.18),shell_mat,20)
+	G.ellipsoid(body,Vector3(0,-.09,0),Vector3(.84,.14,1.06),belly,14)
+	var plates: Array[Vector2]=[Vector2(0,-.36),Vector2(0,-.12),Vector2(0,.12),Vector2(0,.34),Vector2(-.24,-.24),Vector2(.24,-.24),Vector2(-.27,0.),Vector2(.27,0.),Vector2(-.23,.24),Vector2(.23,.24)]
+	for q: Vector2 in plates:
+		var lift:=.17*sqrt(maxf(0.,1.-pow(q.x/.46,2.)-pow(q.y/.59,2.)))
+		var plate:=G.ellipsoid(body,Vector3(q.x,lift-.008,q.y),Vector3(.27,.045,.26),scute,8)
+		plate.rotation=Vector3(-q.y*.6,0,q.x*.7)
+	var neck:=G.ellipsoid(body,Vector3(0,.0,-.6),Vector3(.2,.16,.24),skin,10)
+	var head:=G.ellipsoid(body,Vector3(0,.03,-.76),Vector3(.22,.17,.26),skin,12)
+	for sx: float in [-1.,1.]:G.ellipsoid(body,Vector3(sx*.08,.08,-.83),Vector3(.04,.04,.04),_mat(Color("0e0e0c"),.2),6)
 	var flippers: Array[Node3D]=[]
-	for data: Array in [[-1.,-.32,.62,.5],[1.,-.32,.62,.5],[-1.,.4,.3,.24],[1.,.4,.3,.24]]:
-		var pivot:=Node3D.new();pivot.position=Vector3(float(data[0])*.36,-.02,float(data[1]));body.add_child(pivot)
-		var fin:=G.box(pivot,Vector3(float(data[0])*float(data[2])*.5,0,float(data[3])*.25),Vector3(float(data[2]),.04,float(data[3])),skin)
-		fin.rotation.y=-float(data[0])*.5
+	for data: Array in [[-1.,-.3,.62,.26],[1.,-.3,.62,.26],[-1.,.42,.3,.2],[1.,.42,.3,.2]]:
+		var side: float=data[0]
+		var pivot:=Node3D.new();pivot.position=Vector3(side*.4,-.03,float(data[1]));body.add_child(pivot)
+		var fin:=G.ellipsoid(pivot,Vector3(side*float(data[2])*.45,0,float(data[3])*.35),Vector3(float(data[2]),.05,float(data[3])),skin,10)
+		fin.rotation.y=-side*.55
 		flippers.append(pivot)
+	neck.name="Pescoco"
 	root.position=Vector3(home.x,home.y+1.,home.z)
 	turtles.append({"node":root,"home":home,"flippers":flippers,"head":head,"heading":_rng.randf()*TAU,"phase":_rng.randf()*TAU,
 		"breathe":_rng.randf_range(20.,45.),"surfacing":0.,"depth":0.,"size":size,"speed":.7+_rng.randf()*.3})
@@ -60,21 +67,19 @@ func _add_turtle(home: Vector3,size: float) -> void:
 func _add_ray(home: Vector3,manta: bool) -> void:
 	var root:=Node3D.new();root.name=("Manta_%d" if manta else "Arraia_%d")%rays.size();add_child(root)
 	var span:=4.2 if manta else 1.5
-	var top:=_mat(Color("2f3236") if manta else Color("8a7a5c"),.6);var under:=_mat(Color("e8e6dd"),.7)
+	var top:=_mat(Color("23262a") if manta else Color("4a3f2e"),.8);var under:=_mat(Color("e8e6dd"),.7)
 	var spots:=_mat(Color("5e523c"),.7)
-	G.sphere(root,Vector3.ZERO,Vector3(span*.34,span*.07,span*.5),top,16)
-	G.sphere(root,Vector3(0,-span*.02,0),Vector3(span*.32,span*.04,span*.46),under,12)
+	G.ellipsoid(root,Vector3.ZERO,Vector3(span*.34,span*.07,span*.5),top,16)
+	G.ellipsoid(root,Vector3(0,-span*.02,0),Vector3(span*.32,span*.04,span*.46),under,12)
 	if not manta:
-		for k: int in 6:G.sphere(root,Vector3(_rng.randf_range(-.25,.25)*span,span*.03,_rng.randf_range(-.25,.25)*span),Vector3(.08,.02,.08),spots,6)
+		for k: int in 6:G.ellipsoid(root,Vector3(_rng.randf_range(-.25,.25)*span,span*.03,_rng.randf_range(-.25,.25)*span),Vector3(.08,.02,.08),spots,6)
 	var wings: Array[Node3D]=[]
 	for s: float in [-1.,1.]:
-		var pivot:=Node3D.new();pivot.position=Vector3(s*span*.14,0,0);root.add_child(pivot)
-		var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		var tip:=Vector3(s*span*.5,0,span*.05);var front:=Vector3(0,0,-span*.3);var back:=Vector3(0,0,span*.25)
-		for v: Vector3 in [front,tip,back,front,back,tip]:st.add_vertex(v)
-		st.generate_normals()
-		var wing:=MeshInstance3D.new();wing.mesh=st.commit();var wm:=top.duplicate() as StandardMaterial3D;wm.cull_mode=BaseMaterial3D.CULL_DISABLED
-		wing.material_override=wm;pivot.add_child(wing);wings.append(pivot)
+		# Each wing is a flattened lens hinged at the body: closed geometry, so it lights the same from any side.
+		var pivot:=Node3D.new();pivot.position=Vector3(s*span*.12,0,0);root.add_child(pivot)
+		var wing:=G.ellipsoid(pivot,Vector3(s*span*.2,0,span*.02),Vector3(span*.5,span*.045,span*.56),top,14)
+		wing.rotation.y=s*.25
+		wings.append(pivot)
 	if manta:
 		for s: float in [-1.,1.]:G.box(root,Vector3(s*span*.1,0,-span*.33),Vector3(.12,.05,.4),top)
 	var tail:=G.beam(root,Vector3(0,0,span*.4),Vector3(0,0,span*(1.05 if not manta else .8)),.025*span,top)

@@ -1,5 +1,6 @@
 extends Node3D
-## Rare creatures of the open sea. Every few minutes a whale crosses the water nearby, or (rarer) a kraken rises beside the boat.
+## Rare creatures of the open sea. Every few minutes a whale crosses the water nearby, or (very rarely) a young kraken rises
+## far from its territory. The big monsters live in the lairs of monster_lairs.gd.
 ## Each one stays for about a minute and then leaves. The world map shows them while they are out.
 signal event_started(text: String)
 const Layout=preload("res://scripts/world/archipelago_layout.gd")
@@ -59,7 +60,8 @@ func _spawn() -> void:
 		next_at=clock+20.;return
 	spawned+=1
 	lived=0.
-	if rng.randf()<.35:
+	# Krakens now live in their own territories (monster_lairs.gd); out here only a rare young one shows up.
+	if rng.randf()<.08:
 		kind="kraken";current=_build_kraken();current.position=at+Vector3(0,-9.,0)
 		event_started.emit("Algo se move nas profundezas... um kraken está perto do seu barco!")
 	else:

@@ -29,7 +29,7 @@ static func fish_crate() -> Node3D:
 	G.box(crate,Vector3.ZERO,Vector3(.56,.28,.4),wood)
 	G.box(crate,Vector3(0,.13,0),Vector3(.5,.04,.34),ice)
 	for i: int in 3:
-		var fish:=G.sphere(crate,Vector3(-.15+float(i)*.15,.17,0),Vector3(.09,.06,.32),scales,8);fish.rotation.y=float(i)*.3-.3
+		var fish:=G.ellipsoid(crate,Vector3(-.15+float(i)*.15,.17,0),Vector3(.09,.06,.32),scales,8);fish.rotation.y=float(i)*.3-.3
 	crate.position=Vector3(.2,1.66,.02)
 	return crate
 

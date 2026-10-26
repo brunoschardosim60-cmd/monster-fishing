@@ -95,9 +95,9 @@ func _ready() -> void:
 		G.beam(self,Vector3(half-.2,2.35,-back-.1),Vector3(half-.2,2.35,-back-1.5),.04,dark)
 		var fish_sign:=Node3D.new();fish_sign.position=Vector3(half-.2,1.92,-back-1.1);add_child(fish_sign)
 		for k: float in [-.25,.25]:G.beam(fish_sign,Vector3(0,.43,k),Vector3(0,.18,k),.012,dark)
-		G.sphere(fish_sign,Vector3.ZERO,Vector3(.1,.42,1.05),M.surface("teak",Color("3f7f9e"),1.),14)
+		G.ellipsoid(fish_sign,Vector3.ZERO,Vector3(.1,.42,1.05),M.surface("teak",Color("3f7f9e"),1.),14)
 		var tail:=G.box(fish_sign,Vector3(0,0,.62),Vector3(.08,.38,.28),M.surface("teak",Color("3f7f9e"),1.));tail.rotation.x=PI*.25
-		G.sphere(fish_sign,Vector3(0,.07,-.32),Vector3(.12,.08,.08),G.material(Color("f2efe4")),8)
+		G.ellipsoid(fish_sign,Vector3(0,.07,-.32),Vector3(.12,.08,.08),G.material(Color("f2efe4")),8)
 	# Furniture occupies the sides and back, leaving the doorway and centre clear.
 	if use in ["home","cabin","inn"]:
 		G.box(self,Vector3(-half+1.15,.4,back-1.2),Vector3(1.7,.65,2.),dark,true)
@@ -253,7 +253,7 @@ func _furnish_shop(half: float,back: float,depth: float) -> void:
 	G.box(interior,Vector3(case_x,1.08,counter_z),Vector3(1.4,.04,.62),dark)
 	G.box(interior,Vector3(case_x,1.26,counter_z),Vector3(1.4,.34,.62),glass)
 	for i: int in 12:
-		var lure:=G.sphere(interior,Vector3(case_x-.55+float(i%6)*.22,1.13,counter_z-.15+float(i/6)*.3),Vector3(.13,.045,.05),paints[i%paints.size()],8)
+		var lure:=G.ellipsoid(interior,Vector3(case_x-.55+float(i%6)*.22,1.13,counter_z-.15+float(i/6)*.3),Vector3(.13,.045,.05),paints[i%paints.size()],8)
 		lure.rotation.y=float(i)*.4
 	# Till and scale.
 	G.box(interior,Vector3(counter_w*.5-.6,1.19,counter_z+.1),Vector3(.5,.26,.4),iron)
@@ -268,7 +268,7 @@ func _furnish_shop(half: float,back: float,depth: float) -> void:
 			var x:=-(width-2.6)*.5+float(col)*(width-2.6)/8.;var y:=2.7-float(row)*.48
 			G.beam(interior,Vector3(x,y,back-.15),Vector3(x,y,back-.3),.012,iron)
 			match (row+col)%3:
-				0:G.sphere(interior,Vector3(x,y-.12,back-.28),Vector3(.06,.16,.04),paints[(row*9+col)%paints.size()],8)
+				0:G.ellipsoid(interior,Vector3(x,y-.12,back-.28),Vector3(.06,.16,.04),paints[(row*9+col)%paints.size()],8)
 				1:
 					var reel:=G.cylinder(interior,Vector3(x,y-.12,back-.26),.08,.07,iron,.08,12);reel.rotation.x=PI*.5
 				_:G.cylinder(interior,Vector3(x,y-.1,back-.26),.05,.12,paints[(col+2)%paints.size()],.05,10)
@@ -292,10 +292,10 @@ func _furnish_shop(half: float,back: float,depth: float) -> void:
 	var catch_colors: Array[Color]=[Color("8fa9b5"),Color("c1382f"),Color("8fa9b5"),Color("6e7a52"),Color("d9c46c")]
 	for i: int in 5:
 		var fish_mat:=G.material(catch_colors[i],.3);fish_mat.metallic=.35
-		var fish:=Node3D.new();fish.name="PeixeNoGelo%d"%i;fish.position=chest+Vector3(-.36+float(i)*.18,.69,-.05+float(i%2)*.12);fish.rotation.y=PI*.5+float(i%3-1)*.25;interior.add_child(fish)
-		G.sphere(fish,Vector3.ZERO,Vector3(.12,.07,.46),fish_mat,10)
+		var fish:=Node3D.new();fish.name="PeixeNoGelo%d"%i;fish.position=chest+Vector3(-.36+float(i)*.18,.69,-.05+float(i%2)*.12);fish.rotation.y=float(i%3-1)*.15;interior.add_child(fish)
+		G.ellipsoid(fish,Vector3.ZERO,Vector3(.12,.07,.46),fish_mat,10)
 		var tail:=G.box(fish,Vector3(0,0,.27),Vector3(.02,.1,.09),fish_mat);tail.rotation.x=PI*.25
-		G.sphere(fish,Vector3(.045,.015,-.17),Vector3(.025,.025,.025),G.material(Color("141414"),.2),6)
+		G.ellipsoid(fish,Vector3(.045,.015,-.17),Vector3(.025,.025,.025),G.material(Color("141414"),.2),6)
 	G.label(interior,"PEIXE DO DIA",chest+Vector3(0,1.05,0),14).billboard=BaseMaterial3D.BILLBOARD_FIXED_Y
 	# Live-bait tank on a stand, by the door on the right, with sardines and a worm bucket.
 	var tank:=Vector3(half-.55,0,-back+1.35)
@@ -304,7 +304,7 @@ func _furnish_shop(half: float,back: float,depth: float) -> void:
 	G.box(interior,tank+Vector3(0,1.,0),Vector3(.6,.44,1.28),water)
 	var silver:=G.material(Color("c9d3d6"),.3);silver.metallic=.6
 	for i: int in 7:
-		var bait:=G.sphere(interior,tank+Vector3(-.15+float(i%3)*.15,.9+float(i%2)*.14,-.45+float(i)*.15),Vector3(.03,.035,.13),silver,6)
+		var bait:=G.ellipsoid(interior,tank+Vector3(-.15+float(i%3)*.15,.9+float(i%2)*.14,-.45+float(i)*.15),Vector3(.03,.035,.13),silver,6)
 		bait.rotation.y=float(i)*.9
 	for i: int in 2:
 		var bucket:=tank+Vector3(-.7,0,-.3+float(i)*.6)
@@ -325,7 +325,7 @@ func _furnish_shop(half: float,back: float,depth: float) -> void:
 		var t:=float(j)/4.;var z:=-back+.5+t*2.2;var y:=3.05-sin(t*PI)*.5
 		G.beam(interior,Vector3(-half+.6,y,z),Vector3(-half+3.3,y,z),.008,net_mat)
 		if j%2==0:
-			for k: int in 3:G.sphere(interior,Vector3(-half+.9+float(k)*1.1,y-.05,z),Vector3(.1,.1,.1),paints[4],8)
+			for k: int in 3:G.ellipsoid(interior,Vector3(-half+.9+float(k)*1.1,y-.05,z),Vector3(.1,.1,.1),paints[4],8)
 	# Life ring and crossed oars beside the door.
 	var ring:=TorusMesh.new();ring.inner_radius=.22;ring.outer_radius=.34;ring.rings=24;ring.ring_segments=8
 	var buoy:=G.mesh_node(interior,ring,paints[0],Vector3(1.6,2.25,-back+.16));buoy.rotation.x=PI*.5

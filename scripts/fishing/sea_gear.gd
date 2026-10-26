@@ -78,7 +78,7 @@ func _build_net() -> void:
 	var lead:=G.material(Color("55595e"),.4)
 	for i: int in 18:
 		var a:=float(i)*TAU/18.
-		G.sphere(net_node,Vector3(cos(a),-.3,sin(a)),Vector3(.06,.06,.06),lead,6)
+		G.ellipsoid(net_node,Vector3(cos(a),-.3,sin(a)),Vector3(.06,.06,.06),lead,6)
 	net_node.position=net_point;net_node.scale=Vector3(.2,1.,.2)
 
 func _update_net(delta: float) -> void:
@@ -189,7 +189,7 @@ func _collect(t: Dictionary) -> String:
 func _build_trap(at: Vector3,bottom: float) -> Node3D:
 	var root:=Node3D.new();root.name="Covo_%d"%traps.size();root.position=Vector3(at.x,0,at.z);add_child(root)
 	var buoy:=Node3D.new();buoy.name="Boia";root.add_child(buoy)
-	G.sphere(buoy,Vector3(0,.15,0),Vector3(.42,.42,.42),G.material(Color("ef6c1a"),.5),12)
+	G.ellipsoid(buoy,Vector3(0,.15,0),Vector3(.42,.42,.42),G.material(Color("ef6c1a"),.5),12)
 	G.cylinder(buoy,Vector3(0,.75,0),.025,1.1,G.material(Color("2b2f33"),.5))
 	var flag:=G.box(buoy,Vector3(.18,1.15,0),Vector3(.34,.22,.02),G.material(Color("d8432f"),.6));flag.name="Bandeira"
 	var rope:=G.beam(root,Vector3(0,0,0),Vector3(0,bottom+.5,0),.012,G.material(Color("c9b48a"),.9));rope.name="Cabo"

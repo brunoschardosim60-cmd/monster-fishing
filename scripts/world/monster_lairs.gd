@@ -65,23 +65,27 @@ func _build(kind: String) -> Node3D:
 	var root:=Node3D.new()
 	match kind:
 		"kraken":
-			var skin:=_wet(Color("4a2340"));var under:=_wet(Color("a5566e"),.5);var eye:=_glow(Color("ffd34e"),2.5)
-			_ball(root,Vector3(0,4.,0),Vector3(6.,9.,6.),skin)
-			_ball(root,Vector3(0,.6,0),Vector3(7.,4.,7.),under)
+			var skin:=_wet(Color("4a0c18"),.62);skin.metallic_specular=.3
+			var under:=_wet(Color("8a3a4c"),.6);var sucker:=_wet(Color("e3b7a8"),.6);var eye:=_glow(Color("ffcf3a"),3.)
+			var mottle:=_wet(Color("5a1a2a"),.55)
+			_ball(root,Vector3(0,4.4,.6),Vector3(6.,9.5,6.4),skin)
+			for k: int in 9:_ball(root,Vector3(cos(float(k)*2.1)*2.4,3.+float(k%4)*1.3,sin(float(k)*2.1)*2.4+.6),Vector3(1.2,.9,1.2),mottle,8)
+			_ball(root,Vector3(0,.9,0),Vector3(7.,4.,7.),under)
 			for s: float in [-1.,1.]:
-				_ball(root,Vector3(s*2.2,1.6,2.6),Vector3(1.1,1.1,.6),eye,14)
-				_ball(root,Vector3(s*2.2,1.6,2.9),Vector3(.4,.9,.3),_wet(Color("140b10")),10)
+				_ball(root,Vector3(s*2.3,2.5,-2.4),Vector3(1.5,1.5,.9),eye,14)
+				_ball(root,Vector3(s*2.3,2.5,-2.85),Vector3(.45,1.2,.3),_wet(Color("140b10")),10)
+				_ball(root,Vector3(s*2.3,3.3,-2.3),Vector3(1.9,.5,1.),skin,10)
 			var arms: Array[Array]=[]
 			for i: int in 8:
 				var a:=float(i)*TAU/8.
 				var base:=Node3D.new();base.position=Vector3(cos(a)*2.8,-.3,sin(a)*2.8);base.rotation.y=-a+PI*.5;root.add_child(base)
 				var chain: Array[Node3D]=[]
-				var parent:=base;var r:=.9
-				for k: int in 7:
-					var joint:=Node3D.new();joint.position=Vector3(0,(2.1 if k>0 else 0.),0);parent.add_child(joint)
-					_limb(joint,2.2,r,r*.78,skin)
-					if k%2==1:_ball(joint,Vector3(0,1.1,r*.7),Vector3(.35,.35,.2)*r*2.,under,8)
-					chain.append(joint);parent=joint;r*=.78
+				var parent:=base;var r:=1.05
+				for k: int in 8:
+					var joint:=Node3D.new();joint.position=Vector3(0,(1.9 if k>0 else 0.),0);parent.add_child(joint)
+					_limb(joint,2.05,r,r*.8,skin)
+					for m: int in 2:_ball(joint,Vector3(0,.5+float(m)*.9,r*.82),Vector3(.5,.5,.22)*r,sucker,8)
+					chain.append(joint);parent=joint;r*=.8
 				arms.append(chain)
 			root.set_meta("arms",arms)
 		"serpente":
@@ -227,7 +231,7 @@ func _animate(lair: Dictionary,t: float) -> void:
 				var chain: Array=arms[i]
 				for k: int in chain.size():
 					var joint: Node3D=chain[k]
-					var curl:=sin(t*1.3+float(i)*.9-float(k)*.6)*.22+.12
+					var curl:=sin(t*1.3+float(i)*.9-float(k)*.6)*.32+.22+float(k)*.06
 					if i==0 and slam>0.:curl=(-.45 if slam>.6 else .35)
 					joint.rotation.x=curl
 					joint.rotation.z=sin(t*.7+float(i))*.08

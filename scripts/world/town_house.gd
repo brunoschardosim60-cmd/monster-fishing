@@ -192,8 +192,8 @@ static func _openings(root: Node3D,w: float,d: float,floors: int,floor_h: float,
 					var petals: Array[Color]=[Color("d8432f"),Color("f2a7c3"),Color("f1c232"),Color("f3f3f3"),Color("a64d79")]
 					var pick:=flowers.randi()%petals.size()
 					for k: int in 4:
-						G.sphere(root,box_at+Vector3(-.36+float(k)*.24,.2,0),Vector3(.16,.13,.16),flat(Color("4f7a3a"),.9),6)
-						G.sphere(root,box_at+Vector3(-.3+float(k)*.24,.27,-.03),Vector3(.09,.08,.09),flat(petals[(pick+k%2)%petals.size()],.7),6)
+						G.ellipsoid(root,box_at+Vector3(-.36+float(k)*.24,.2,0),Vector3(.16,.13,.16),flat(Color("4f7a3a"),.9),6)
+						G.ellipsoid(root,box_at+Vector3(-.3+float(k)*.24,.27,-.03),Vector3(.09,.08,.09),flat(petals[(pick+k%2)%petals.size()],.7),6)
 				if shutters:
 					for s: float in [-1.,1.]:
 						var sp:=pos+(Vector3(s*.72,0,sign_value*.03) if front else Vector3(sign_value*.03,0,s*.72))

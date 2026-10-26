@@ -75,7 +75,7 @@ static func _cargo(root: Node3D,at: Vector3,width: float,rng: RandomNumberGenera
 			for i: int in 2:
 				var z:=(float(i)-.5)*.55
 				G.box(bundle,Vector3(0,.15,z),Vector3(width*.75,.3,.5),crate);G.box(bundle,Vector3(0,.31,z),Vector3(width*.68,.03,.44),ice)
-				for k: int in 3:G.sphere(bundle,Vector3(-width*.22+float(k)*width*.22,.34,z),Vector3(.09,.06,.34),fish,8)
+				for k: int in 3:G.ellipsoid(bundle,Vector3(-width*.22+float(k)*width*.22,.34,z),Vector3(.09,.06,.34),fish,8)
 			root.set_meta("cargo","peixe")
 		1:
 			var bark:=_mat(Color("6b4e33"),.95);var cut:=_mat(Color("d8b884"),.8)
@@ -85,9 +85,9 @@ static func _cargo(root: Node3D,at: Vector3,width: float,rng: RandomNumberGenera
 			root.set_meta("cargo","madeira")
 		_:
 			var sack:=_mat(Color("bfa982"),.95);var net:=_mat(Color("5e7f7a"),.9);var float_mat:=_mat(Color("e69138"),.6)
-			for i: int in 2:G.sphere(bundle,Vector3((float(i)-.5)*.32,.18,-.15),Vector3(.3,.32,.38),sack,10)
-			G.sphere(bundle,Vector3(0,.12,.32),Vector3(width*.6,.18,.45),net,10)
-			for k: int in 3:G.sphere(bundle,Vector3(-.2+float(k)*.2,.24,.36),Vector3(.08,.08,.08),float_mat,6)
+			for i: int in 2:G.ellipsoid(bundle,Vector3((float(i)-.5)*.32,.18,-.15),Vector3(.3,.32,.38),sack,10)
+			G.ellipsoid(bundle,Vector3(0,.12,.32),Vector3(width*.6,.18,.45),net,10)
+			for k: int in 3:G.ellipsoid(bundle,Vector3(-.2+float(k)*.2,.24,.36),Vector3(.08,.08,.08),float_mat,6)
 			root.set_meta("cargo","redes")
 
 static func _seat(root: Node3D,at: Vector3,facing: float) -> void:
