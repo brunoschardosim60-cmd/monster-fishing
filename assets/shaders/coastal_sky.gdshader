@@ -12,7 +12,7 @@ float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 void sky() {
 	vec3 d=normalize(EYEDIR);
 	float h=max(d.y,0.);
-	vec3 col=mix(vec3(.31,.58,.67),vec3(.025,.13,.36),pow(h,.42));
+	vec3 col=mix(vec3(.45,.62,.75),vec3(.025,.13,.36),pow(h,.42));
 	float day=smoothstep(-.16,.22,sun_direction.y);
 	col=mix(mix(vec3(.014,.027,.055),vec3(.001,.004,.014),h),col,day);
 	vec2 star_uv=vec2(atan(d.z,d.x)/6.283185+0.5,asin(d.y)/3.141593+0.5)*vec2(700.,350.);
@@ -33,7 +33,7 @@ void sky() {
 		vec3 warm=mix(vec3(1.12,1.16,1.13),vec3(1.45,.87,.43),pow(sun,4.)*(1.-smoothstep(.1,.6,sun_direction.y)));
 		for(int i=0;i<6;i++){
 			float layer=(float(i)+.5)/6.;
-			vec2 uv=d.xz/(d.y+.12)*(.052+layer*.014)+vec2(.21,.37)+weather_time*vec2(.00012,.00005);
+			vec2 uv=d.xz/(d.y+.12)*(.052+layer*.005)+vec2(.21,.37)+weather_time*vec2(.00012,.00005);
 			float c=clouds(uv);
 			float profile=sin(layer*3.141593)*.075;
 			float density=smoothstep(mix(.64,.27,cloud_cover)-profile,mix(.76,.43,cloud_cover),c);

@@ -56,14 +56,14 @@ static func _canoa(root: Node3D,L: float) -> void:
 
 static func _bote(root: Node3D,L: float) -> void:
 	_hull(root,L,2.3,.85,.35,"2f6fb0")
-	G.box(root,Vector3(0,1.4,L*.26),Vector3(1.7,1.1,1.8),_mat("f2f2ee"),true)
+	G.box(root,Vector3(0,1.4,L*.26),Vector3(1.7,1.1,1.8),_mat("f2f2ee"))
 	G.box(root,Vector3(0,1.5,L*.26-.92),Vector3(1.3,.5,.05),_mat("24384a"))
 	G.cylinder(root,Vector3(0,2.6,-L*.1),.035,2.6,_mat("8a8f96",.4))
 	G.box(root,Vector3(.6,.9,-L*.18),Vector3(.6,.4,.6),_mat("e0b040"))
 
 static func _pesqueiro(root: Node3D,L: float) -> void:
 	_hull(root,L,4.0,1.5,.6,"c8553d")
-	G.box(root,Vector3(0,2.9,L*.24),Vector3(2.6,1.9,2.6),_mat("eeeeee"),true)
+	G.box(root,Vector3(0,2.9,L*.24),Vector3(2.6,1.9,2.6),_mat("eeeeee"))
 	G.box(root,Vector3(0,4.1,L*.24),Vector3(2.9,.16,2.9),_mat("3a3a3a"))
 	G.box(root,Vector3(0,3.0,L*.24-1.31),Vector3(2.2,.7,.06),_mat("24384a"))
 	var steel:=_mat("9aa3a8",.4)
@@ -74,7 +74,7 @@ static func _pesqueiro(root: Node3D,L: float) -> void:
 
 static func _rebocador(root: Node3D,L: float) -> void:
 	_hull(root,L,7.0,2.4,1.0,"d9622b")
-	G.box(root,Vector3(0,4.2,L*.12),Vector3(4.2,2.4,4.2),_mat("f4f4f4"),true)
+	G.box(root,Vector3(0,4.2,L*.12),Vector3(4.2,2.4,4.2),_mat("f4f4f4"))
 	G.box(root,Vector3(0,4.6,L*.12-2.12),Vector3(3.8,.6,.1),_mat("1f2e3a"))
 	G.cylinder(root,Vector3(0,6.0,L*.2),.65,2.6,_mat("1a1a1a"),.7,12)
 	G.box(root,Vector3(0,7.35,L*.2),Vector3(1.4,.12,1.4),_mat("1a1a1a"))
@@ -84,14 +84,14 @@ static func _rebocador(root: Node3D,L: float) -> void:
 static func _apoio(root: Node3D,L: float) -> void:
 	_hull(root,L,8.5,3.0,1.4,"36506e")
 	G.box(root,Vector3(0,3.6,-L*.1),Vector3(6,1.0,L*.25),_mat("c0392b"))
-	G.box(root,Vector3(0,6.0,L*.3),Vector3(5,3,5),_mat("f0f0f0"),true)
+	G.box(root,Vector3(0,6.0,L*.3),Vector3(5,3,5),_mat("f0f0f0"))
 	G.box(root,Vector3(0,8.0,L*.3),Vector3(5.2,.8,5.2),_mat("2e4a63"))
 	G.cylinder(root,Vector3(0,10.0,L*.05),.12,6,_mat("888888",.4))
 	G.beam(root,Vector3(0,3.5,-L*.12),Vector3(0,11.0,-L*.24),.12,_mat("ffc400",.4))
 
 static func _cargueiro(root: Node3D,L: float) -> void:
 	_hull(root,L,11.5,4.5,2.0,"1f3d5c")
-	G.box(root,Vector3(0,9.5,L*.36),Vector3(7.5,5,6),_mat("f2f2f2"),true)
+	G.box(root,Vector3(0,9.5,L*.36),Vector3(7.5,5,6),_mat("f2f2f2"))
 	G.box(root,Vector3(0,12.5,L*.36),Vector3(7.8,.6,6.2),_mat("1d1d1d"))
 	var colors: Array[String]=["d7263d","f0a202","2e86ab","3d9970"]
 	for lane: int in 3:
@@ -103,7 +103,7 @@ static func _cargueiro(root: Node3D,L: float) -> void:
 
 static func _petroleiro(root: Node3D,L: float) -> void:
 	_hull(root,L,22.,9.0,3.0,"ececec")
-	G.box(root,Vector3(0,16.0,L*.38),Vector3(10,8,9),_mat("f5f5f5"),true)
+	G.box(root,Vector3(0,16.0,L*.38),Vector3(10,8,9),_mat("f5f5f5"))
 	G.box(root,Vector3(0,21.0,L*.38),Vector3(10.5,.8,9.5),_mat("333333"))
 	for lane: float in [-6.5,0.,6.5]:
 		for row: int in 7:

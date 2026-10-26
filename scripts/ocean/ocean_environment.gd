@@ -166,15 +166,36 @@ func _update_lighting(delta: float) -> void:
 	world.environment.ambient_light_sky_contribution=lerpf(.2,.85,daylight)
 	world.environment.ambient_light_energy=lerpf(.48,.55,daylight)
 	world.environment.fog_density=.055 if underwater else weather.fog+cold*.012
-	world.environment.fog_light_color=Color("0a5460") if underwater else Color("182d43").lerp(Color("93cfd6").lerp(Color("587886"),weather.cloud),daylight)
+	world.environment.fog_light_color=Color("0a5460") if underwater else Color("182d43").lerp(Color("a8bfcf").lerp(Color("6f8290"),weather.cloud),daylight)
 	world.environment.fog_sky_affect=1. if underwater else .04+weather.rain*.45
 	world.environment.tonemap_exposure=.72 if underwater else 1.02
-	if world.ocean_material!=null:world.ocean_material.set_shader_parameter("sea_glow",.085*daylight*(1.-weather.cloud*.55))
+	if world.ocean_material!=null:
+		var ocean_mat: ShaderMaterial=world.ocean_material
+		ocean_mat.set_shader_parameter("sea_glow",.04*daylight*(1.-weather.cloud*.55))
+		# The water reflects the same sky the sky shader draws: pale horizon, deeper zenith,
+		# warm at sunrise/sunset, dark blue at night, grey under cloud.
+		var low_sun:=1.-smoothstep(.05,.35,elevation)
+		var horizon:=Color(.012,.025,.05).lerp(Color(.45,.62,.75).lerp(Color(1.,.55,.3),low_sun*.7),daylight)
+		var zenith:=Color(.004,.01,.03).lerp(Color(.03,.14,.38).lerp(Color(.22,.2,.36),low_sun*.5),daylight)
+		horizon=horizon.lerp(Color(.42,.47,.52)*maxf(daylight,.08),weather.cloud*.8)
+		zenith=zenith.lerp(Color(.30,.34,.40)*maxf(daylight,.08),weather.cloud*.8)
+		ocean_mat.set_shader_parameter("sky_horizon",Vector3(horizon.r,horizon.g,horizon.b))
+		ocean_mat.set_shader_parameter("sky_zenith",Vector3(zenith.r,zenith.g,zenith.b))
+		var sun_light: DirectionalLight3D=world.sun
+		var moon_up:=1.-daylight
+		ocean_mat.set_shader_parameter("sun_dir",sun_light.global_basis.z.normalized() if daylight>.02 else moon.global_basis.z.normalized())
+		var glint_color:=sun_light.light_color if daylight>.02 else Color(.55,.68,.85)
+		ocean_mat.set_shader_parameter("sun_color",Vector3(glint_color.r,glint_color.g,glint_color.b))
+		ocean_mat.set_shader_parameter("sun_strength",daylight*(1.-weather.cloud*.9)+moon_up*.25*(1.-weather.cloud))
 	world.sky_material.set_shader_parameter("lightning",flash)
 	if light_clock>.35:
 		light_clock=0.
 		world.sky_material.set_shader_parameter("cloud_cover",weather.cloud)
 		world.sky_material.set_shader_parameter("weather_time",Waves.time)
+		var caustics: float=daylight*(1.-weather.cloud*.75)
+		var floor_mat:=seabed.get_active_material(0) as ShaderMaterial
+		if floor_mat!=null:floor_mat.set_shader_parameter("caustic_strength",caustics)
 		for mat: ShaderMaterial in world.terrain_materials:
 			mat.set_shader_parameter("sea_time",Waves.time)
+			mat.set_shader_parameter("caustic_strength",caustics)
 			mat.set_shader_parameter("wet_weather",weather.rain)
