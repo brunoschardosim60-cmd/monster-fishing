@@ -9,6 +9,7 @@ const G=preload("res://scripts/world/geometry.gd")
 const M=preload("res://scripts/visuals/materials.gd")
 const House=preload("res://scripts/world/town_house.gd")
 const Resident=preload("res://scripts/world/village_resident.gd")
+const Props=preload("res://scripts/world/cc0_props.gd")
 const PLAZA_R: float=10.
 ## name, centre (x,z), radius, houses, styles, landmark, links (where the avenue joins the rest of the town), over water
 const DISTRICTS: Array=[
@@ -62,6 +63,10 @@ func _district(data: Array) -> void:
 			var at:=centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+size.y*.5+4.+float(attempt))
 			if _place(landmark,at,size,centre,water,record):placed=true;break
 		if not placed:push_warning("no room for "+landmark+" in "+name_text)
+	if name_text=="Bairro do Poente" and Props.exists("Tabern"):
+		for attempt: int in 40:
+			var angle:=_rng.randf()*TAU
+			if _place("taberna",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+11.+float(attempt)*.5),_size_of("taberna"),centre,water,record):break
 	var tries:=0
 	while (record.houses as Array).size()<count+(1 if not landmark.is_empty() else 0) and tries<600:
 		tries+=1
@@ -72,7 +77,81 @@ func _district(data: Array) -> void:
 		_place(style,at,_size_of(style),centre,water,record)
 	districts.append(record)
 	if water:_boardwalks(record)
+	_dress(record,water,radius)
+	for link: Vector2 in links:
+		var sign_at:=centre+(link-centre).normalized()*(PLAZA_R+3.)
+		Props.spawn(self,"SignPost",Vector3(sign_at.x,Layout.height(sign_at),sign_at.y),2.6,atan2(-(link-centre).x,-(link-centre).y))
 	_people(record,plaza_y)
+
+## Gardens, fences, market stalls, barrels and carts, beach shells and rocks (CC0 models).
+const PLANTS: Array=[["nature:Bush_Common_Flowers",1.1],["nature:Bush_Large_Flowers",1.35],["nature:Flower_3_Group",.5],["nature:Flower_4_Group",.5],["nature:Flower_1_Group",.45],["nature:Fern_1",.7],["nature:Plant_1_Big",.9],["Flower_02_a_Art",.55]]
+func _dress(record: Dictionary,water: bool,radius: float) -> void:
+	if not Props.exists("Barrel"):return
+	var centre: Vector2=record.centre
+	for building: Node3D in record.houses:
+		var style: String=building.get_meta("style","")
+		var size: Vector2=building.get_meta("size",Vector2(7,6))
+		var basis:=building.basis
+		if water:
+			for i: int in 2:
+				var local:=Vector3(_rng.randf_range(-size.x*.4,size.x*.4),0.,-size.y*.5-1.)
+				Props.spawn(self,"SmallBarrel_Art",building.position+basis*local,.8,_rng.randf()*TAU,false,110.)
+			continue
+		if style=="galpao":
+			for i: int in 4:
+				var local:=Vector3((-1. if i<2 else 1.)*(size.x*.5+.9),0.,-size.y*.5+float(i%2)*1.3)
+				var p:=building.position+basis*local;p.y=Layout.height(Vector2(p.x,p.z))
+				Props.spawn(self,"Barrel",p,1.1,_rng.randf()*TAU)
+			var cart:=building.position+basis*Vector3(size.x*.5+3.,0.,size.y*.2);cart.y=Layout.height(Vector2(cart.x,cart.z))
+			Props.solid(Props.spawn(self,"Cart",cart,3.4,building.rotation.y+PI*.5,true,220.),Vector3(1.6,1.6,2.6))
+			continue
+		for i: int in _rng.randi_range(3,6):
+			var side:=_rng.randi()%4;var t:=_rng.randf_range(-.45,.45)
+			var local: Vector3
+			match side:
+				0:local=Vector3(t*size.x,0.,-size.y*.5-.75)
+				1:local=Vector3(t*size.x,0.,size.y*.5+.75)
+				2:local=Vector3(-size.x*.5-.75,0.,t*size.y)
+				_:local=Vector3(size.x*.5+.75,0.,t*size.y)
+			if side==0 and absf(local.x)<1.5:continue
+			var p:=building.position+basis*local
+			if on_paving(Vector2(p.x,p.z)) or Layout.coast(Vector2(p.x,p.z)).x>-2.:continue
+			p.y=Layout.height(Vector2(p.x,p.z))
+			var plant: Array=PLANTS[_rng.randi()%PLANTS.size()]
+			Props.spawn(self,plant[0],p,float(plant[1])*_rng.randf_range(.85,1.2),_rng.randf()*TAU,false,110.)
+		if style in ["costeira","cabana"] and _rng.randf()<.4:
+			var x:=size.x*.5+2.4
+			for k: int in 3:
+				var local:=Vector3(x,0.,-size.y*.5+float(k)*2.4+1.2)
+				var p:=building.position+basis*local
+				if on_paving(Vector2(p.x,p.z)):continue
+				p.y=Layout.height(Vector2(p.x,p.z))
+				Props.spawn(self,"Fence_01_Art",p,2.4,building.rotation.y+PI*.5,true,130.)
+	# Market stalls around the square of the larger districts.
+	if not water and (record.houses as Array).size()>=10:
+		var stalls:=0
+		for k: int in 16:
+			if stalls>=2:break
+			var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*(PLAZA_R+3.2)
+			if on_paving(q):continue
+			var y:=Layout.height(q)
+			Props.solid(Props.spawn(self,"Booth_Food01" if stalls==0 else "Booth_Food02",Vector3(q.x,y,q.y),4.2,atan2(-(centre-q).x,-(centre-q).y),true,260.),Vector3(3.6,2.5,2.4))
+			var side:=Vector2(-sin(a),cos(a))*3.2
+			Props.spawn(self,"Barrel",Vector3(q.x+side.x,Layout.height(q+side),q.y+side.y),1.05,_rng.randf()*TAU)
+			stalls+=1
+	# Beach dressing: shells and rocks on the sand inside the district.
+	for k: int in 40:
+		var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*_rng.randf_range(0.,radius+20.)
+		var c:=Layout.coast(q).x
+		if c<-4. or c>.5:continue
+		if k%4==0:Props.spawn(self,"Rock_01_Art" if k%8==0 else "Rock_03_Art",Vector3(q.x,Layout.height(q)-.3,q.y),_rng.randf_range(.8,1.8),_rng.randf()*TAU,false,300.)
+		else:Props.spawn(self,"Shell01",Vector3(q.x,Layout.height(q),q.y),.18,_rng.randf()*TAU,false,60.)
+	# Woodland edge: logs and mushrooms for the valley cabins.
+	if String(record.name)=="Vale do Meio":
+		for k: int in 10:
+			var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*_rng.randf_range(PLAZA_R+2.,radius+6.)
+			if on_paving(q) or Layout.path_at(q).x<3.:continue
+			Props.spawn(self,"Log_01_Art" if k%3==0 else "Mushroom_01_Art",Vector3(q.x,Layout.height(q),q.y),1.1 if k%3==0 else .45,_rng.randf()*TAU,false,140.)
 
 func _size_of(style: String) -> Vector2:
 	match style:
@@ -83,6 +162,7 @@ func _size_of(style: String) -> Vector2:
 		"prefeitura":return Vector2(15.,10.)
 		"escola":return Vector2(14.,8.)
 		"galpao":return Vector2(11.,9.)
+		"taberna":return Vector2(7.6,13.6)
 	return Vector2(_rng.randf_range(7.,9.),_rng.randf_range(6.,7.5))
 
 ## Tries to put a building at `at`, facing `face`. Returns false when the ground does not allow it.
@@ -113,7 +193,14 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 	if not water and (highest-lowest>2.6 or highest>42.):return false
 	var floor_y:=1.9 if water else highest+.25
 	var depth:=floor_y-lowest+(.3 if water else .5)
-	var building:=House.build(style,size.x,size.y,_rng,depth)
+	var building: Node3D
+	if style=="taberna":
+		building=Node3D.new()
+		House._plinth(building,size.x,size.y,depth,M.surface("granite",Color("a9aa9c"),1.))
+		Props.spawn(building,"Tabern",Vector3.ZERO,9.,0.,false,500.)
+		House._collider(building,Vector3(size.x,9.,size.y),Vector3(0,4.5,0))
+	else:building=House.build(style,size.x,size.y,_rng,depth)
+	building.set_meta("style",style);building.set_meta("size",size)
 	building.name="Casa_%s_%d"%[style,houses.size()]
 	building.position=Vector3(at.x,floor_y,at.y);building.rotation.y=yaw
 	add_child(building);houses.append(building);footprints.append(Vector3(at.x,at.y,reach))
@@ -182,24 +269,27 @@ func _plaza(centre: Vector2,y: float) -> void:
 		for v: Vector3 in [c,v1,v0]:st.set_normal(Vector3.UP);st.add_vertex(v)
 	var node:=MeshInstance3D.new();node.name="Praca_%d"%get_child_count();node.mesh=st.commit();node.material_override=_street;add_child(node)
 	var at:=Vector3(centre.x,y,centre.y)
-	G.cylinder(self,at+Vector3(0,.3,0),2.6,.6,_curb,2.6,24)
-	var water:=House.flat(Color("3a8fa8"),.08,.2);water.emission_enabled=true;water.emission=Color("10404c");water.emission_energy_multiplier=.4
-	G.cylinder(self,at+Vector3(0,.55,0),2.35,.1,water,2.35,24)
-	G.cylinder(self,at+Vector3(0,1.3,0),.35,1.6,_curb,.25,12)
-	G.cylinder(self,at+Vector3(0,2.15,0),1.1,.2,_curb,.8,16)
+	if Props.exists("Str_Fountain_01_Art"):
+		Props.solid(Props.spawn(self,"Str_Fountain_01_Art",at,5.6,_rng.randf()*TAU,true,400.),Vector3(4.6,1.2,4.6))
+	else:
+		G.cylinder(self,at+Vector3(0,.3,0),2.6,.6,_curb,2.6,24)
+		G.cylinder(self,at+Vector3(0,1.3,0),.35,1.6,_curb,.25,12)
 	var wood:=M.surface("teak",Color("8a6a4a"),1.2)
 	for i: int in 4:
 		var a:=float(i)*PI*.5+PI*.25
 		var p:=at+Vector3(cos(a),0,sin(a))*(PLAZA_R-2.2)
-		var bench:=G.box(self,p+Vector3(0,.45,0),Vector3(1.8,.12,.5),wood);bench.rotation.y=-a+PI*.5
-		var back:=G.box(self,p+Vector3(0,.8,0)+Vector3(cos(a),0,sin(a))*.25,Vector3(1.8,.5,.08),wood);back.rotation.y=-a+PI*.5
+		if Props.exists("Bench_01_Art"):Props.spawn(self,"Bench_01_Art",p,2.2,-a+PI*.5,true)
+		else:
+			var bench:=G.box(self,p+Vector3(0,.45,0),Vector3(1.8,.12,.5),wood);bench.rotation.y=-a+PI*.5
 		var lamp_a:=a+PI*.25
 		var lamp_at:=at+Vector3(cos(lamp_a),0,sin(lamp_a))*(PLAZA_R-.8)
 		village._lamp(lamp_at,wood);lamps+=1
 	for i: int in 3:
 		var a:=float(i)*TAU/3.+.4
 		var p:=centre+Vector2(cos(a),sin(a))*(PLAZA_R+3.)
-		village.world._make_tree(Vector3(p.x,Layout.height(p),p.y),1.2)
+		var tree_at:=Vector3(p.x,Layout.height(p),p.y)
+		if Props.exists("nature:CherryBlossom_1"):Props.spawn(self,"nature:CherryBlossom_1" if i==0 else "nature:CommonTree_%d"%(i+1),tree_at,_rng.randf_range(6.,8.),_rng.randf()*TAU,false,600.)
+		else:village.world._make_tree(tree_at,1.2)
 
 ## Stilt houses get a boardwalk from their porch to dry land.
 func _boardwalks(record: Dictionary) -> void:

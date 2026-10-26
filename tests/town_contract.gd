@@ -34,6 +34,10 @@ func run() -> void:
 	for n: Node in town.get_children():
 		if String(n.name).begins_with("Rua"):streets+=1
 	check(streets>=40,"%d cobbled streets"%streets)
+	var props:=0;var kinds:={}
+	for n: Node in town.get_children():
+		if String(n.name).begins_with("CC0_"):props+=1;kinds[String(n.name).trim_prefix("CC0_").rstrip("0123456789@")]=true
+	check(props>=150 and kinds.size()>=10,"%d CC0 props of %d kinds dress the streets, gardens and beaches"%[props,kinds.size()])
 	check(town.residents.size()>=10,"%d townspeople live in the districts"%town.residents.size())
 	# Walk over the stone bridge from the village to the west district.
 	game.player.global_position=Vector3(-55,2.,-4);game.player.velocity=Vector3.ZERO;await frames(10)
