@@ -635,7 +635,7 @@ func _make_market() -> void:
 		var fish := G.sphere(stall, Vector3(-1.25 + i * 0.3, 1.4, -0.1), Vector3(0.12, 0.1, 0.3), G.material(Color("8caaa4")))
 		fish.rotation.y = 0.25
 	var vendor=preload("res://scripts/player/imported_angler.gd").new()
-	vendor.position=Vector3(6.7,1.25,-1.5);add_child(vendor)
+	vendor.position=Vector3(6.7,1.25,-1.5);vendor.idle_clip="ual/Counter";add_child(vendor)
 	_make_barrel(Vector3(8.7, 1.25, -2.4))
 	_make_barrel(Vector3(9.2, 1.25, -1.3))
 

@@ -173,7 +173,20 @@ func _news(ship: CharacterBody3D,game: Node) -> String:
 	var events=game.world.get("sea_events")
 	if events!=null and events.current!=null and is_instance_valid(events.current):
 		var monster: Node3D=events.current;best="uma baleia" if events.kind=="whale" else "algo enorme na água";best_p=monster.global_position;best_d=at.distance_to(best_p)
-	if best.is_empty():return "Mar tranquilo por aqui. Dizem que à noite os peixes-lanterna sobem."
+	# Crews also warn about the nearest monster territory.
+	var warning:=""
+	var lairs=game.get("lairs")
+	if lairs!=null:
+		var near_d:=1e9
+		for lair: Dictionary in lairs.lairs:
+			var c: Vector3=lair.center;var d:=Vector2(c.x-at.x,c.z-at.z).length()-float(lair.radius)
+			if d<near_d and d<1800.:
+				near_d=d
+				var ld:=Vector2(c.x-at.x,c.z-at.z)
+				warning=" Cuidado: o %s fica a %s, uns %d m. Lá, só de luzes apagadas e devagar."%[lair.name,_heading(ld),int(round(maxf(d,0.)/50.)*50.)]
+	if best.is_empty():return "Mar tranquilo por aqui. Dizem que à noite os peixes-lanterna sobem."+warning
 	var dir:=Vector2(best_p.x-at.x,best_p.z-at.z)
-	var heading: String=["N","NE","L","SE","S","SO","O","NO"][int(round(fposmod(atan2(dir.x,-dir.y),TAU)/(TAU/8.)))%8]
-	return "\"Vimos %s a %s, uns %d m daqui.\""%[best,heading,int(round(best_d/10.)*10.)]
+	return "\"Vimos %s a %s, uns %d m daqui.\""%[best,_heading(dir),int(round(best_d/10.)*10.)]+warning
+
+func _heading(dir: Vector2) -> String:
+	return ["N","NE","L","SE","S","SO","O","NO"][int(round(fposmod(atan2(dir.x,-dir.y),TAU)/(TAU/8.)))%8]

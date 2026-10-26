@@ -23,10 +23,16 @@ var meet_timer: float=0.
 var bubble: Label3D
 ## Workers and shopkeepers leave the survivalist backpack at home.
 var hide_backpack: bool=false
+## Animation choices (UAL clips): standing pose, work loop played while not walking (empty: none).
+var idle_pose: String=""
+var work_pose: String=""
 func _ready() -> void:
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
 	if look_id>=0:visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
 	if hide_backpack and visual.get("backpack")!=null:visual.backpack.visible=false
+	# Everyone stands a little differently; workers and shopkeepers get their own loop.
+	visual.idle_clip=idle_pose if not idle_pose.is_empty() else ["ual/Idle","ual/IdleLook","ual/FoldArms","ual/Idle"][absi(look_id)%4]
+	visual.work_clip=work_pose
 	if not route.is_empty(): position=route[0]
 func start_talk(partner: Node3D,text: String,duration: float) -> void:
 	talk_partner=partner;talk_text=text;talk_timer=duration;meet_with=null;meet_timer=0.
@@ -40,12 +46,15 @@ func _process(delta: float) -> void:
 	visual.visible=near_camera
 	if talk_timer>0.:
 		talk_timer=maxf(0.,talk_timer-delta)
+		visual.work_clip="ual/Talk" if talk_text!="" else work_pose
 		velocity=velocity.move_toward(Vector3.ZERO,delta*2.5);position+=velocity*delta
 		if talk_partner!=null and is_instance_valid(talk_partner):
 			var face:=talk_partner.position-position;face.y=0.
 			if face.length()>.1:rotation.y=lerp_angle(rotation.y,atan2(-face.x,-face.z),1.-exp(-delta*4.))
+		if visual.visible:visual.update_animation(velocity.length(),false,delta)
 		_settle(delta,0.,near_camera)
 		return
+	visual.work_clip=work_pose
 	if route.size()<2:
 		# A resident with no route simply stands (lighthouse keeper), still breathing in the idle clip.
 		if visual.visible:visual.update_animation(0.,false,delta)

@@ -18,8 +18,12 @@ func _process(delta: float) -> void:
 	if _was_loaded and not loaded:deliveries+=1
 	_was_loaded=loaded
 	cargo.visible=loaded
-	# A bundle slows the walk a little.
-	if loaded and velocity.length()>speed*.85:velocity*=.995
+	# Crates are carried in both arms in front (UAL carry walk, a slower pace); logs and planks ride on the shoulder.
+	var in_arms:=cargo.name=="Caixa"
+	visual.walk_clip="ual/WalkCarry" if loaded and in_arms else "ual/Walk"
+	if in_arms:cargo.position=Vector3(0,1.1,-.36) if loaded else Vector3(.2,1.66,.02)
+	var cap:=speed*(.62 if in_arms else .85)
+	if loaded and velocity.length()>cap:velocity=velocity.normalized()*move_toward(velocity.length(),cap,delta*2.)
 
 ## Shoulder loads, built from simple shapes so they batch-free follow the porter.
 static func fish_crate() -> Node3D:

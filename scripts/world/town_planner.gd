@@ -31,6 +31,7 @@ var shops: Array[Node3D]=[]
 var sites: Array[Node3D]=[]
 var workers: Array[Node3D]=[]
 const Porter=preload("res://scripts/world/village_porter.gd")
+const Tools=preload("res://scripts/player/hand_tools.gd")
 const SITE_DISTRICTS: Array[String]=["Bairro do Nascente","Bairro do Poente"]
 const SHOP_TITLES: Dictionary={"Bairro do Poente":"Loja de Pesca do Poente","Bairro do Nascente":"Anzol do Nascente"}
 var lamps: int=0
@@ -417,9 +418,10 @@ func _site_crew(site: Node3D,size: Vector2) -> void:
 		var route: Array[Vector3]=[Vector3(stack.x,0,stack.z),Vector3(frame.x,0,frame.z)]
 		p.route.assign(route);p.cargo=Porter.plank_load();p.add_child(p.cargo);p.loaded_legs.assign([1])
 		add_child(p);workers.append(p)
-	var up:=Resident.new();up.look_id=63+sites.size()*4;up.follow_terrain=false;up.hide_backpack=true
+	var up:=Resident.new();up.look_id=63+sites.size()*4;up.follow_terrain=false;up.hide_backpack=true;up.work_pose="ual/Hammer"
 	var board:=site.position+site.basis*Vector3(-hx*.5,1.85,-hz-.85)
 	up.route.assign([board]);up.rotation.y=site.rotation.y+PI;add_child(up);workers.append(up)
+	up.visual.hold_prop(Tools.hammer(),Tools.GRIP)
 
 ## Stone arch bridge with parapets and lamps, walkable (collision on every deck segment).
 func _bridge(a: Vector3,b: Vector3,rise: float) -> void:

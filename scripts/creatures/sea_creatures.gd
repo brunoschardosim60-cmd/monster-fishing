@@ -37,29 +37,27 @@ func _mat(color: Color,rough: float=.7) -> StandardMaterial3D:
 
 func _add_turtle(home: Vector3,size: float) -> void:
 	var root:=Node3D.new();root.name="Tartaruga_%d"%turtles.size();add_child(root)
-	# Dark olive-brown carapace with big, lighter scute plates; dark flippers.
-	var shell_mat:=_mat(Color("3d3220").lerp(Color("4a3a1c"),_rng.randf()),.45)
-	var scute:=_mat(Color("6b5228").lerp(Color("7a5c2c"),_rng.randf()),.5);var skin:=_mat(Color("4c4a3a"),.7)
-	var belly:=_mat(Color("d9c98f"),.8)
+	# Sculpted carapace with painted scutes (turtle_shell shader), scaled skin on head, neck and flippers.
+	var Meshes:=preload("res://scripts/creatures/creature_meshes.gd")
+	var shell_mat:=ShaderMaterial.new();shell_mat.shader=preload("res://assets/shaders/turtle_shell.gdshader")
+	var tint:=_rng.randf()
+	shell_mat.set_shader_parameter("base_color",Color("3a2a14").lerp(Color("37331a"),tint))
+	shell_mat.set_shader_parameter("ray_color",Color("b07a34").lerp(Color("8c8a46"),tint))
+	var skin:=ShaderMaterial.new();skin.shader=preload("res://assets/shaders/turtle_skin.gdshader")
 	var body:=Node3D.new();body.scale=Vector3.ONE*size;root.add_child(body)
-	G.ellipsoid(body,Vector3(0,0,0),Vector3(.92,.34,1.18),shell_mat,20)
-	G.ellipsoid(body,Vector3(0,-.09,0),Vector3(.84,.14,1.06),belly,14)
-	var plates: Array[Vector2]=[Vector2(0,-.36),Vector2(0,-.12),Vector2(0,.12),Vector2(0,.34),Vector2(-.24,-.24),Vector2(.24,-.24),Vector2(-.27,0.),Vector2(.27,0.),Vector2(-.23,.24),Vector2(.23,.24)]
-	for q: Vector2 in plates:
-		var lift:=.17*sqrt(maxf(0.,1.-pow(q.x/.46,2.)-pow(q.y/.59,2.)))
-		var plate:=G.ellipsoid(body,Vector3(q.x,lift-.008,q.y),Vector3(.27,.045,.26),scute,8)
-		plate.rotation=Vector3(-q.y*.6,0,q.x*.7)
-	var neck:=G.ellipsoid(body,Vector3(0,.0,-.6),Vector3(.2,.16,.24),skin,10)
-	var head:=G.ellipsoid(body,Vector3(0,.03,-.76),Vector3(.22,.17,.26),skin,12)
-	for sx: float in [-1.,1.]:G.ellipsoid(body,Vector3(sx*.08,.08,-.83),Vector3(.04,.04,.04),_mat(Color("0e0e0c"),.2),6)
+	var shell:=MeshInstance3D.new();shell.mesh=Meshes.carapace("turtle_shell",1.,.8,.26);shell.material_override=shell_mat;shell.name="Casco";body.add_child(shell)
+	var neck:=G.ellipsoid(body,Vector3(0,.0,-.5),Vector3(.2,.15,.26),skin,12)
+	var head:=G.ellipsoid(body,Vector3(0,.04,-.68),Vector3(.2,.15,.24),skin,14)
+	var beak:=G.ellipsoid(body,Vector3(0,.0,-.79),Vector3(.12,.08,.1),_mat(Color("57513c"),.5),10)
+	for sx: float in [-1.,1.]:G.ellipsoid(body,Vector3(sx*.085,.07,-.73),Vector3(.045,.045,.045),_mat(Color("0e0e0c"),.15),8)
 	var flippers: Array[Node3D]=[]
-	for data: Array in [[-1.,-.3,.62,.26],[1.,-.3,.62,.26],[-1.,.42,.3,.2],[1.,.42,.3,.2]]:
+	for data: Array in [[-1.,-.24,.56,.27,.17],[1.,-.24,.56,.27,.17],[-1.,.36,.26,.14,.05],[1.,.36,.26,.14,.05]]:
 		var side: float=data[0]
-		var pivot:=Node3D.new();pivot.position=Vector3(side*.4,-.03,float(data[1]));body.add_child(pivot)
-		var fin:=G.ellipsoid(pivot,Vector3(side*float(data[2])*.45,0,float(data[3])*.35),Vector3(float(data[2]),.05,float(data[3])),skin,10)
-		fin.rotation.y=-side*.55
+		var pivot:=Node3D.new();pivot.position=Vector3(side*.33,-.02,float(data[1]));body.add_child(pivot)
+		var fin:=MeshInstance3D.new();fin.mesh=Meshes.flipper("turtle_fin_%.2f"%float(data[2]),float(data[2]),float(data[3]),float(data[4]))
+		fin.material_override=skin;fin.scale=Vector3(side,1.,1.);fin.rotation.y=-side*.15;pivot.add_child(fin)
 		flippers.append(pivot)
-	neck.name="Pescoco"
+	beak.name="Bico";neck.name="Pescoco"
 	root.position=Vector3(home.x,home.y+1.,home.z)
 	turtles.append({"node":root,"home":home,"flippers":flippers,"head":head,"heading":_rng.randf()*TAU,"phase":_rng.randf()*TAU,
 		"breathe":_rng.randf_range(20.,45.),"surfacing":0.,"depth":0.,"size":size,"speed":.7+_rng.randf()*.3})
@@ -67,26 +65,23 @@ func _add_turtle(home: Vector3,size: float) -> void:
 func _add_ray(home: Vector3,manta: bool) -> void:
 	var root:=Node3D.new();root.name=("Manta_%d" if manta else "Arraia_%d")%rays.size();add_child(root)
 	var span:=4.2 if manta else 1.5
-	var top:=_mat(Color("23262a") if manta else Color("4a3f2e"),.8);var under:=_mat(Color("e8e6dd"),.7)
-	var spots:=_mat(Color("5e523c"),.7)
-	G.ellipsoid(root,Vector3.ZERO,Vector3(span*.34,span*.07,span*.5),top,16)
-	G.ellipsoid(root,Vector3(0,-span*.02,0),Vector3(span*.32,span*.04,span*.46),under,12)
-	if not manta:
-		for k: int in 6:G.ellipsoid(root,Vector3(_rng.randf_range(-.25,.25)*span,span*.03,_rng.randf_range(-.25,.25)*span),Vector3(.08,.02,.08),spots,6)
-	var wings: Array[Node3D]=[]
-	for s: float in [-1.,1.]:
-		# Each wing is a flattened lens hinged at the body: closed geometry, so it lights the same from any side.
-		var pivot:=Node3D.new();pivot.position=Vector3(s*span*.12,0,0);root.add_child(pivot)
-		var wing:=G.ellipsoid(pivot,Vector3(s*span*.2,0,span*.02),Vector3(span*.5,span*.045,span*.56),top,14)
-		wing.rotation.y=s*.25
-		wings.append(pivot)
+	# One disc mesh; the ray_skin shader beats (manta) or ripples (stingray) the wings and paints the top.
+	var Meshes:=preload("res://scripts/creatures/creature_meshes.gd")
+	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/ray_skin.gdshader")
+	mat.set_shader_parameter("manta",manta);mat.set_shader_parameter("span",span);mat.set_shader_parameter("phase",_rng.randf()*TAU);mat.set_shader_parameter("beat",1.)
+	if manta:mat.set_shader_parameter("top_color",Color("1d1f22"))
+	var disc:=MeshInstance3D.new();disc.mesh=Meshes.ray_disc("manta" if manta else "stingray",span,span*(.62 if manta else .9),span*(.1 if manta else .09))
+	disc.material_override=mat;disc.name="Disco";root.add_child(disc)
+	var dark:=_mat(Color("1d1f22") if manta else Color("3e3528"),.6)
 	if manta:
-		for s: float in [-1.,1.]:G.box(root,Vector3(s*span*.1,0,-span*.33),Vector3(.12,.05,.4),top)
-	var tail:=G.beam(root,Vector3(0,0,span*.4),Vector3(0,0,span*(1.05 if not manta else .8)),.025*span,top)
+		for side: float in [-1.,1.]:
+			var horn:=G.ellipsoid(root,Vector3(side*span*.1,0,-span*.33),Vector3(.14,.06,.55),dark,8);horn.rotation.y=side*.2
+	var tail:=G.beam(root,Vector3(0,0,span*.38),Vector3(0,0,span*(1.15 if not manta else .75)),.018*span,dark)
+	var wings: Array[Node3D]=[]
 	var floor_y: float=home.y
 	var y:=-1.2-_rng.randf() if manta else floor_y+.25
 	root.position=Vector3(home.x,y,home.z)
-	rays.append({"node":root,"home":home,"wings":wings,"tail":tail,"manta":manta,"angle":_rng.randf()*TAU,"radius":(26. if manta else 9.)+_rng.randf()*8.,
+	rays.append({"node":root,"home":home,"wings":wings,"tail":tail,"mat":mat,"manta":manta,"angle":_rng.randf()*TAU,"radius":(26. if manta else 9.)+_rng.randf()*8.,
 		"speed":(.06 if manta else .1)*(1.+_rng.randf()*.3),"phase":_rng.randf()*TAU,"y":y,"floor":floor_y})
 
 func _add_jellies(at: Vector3,count: int) -> void:
@@ -197,10 +192,7 @@ func _ray(r: Dictionary,delta: float,player: Vector3,boat: Vector3,boat_fast: bo
 	var dir:=p-node.position;dir.y=0.
 	node.position=p
 	if dir.length_squared()>1e-6:node.rotation.y=atan2(-dir.x,-dir.z)
-	var flap:=sin(elapsed*(1.1 if r.manta else 1.9)*spook+float(r.phase))
-	var wings: Array=r.wings
-	(wings[0] as Node3D).rotation.z=-flap*(.35 if r.manta else .22)
-	(wings[1] as Node3D).rotation.z=flap*(.35 if r.manta else .22)
+	(r.mat as ShaderMaterial).set_shader_parameter("beat",lerpf(float((r.mat as ShaderMaterial).get_shader_parameter("beat")),spook,.05))
 	(r.tail as Node3D).rotation.y=sin(elapsed*1.3+float(r.phase))*.15
 
 func _jelly(j: Dictionary,delta: float,player: Vector3) -> void:

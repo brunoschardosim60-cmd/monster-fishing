@@ -11,6 +11,7 @@ const Props=preload("res://scripts/world/cc0_props.gd")
 const Models=preload("res://scripts/boats/vessel_models.gd")
 const Resident=preload("res://scripts/world/village_resident.gd")
 const Porter=preload("res://scripts/world/village_porter.gd")
+const Tools=preload("res://scripts/player/hand_tools.gd")
 ## Shore point and the direction out to sea (from the coast normal there).
 const SITE: Vector2=Vector2(130,-2)
 const BERTH_RADIUS: float=7.
@@ -116,7 +117,19 @@ func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) 
 		G.cylinder(self,Vector3(st.x,Layout.height(st)+.22,st.y),.3,.5,bark,.28,10)
 		G.cylinder(self,Vector3(st.x,Layout.height(st)+.475,st.y),.28,.02,cut,.28,10)
 	Props.spawn(self,"Log_01_Art",Vector3(camp.x,Layout.height(camp),camp.y)-Vector3(_out.x,0,_out.y)*1.,1.,atan2(_side.x,_side.y))
-	var keeper:=Resident.new();keeper.look_id=44;keeper.hide_backpack=true
+	# A woodcutter chopping at the standing trees, and a shipwright kneeling at the hull with a hammer.
+	var first_tree:=camp-_out*4.+_side*-3.
+	var chop_at:=first_tree+_out*1.1
+	var cutter:=Resident.new();cutter.look_id=53;cutter.hide_backpack=true;cutter.work_pose="ual/Chop"
+	cutter.route.assign([Vector3(chop_at.x,Layout.height(chop_at),chop_at.y)]);add_child(cutter);workers.append(cutter)
+	cutter.rotation.y=atan2(-(first_tree-chop_at).x,-(first_tree-chop_at).y)
+	cutter.visual.hold_prop(Tools.axe(),Tools.GRIP)
+	var fix_at:=hull_at+_side*2.4
+	var wright:=Resident.new();wright.look_id=54;wright.hide_backpack=true;wright.work_pose="ual/Fix"
+	wright.route.assign([Vector3(fix_at.x,Layout.height(fix_at),fix_at.y)]);add_child(wright);workers.append(wright)
+	wright.rotation.y=atan2(-(hull_at-fix_at).x,-(hull_at-fix_at).y)
+	wright.visual.hold_prop(Tools.hammer(),Tools.GRIP)
+	var keeper:=Resident.new();keeper.look_id=44;keeper.hide_backpack=true;keeper.idle_pose="ual/FoldArms"
 	var desk:=shed_at+_side*-5.+_out*-1.4
 	keeper.route.assign([Vector3(desk.x,floor_y,desk.y)]);keeper.follow_terrain=false;add_child(keeper);workers.append(keeper)
 

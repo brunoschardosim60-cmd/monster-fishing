@@ -134,7 +134,7 @@ func _draw() -> void:
 			var ev: Vector3=events.current.global_position
 			var ev_at:=point(Vector2(ev.x,ev.z))
 			draw_circle(ev_at,6.,Color("ffd34e"))
-			draw_string(font,ev_at+Vector2(8,-6),"Kraken" if events.kind=="kraken" else "Baleia",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("ffd34e"))
+			draw_string(font,ev_at+Vector2(8,-6),"Baleia",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("ffd34e"))
 	_legend(font)
 	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Vermelho: predadores",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
 	draw_string(font,Vector2(25,634),"Roxo: peixes raros · Dourado: monstro ativo · Círculo vermelho: território de monstro",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))

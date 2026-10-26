@@ -83,7 +83,7 @@ func _stall(at: Vector3,id: String,color: Color) -> void:
 	G.beam(self,at+Vector3(0,3.2,-2.4),at+Vector3(0,3.2,1.4),.035,iron)
 	for x: float in [-2.3,2.3]:G.beam(self,at+Vector3(x,2.9,-2.),at+Vector3(0,3.2,-2.4),.023,iron)
 	var marker:=Marker3D.new();marker.position=at+Vector3(0,0,1.);add_child(marker);village.services[id]=marker
-	var vendor:=preload("res://scripts/player/imported_angler.gd").new();vendor.position=at+Vector3(0,0,-1.6);vendor.rotation.y=PI;add_child(vendor);vendor.apply_look(preload("res://scripts/world/npc_look.gd").for_id(11+vendors.size()));vendors.append(vendor)
+	var vendor:=preload("res://scripts/player/imported_angler.gd").new();vendor.position=at+Vector3(0,0,-1.6);vendor.rotation.y=PI;add_child(vendor);vendor.apply_look(preload("res://scripts/world/npc_look.gd").for_id(11+vendors.size()));vendor.idle_clip="ual/Counter";vendors.append(vendor)
 	for i: int in 4:
 		var p:=at+Vector3(-1.3+i*.85,1.,-.65)
 		G.box(self,p,Vector3(.75,.08,.65),wood)

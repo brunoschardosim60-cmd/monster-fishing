@@ -53,9 +53,10 @@ Vila iluminada à noite, dois faróis com feixe giratório, pontes caminháveis 
 - Pesqueiro, rebocador e navio de apoio percorrem oito trechos ao redor da ilha, com flutuação, esteiras, luzes e desvio do jogador.
 - Cidade em cinco bairros, estaleiro com vaga que abre a loja e vende barcos, três lojas de pesca com interior (balcão, varas, aquário de isca viva, peixe no gelo e lojista), carregadores levando peixe ao mercado, lenhadores e carpinteiros em obras.
 - Águas rasas transparentes com cardumes pequenos visíveis de cima, tartarugas que sobem para respirar, arraias, mantas e águas-vivas que brilham à noite.
+- Kraken esculpido com tentáculos contínuos e ventosas, tartarugas com casco de escudos e arraias que ondulam as asas.
 - Territórios do Kraken, da Serpente Marinha e do Leviatã: entrar acorda o monstro; devagar e de luzes apagadas ele só observa, com luzes ou motor ele ataca o casco.
 - Ondas longas até o horizonte, tempestades com ondulação muito maior em mar aberto e sombras de nuvens sobre a terra e o mar.
-- Personagem com rig local e 11 animações, incluindo braços/tronco, lançamento, recolhimento, salto e queda.
+- Personagem e moradores animados com a Universal Animation Library da Quaternius (CC0), adaptada ao rig do jogo por `scripts/pipeline/bake_ual_animations.gd`: andar, correr, pular, nadar, pescar (lançar, esperar, recolher), pilotar sentado, encostar na amurada, atender no balcão, carregar caixa, cortar lenha, martelar e consertar o casco.
 - Novos modelos no Blender: detalhes das casas, arco, boné, mochila, três peixes e criatura marinha. Folhas e materiais gerados também são utilizados no jogo.
 - Árvores, samambaias, rochedos e materiais CC0: **Powered by Poly Haven**. Fontes em docs/asset-audit/.
 

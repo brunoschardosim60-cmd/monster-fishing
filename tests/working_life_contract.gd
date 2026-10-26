@@ -24,7 +24,7 @@ func run() -> void:
 	check(site_carriers>=4,"%d carpenters carry planks to the frames"%site_carriers)
 	# Watch the porters: they carry while heading for the market and walk back empty, on the planks.
 	var seen_loaded:=false;var seen_empty:=false;var floating:=0;var sinking:=0
-	for i: int in 2700:
+	for i: int in 3900:
 		await physics_frame
 		if i%30!=0:continue
 		for p in porters:

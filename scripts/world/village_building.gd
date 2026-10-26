@@ -345,6 +345,6 @@ func _furnish_shop(half: float,back: float,depth: float) -> void:
 	var counter_light:=OmniLight3D.new();counter_light.position=Vector3(0,2.6,counter_z-.4);counter_light.light_color=Color("ffcf8a");counter_light.omni_range=6.;counter_light.light_energy=1.1
 	counter_light.set_meta("interior",true);add_child(counter_light);lamps.append(counter_light)
 	# The shopkeeper paces behind the counter.
-	keeper=preload("res://scripts/world/village_resident.gd").new();keeper.name="Lojista";keeper.look_id=46+absi(title.hash())%5;keeper.speed=.45;keeper.follow_terrain=false;keeper.hide_backpack=true
+	keeper=preload("res://scripts/world/village_resident.gd").new();keeper.name="Lojista";keeper.look_id=46+absi(title.hash())%5;keeper.speed=.45;keeper.follow_terrain=false;keeper.hide_backpack=true;keeper.idle_pose="ual/Counter"
 	keeper.route.assign([Vector3(-counter_w*.5+.6,.08,back-.72),Vector3(counter_w*.5-.6,.08,back-.72)])
 	add_child(keeper)

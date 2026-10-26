@@ -1,6 +1,19 @@
 extends Node3D
-## Locally authored rig and eleven clips. Original upload has no skeleton/actions.
+## Survivalist character on a 17-bone rig. Body motion comes from Quaternius' Universal Animation Library (CC0),
+## retargeted onto this rig by scripts/pipeline/bake_ual_animations.gd (library "ual/..."); the original hand-made clips
+## remain for holding up a catch. NPCs choose their own idle, work and seated clips.
 const G=preload("res://scripts/world/geometry.gd")
+const UAL: AnimationLibrary=preload("res://assets/characters/animations/ual_humanoid.res")
+## Ground speed (m/s) each UAL locomotion clip covers at 1x on this rig (measured from the root-motion versions).
+const UAL_SPEED: Dictionary={"ual/Walk":.87,"ual/WalkCarry":.58,"ual/Jog":4.79,"ual/Sprint":7.38,"ual/Swim":1.94}
+## Clip played when standing still (NPCs: "ual/Talk", "ual/Rail", "ual/Counter", "ual/FoldArms"...).
+var idle_clip: String="ual/Idle"
+## Walking clip ("ual/WalkCarry" while carrying a crate).
+var walk_clip: String="ual/Walk"
+## Clip while seated (helm, rowing bench, bench).
+var seated_clip: String="ual/Drive"
+## When set, played instead of the idle clip while not moving (chopping, hammering, fixing a hull).
+var work_clip: String=""
 var model: Node3D
 var skeleton: Skeleton3D
 var animation: AnimationPlayer
@@ -16,28 +29,30 @@ var _rod: Node3D
 var _tip: Marker3D
 var current: String=""
 var gait_speed: float=0.
-## Ground speed (m/s) each locomotion clip covers at 1x, measured from the stance foot of the rig.
-const WALK_NOMINAL: float=1.99
-const RUN_NOMINAL: float=3.33
-## 0 idle, 1 walk, 2 run. Thresholds differ going up and down so the clip never flickers at a boundary.
+## 0 idle, 1 walk, 2 jog, 3 sprint. Thresholds differ going up and down so the clip never flickers at a boundary.
 var gait_state: int=0
-var right_hand: int=-1
+## Hand holding the rod in the fishing clips, and the hand that presents a catch.
+var rod_hand: int=-1
 var left_hand: int=-1
 var rod_grip_basis:=Basis.IDENTITY
 var headwear: Node3D
 var backpack: Node3D
 var head_bone: int=-1
+var _props: Array=[]
 var chest_bone: int=-1
 func _ready() -> void:
 	model=preload("res://assets/characters/survivalist_rigged.glb").instantiate();add_child(model)
 	skeleton=model.find_children("*","Skeleton3D",true,false)[0]
 	animation=model.find_children("*","AnimationPlayer",true,false)[0]
 	animation.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
-	for key: String in animation.get_animation_list():animation.get_animation(key).loop_mode=Animation.LOOP_NONE if key=="Cast" else Animation.LOOP_LINEAR
-	right_hand=skeleton.find_bone("RightHand");left_hand=skeleton.find_bone("LeftHand")
+	for key: String in animation.get_animation_list():
+		if not key.begins_with("ual/"):animation.get_animation(key).loop_mode=Animation.LOOP_NONE if key=="Cast" else Animation.LOOP_LINEAR
+	animation.add_animation_library("ual",UAL)
+	# The rig's "Left*" bones sit on +X: in the UAL fishing clips the rod is held by that hand.
+	rod_hand=skeleton.find_bone("LeftHand");left_hand=skeleton.find_bone("LeftHand")
 	# Calibrate the grip in the fishing pose, then let the hand carry rod rotation.
-	animation.play("Fish");animation.advance(0.)
-	rod_grip_basis=skeleton.get_bone_global_pose(right_hand).basis.inverse()
+	animation.play("ual/FishIdle");animation.seek(0.,true);animation.advance(0.)
+	rod_grip_basis=_bone_global(rod_hand).basis.inverse()
 	head_bone=skeleton.find_bone("Head");chest_bone=skeleton.find_bone("Chest")
 	headwear=preload("res://assets/characters/accessories/fisher_cap.glb").instantiate();add_child(headwear)
 	backpack=preload("res://assets/characters/accessories/fisher_backpack.glb").instantiate();add_child(backpack)
@@ -74,28 +89,32 @@ func apply_look(look: Dictionary) -> void:
 func update_animation(speed: float,fishing: bool,delta: float) -> void:
 	gait_speed=lerpf(gait_speed,speed,1.-exp(-delta*9.))
 	match gait_state:
-		0: if gait_speed>.35: gait_state=1
+		0: if gait_speed>.3: gait_state=1
 		1:
-			if gait_speed<.2: gait_state=0
-			elif gait_speed>3.05: gait_state=2
-		_: if gait_speed<2.5: gait_state=1
-	var locomotion: String=["Idle","Walk","Run"][gait_state]
-	var next: String="Hold" if holding_fish else ("Swim" if swimming else ("Fish" if fishing else ("Steer" if seated else locomotion)))
-	if airborne and not swimming:next="Jump" if vertical_speed>0. else "Fall"
-	elif fishing_state==1:next="Cast"
-	elif fishing_state==4:next="Reel"
+			if gait_speed<.18: gait_state=0
+			elif gait_speed>2.6: gait_state=2
+		2:
+			if gait_speed<2.2: gait_state=1
+			elif gait_speed>5.9: gait_state=3
+		_: if gait_speed<5.4: gait_state=2
+	var still: String=work_clip if not work_clip.is_empty() else idle_clip
+	var locomotion: String=[still,walk_clip,"ual/Jog","ual/Sprint"][gait_state]
+	var fish_clip: String="ual/FishCast" if fishing_state==1 else ("ual/FishReel" if fishing_state==4 else "ual/FishIdle")
+	var swim_clip: String="ual/Swim" if gait_speed>.3 else "ual/SwimIdle"
+	var next: String="Hold" if holding_fish else (swim_clip if swimming else (fish_clip if fishing else (seated_clip if seated else locomotion)))
+	if airborne and not swimming:next="ual/JumpStart" if vertical_speed>0. else "ual/JumpLoop"
 	if next!=current:
-		# Walk and Run share one phase convention, so keep the cycle position and the feet do not pop.
-		var keep_phase: bool=current in ["Walk","Run"] and next in ["Walk","Run"]
+		# Locomotion clips share a phase convention (left foot first), so keep the cycle position and the feet do not pop.
+		var cycles: Array[String]=["ual/Walk","ual/WalkCarry","ual/Jog","ual/Sprint"]
+		var keep_phase: bool=current in cycles and next in cycles
 		var phase: float=animation.current_animation_position/maxf(animation.current_animation_length,.001) if keep_phase else 0.
-		animation.play(next,.25 if next in ["Idle","Walk","Run"] else .18);current=next
+		animation.play(next,.3 if next in cycles or next==still else .2);current=next
 		if keep_phase:animation.seek(phase*animation.current_animation_length,false)
-	if next=="Walk":animation.speed_scale=clampf(gait_speed/WALK_NOMINAL,.6,1.4)
-	elif next=="Run":animation.speed_scale=clampf(gait_speed/RUN_NOMINAL,.8,1.9)
+	if UAL_SPEED.has(next):animation.speed_scale=clampf(gait_speed/float(UAL_SPEED[next]),.6,1.5)
 	else:animation.speed_scale=1.
 	animation.advance(delta)
-	headwear.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()*Transform3D(Basis.IDENTITY,Vector3(0,0,-.11))
-	backpack.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(chest_bone)*skeleton.get_bone_global_rest(chest_bone).affine_inverse()
+	headwear.global_transform=skeleton.global_transform*_bone_global(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()*Transform3D(Basis.IDENTITY,Vector3(0,0,-.11))
+	backpack.global_transform=skeleton.global_transform*_bone_global(chest_bone)*skeleton.get_bone_global_rest(chest_bone).affine_inverse()
 	# Fishing keeps its upper-body pose while the player can reposition on shore.
 	locomotion_phase+=delta*speed*2.87
 	if (fishing or holding_fish) and speed>.2 and not airborne and not swimming:
@@ -106,8 +125,23 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 			skeleton.set_bone_pose_rotation(index,rest.inverse()*Quaternion(Vector3.RIGHT,sin(locomotion_phase)*sign_value*.38)*rest)
 			index=skeleton.find_bone(side+"LowerLeg");rest=skeleton.get_bone_rest(index).basis.get_rotation_quaternion()
 			skeleton.set_bone_pose_rotation(index,rest.inverse()*Quaternion(Vector3.RIGHT,-maxf(0.,-sin(locomotion_phase)*sign_value)*.5)*rest)
-	var hand: Transform3D=skeleton.global_transform*skeleton.get_bone_global_pose(right_hand)
-	_rod.global_transform=Transform3D(hand.basis*rod_grip_basis,hand.origin)
+	_place_props()
 	_rod.visible=fishing and not holding_fish and not swimming
+	if _rod.visible:
+		var hand: Transform3D=skeleton.global_transform*_bone_global(rod_hand)
+		_rod.global_transform=Transform3D(hand.basis*rod_grip_basis,hand.origin)
+## Bone pose in skeleton space, composed from the local poses so it is always current after a manual advance.
+func _bone_global(i: int) -> Transform3D:
+	var t:=skeleton.get_bone_pose(i);var p:=skeleton.get_bone_parent(i)
+	while p>=0:
+		t=skeleton.get_bone_pose(p)*t;p=skeleton.get_bone_parent(p)
+	return t
+## Puts a tool (axe, hammer) in the working hand; it follows the hand bone. `grip` orients it in the hand's space.
+func hold_prop(prop: Node3D,grip: Transform3D=Transform3D.IDENTITY) -> void:
+	_props.append([prop,grip]);add_child(prop)
+func _place_props() -> void:
+	if _props.is_empty():return
+	var hand: Transform3D=skeleton.global_transform*_bone_global(rod_hand)
+	for entry: Array in _props:(entry[0] as Node3D).global_transform=hand*(entry[1] as Transform3D)
 func rod_tip() -> Vector3:return _tip.global_position
-func catch_hand_transform() -> Transform3D:return skeleton.global_transform*skeleton.get_bone_global_pose(left_hand)
+func catch_hand_transform() -> Transform3D:return skeleton.global_transform*_bone_global(left_hand)

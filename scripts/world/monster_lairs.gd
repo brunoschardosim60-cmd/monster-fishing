@@ -65,28 +65,32 @@ func _build(kind: String) -> Node3D:
 	var root:=Node3D.new()
 	match kind:
 		"kraken":
-			var skin:=_wet(Color("4a0c18"),.62);skin.metallic_specular=.3
-			var under:=_wet(Color("8a3a4c"),.6);var sucker:=_wet(Color("e3b7a8"),.6);var eye:=_glow(Color("ffcf3a"),3.)
-			var mottle:=_wet(Color("5a1a2a"),.55)
-			_ball(root,Vector3(0,4.4,.6),Vector3(6.,9.5,6.4),skin)
-			for k: int in 9:_ball(root,Vector3(cos(float(k)*2.1)*2.4,3.+float(k%4)*1.3,sin(float(k)*2.1)*2.4+.6),Vector3(1.2,.9,1.2),mottle,8)
-			_ball(root,Vector3(0,.9,0),Vector3(7.,4.,7.),under)
+			# Sculpted mantle (lathe) and eight continuous arms bent by the kraken_skin shader; eyes with slit pupils.
+			var Meshes:=preload("res://scripts/creatures/creature_meshes.gd")
+			var body_mat:=ShaderMaterial.new();body_mat.shader=preload("res://assets/shaders/kraken_skin.gdshader")
+			var profile:=PackedVector2Array([Vector2(0.,-.6),Vector2(2.6,-.4),Vector2(3.9,.4),Vector2(3.5,1.4),Vector2(2.9,2.4),Vector2(3.1,3.6),
+				Vector2(3.6,5.),Vector2(3.7,6.4),Vector2(3.3,7.8),Vector2(2.4,9.),Vector2(1.2,9.9),Vector2(0.,10.3)])
+			var mantle:=MeshInstance3D.new();mantle.mesh=Meshes.lathe("kraken_mantle",profile,36,Vector2(1.,1.1));mantle.material_override=body_mat
+			mantle.rotation.x=.32;mantle.name="Manto";root.add_child(mantle)
+			var eye:=_glow(Color("ffcf3a"),2.6);var pupil:=_wet(Color("0a0507"),.2)
 			for s: float in [-1.,1.]:
-				_ball(root,Vector3(s*2.3,2.5,-2.4),Vector3(1.5,1.5,.9),eye,14)
-				_ball(root,Vector3(s*2.3,2.5,-2.85),Vector3(.45,1.2,.3),_wet(Color("140b10")),10)
-				_ball(root,Vector3(s*2.3,3.3,-2.3),Vector3(1.9,.5,1.),skin,10)
-			var arms: Array[Array]=[]
-			for i: int in 8:
-				var a:=float(i)*TAU/8.
-				var base:=Node3D.new();base.position=Vector3(cos(a)*2.8,-.3,sin(a)*2.8);base.rotation.y=-a+PI*.5;root.add_child(base)
-				var chain: Array[Node3D]=[]
-				var parent:=base;var r:=1.05
-				for k: int in 8:
-					var joint:=Node3D.new();joint.position=Vector3(0,(1.9 if k>0 else 0.),0);parent.add_child(joint)
-					_limb(joint,2.05,r,r*.8,skin)
-					for m: int in 2:_ball(joint,Vector3(0,.5+float(m)*.9,r*.82),Vector3(.5,.5,.22)*r,sucker,8)
-					chain.append(joint);parent=joint;r*=.8
-				arms.append(chain)
+				var socket:=_ball(root,Vector3(s*2.75,2.6,-1.6),Vector3(1.9,1.7,1.5),body_mat,16)
+				_ball(root,Vector3(s*3.1,2.65,-2.05),Vector3(1.25,1.25,.8),eye,16)
+				_ball(root,Vector3(s*3.25,2.65,-2.4),Vector3(.22,.95,.2),pupil,10)
+				var lid:=_ball(root,Vector3(s*2.95,3.25,-1.95),Vector3(1.7,.45,1.1),body_mat,12);lid.rotation.z=s*.25
+				socket.name="Orbita"
+			var arms: Array[ShaderMaterial]=[]
+			for k: int in 8:
+				var a:=float(k)*TAU/8.+.2
+				var out:=Vector3(cos(a),.28+.25*float(k%2),sin(a)).normalized()
+				var up:=(Vector3.UP-out*out.dot(Vector3.UP)).normalized()
+				var side:=out.cross(up)
+				var arm_mat:=body_mat.duplicate() as ShaderMaterial
+				arm_mat.set_shader_parameter("tentacle",true);arm_mat.set_shader_parameter("arm_length",14.)
+				arm_mat.set_shader_parameter("phase",float(k)*.9);arm_mat.set_shader_parameter("curl",.12+.05*float(k%3))
+				var arm:=MeshInstance3D.new();arm.mesh=Meshes.tube("kraken_arm",14.,1.15,.08,30,14);arm.material_override=arm_mat
+				arm.transform=Transform3D(Basis(side,out,up),Vector3(cos(a)*2.6,.2,sin(a)*2.6));arm.name="Tentaculo_%d"%k
+				arm.extra_cull_margin=16.;root.add_child(arm);arms.append(arm_mat)
 			root.set_meta("arms",arms)
 		"serpente":
 			var scales:=_wet(Color("1f5a54"),.3);var belly:=_wet(Color("c7c48a"),.5);var fin:=_wet(Color("b8432f"),.5);var eye:=_glow(Color("e8f76a"),3.)
@@ -226,15 +230,9 @@ func _animate(lair: Dictionary,t: float) -> void:
 	if slam>0.:lair.slam=maxf(0.,slam-get_physics_process_delta_time())
 	match str(lair.kind):
 		"kraken":
+			# The arms move in the shader; a strike whips the first arm down onto the water.
 			var arms: Array=node.get_meta("arms")
-			for i: int in arms.size():
-				var chain: Array=arms[i]
-				for k: int in chain.size():
-					var joint: Node3D=chain[k]
-					var curl:=sin(t*1.3+float(i)*.9-float(k)*.6)*.32+.22+float(k)*.06
-					if i==0 and slam>0.:curl=(-.45 if slam>.6 else .35)
-					joint.rotation.x=curl
-					joint.rotation.z=sin(t*.7+float(i))*.08
+			(arms[0] as ShaderMaterial).set_shader_parameter("slam",clampf(slam/1.2,0.,1.))
 		"serpente":
 			var segs: Array=node.get_meta("segments")
 			node.rotation=Vector3.ZERO
