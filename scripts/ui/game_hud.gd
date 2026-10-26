@@ -269,7 +269,7 @@ func show_pause() -> void:
 	ledger.hide()
 	overlay_title.text = "O mar\npode esperar."
 	overlay_title.add_theme_font_size_override("font_size", 58)
-	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)"
+	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular (e escalar beiradas)\nSHIFT correr  ·  CTRL andar devagar / mergulhar nadando\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)"
 	play_button.text = "CONTINUAR  →"
 	return_button.show()
 	overlay.show()

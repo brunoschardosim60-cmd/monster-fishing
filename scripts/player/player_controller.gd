@@ -34,6 +34,23 @@ var prev_boat_speed: float=0.
 var lean:=Vector2.ZERO
 var previous_yaw: float=0.
 var was_airborne: bool=false
+## Holding Ctrl walks slowly (and dives while swimming).
+var is_walking: bool=false
+## After a hard landing the legs need a moment: speed is reduced until this runs out.
+var land_recovery: float=0.
+## Climbing a ledge (pier edge, boat side, wall up to chest height): start, top, end and clock.
+var climbing: bool=false
+var climb_from:=Vector3.ZERO
+var climb_top:=Vector3.ZERO
+var climb_to:=Vector3.ZERO
+var climb_clock: float=0.
+## Seconds spent under water while diving; past BREATH the swimmer is pulled back up.
+var dive_time: float=0.
+var diving: bool=false
+const BREATH: float=40.
+const WALK_SPEED: float=1.9
+const STEP_HEIGHT: float=.42
+const CLIMB_TIME: float=.55
 const JUMP_SPEED: float=7.2
 ## Ground control: linear ramps feel crisper than the old exponential tail. Metres per second squared.
 const GROUND_ACCEL: float=28.
@@ -134,6 +151,8 @@ func _physics_process(delta: float) -> void:
 		global_position=deck_boat._hull.to_global(deck_local+Vector3.UP*deck_jump+deck_sway)
 		if axis.length()>.1: visual.rotation.y=lerp_angle(visual.rotation.y,yaw+atan2(-axis.x,-axis.y),1.-exp(-delta*8.))
 		velocity=deck_velocity
+	elif climbing:
+		_climb(delta)
 	elif not in_boat:
 		deck_velocity=Vector3.ZERO
 		deck_sway=Vector3.ZERO
@@ -143,9 +162,15 @@ func _physics_process(delta: float) -> void:
 		var direction := Basis(Vector3.UP, yaw) * Vector3(axis.x, 0, axis.y)
 		var water: float=preload("res://scripts/world/wave_field.gd").height_at(global_position)
 		swimming=global_position.y<water-.35 and not is_on_floor()
-		is_sprinting=Input.is_action_pressed("sprint") and axis.length()>.1 and not fishing_active and not swimming
+		is_sprinting=Input.is_action_pressed("sprint") and axis.length()>.1 and not fishing_active
+		is_walking=controls_enabled and Input.is_action_pressed("fly_down") and not swimming
+		if is_walking:is_sprinting=false
 		var speed_now := (2.2 if swimming else walk_speed) * (1.65 if is_sprinting else 1.0)
+		if swimming and is_sprinting:speed_now=3.3
+		if is_walking:speed_now=WALK_SPEED
 		if fishing_active:speed_now=minf(speed_now,2.6)
+		land_recovery=maxf(0.,land_recovery-delta)
+		if land_recovery>0.:speed_now*=.35
 		var wanted:=Vector3(direction.x,0.,direction.z)*speed_now
 		var horizontal:=Vector3(velocity.x,0.,velocity.z)
 		var rate:=AIR_ACCEL
@@ -159,16 +184,29 @@ func _physics_process(delta: float) -> void:
 		if jump_buffer>0. and coyote_time>0. and not swimming and not movement_locked:
 			velocity.y=JUMP_SPEED;jump_buffer=0.;coyote_time=0.
 		elif swimming:
-			velocity.y=clampf((water-.7-global_position.y)*5.,-3.,3.)
+			# Ctrl dives, Space swims up; otherwise the swimmer floats back to the surface.
+			var want_dive:=controls_enabled and Input.is_action_pressed("fly_down") and dive_time<BREATH
+			var want_up:=controls_enabled and Input.is_action_pressed("jump")
+			if want_dive:velocity.y=move_toward(velocity.y,-2.2,6.*delta)
+			elif want_up or not diving or dive_time>=BREATH:velocity.y=clampf((water-.7-global_position.y)*5.,-3.,3. if not diving else 2.4)
+			else:velocity.y=move_toward(velocity.y,.35,3.*delta)
+			diving=global_position.y<water-1.6
+			dive_time=dive_time+delta if diving else maxf(0.,dive_time-delta*4.)
 		elif not is_on_floor():
 			velocity.y=maxf(velocity.y-(FALL_GRAVITY if velocity.y<0. else RISE_GRAVITY)*delta,TERMINAL_FALL)
 		else:
 			velocity.y = -0.1
 		var fall_speed:=velocity.y
+		var before:=global_position
 		move_and_slide()
+		if not swimming:diving=false
+		if direction.length()>.1 and not movement_locked:
+			if is_on_floor() and is_on_wall():_step_up(before,wanted*delta)
+			if (swimming or airborne or jump_buffer>0.) and is_on_wall():_try_climb(direction)
 		airborne=not is_on_floor() and not swimming
 		if was_airborne and not airborne and fall_speed<-4.5:
 			camera.position.y=-clampf(-fall_speed*.022,.05,.24)
+			if fall_speed<-13.:land_recovery=.35
 		if direction.length() > 0.1:
 			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-direction.x, -direction.z), 1.-exp(-delta*9.))
 		if global_position.y < -25.0:
@@ -206,7 +244,53 @@ func _update_camera(delta: float) -> void:
 	pivot.rotation = Vector3(pitch, yaw, 0)
 	pivot.position.y = lerpf(pivot.position.y, 1.65 if not in_boat else 2.0, minf(delta * 8.0, 1.0))
 	arm.spring_length = lerpf(arm.spring_length, 0.0 if first_person else (10.5 if in_boat else 6.8), minf(delta * 10.0, 1.0))
+	# Over-the-shoulder framing on foot keeps the path ahead visible; centred in the boat and in first person.
+	arm.position.x=lerpf(arm.position.x,.55 if not first_person and not in_boat and not flying else 0.,minf(delta*4.,1.))
 	visual.visible = not first_person
+
+## Small ledges (steps, curbs, a plank on the pier) are walked over instead of stopping the player.
+func _step_up(before: Vector3,motion: Vector3) -> void:
+	if motion.length()<.001:return
+	var start:=Transform3D(global_basis,before)
+	if test_move(start,Vector3.UP*STEP_HEIGHT):return
+	var raised:=start.translated(Vector3.UP*STEP_HEIGHT)
+	var ahead:=Vector3(motion.x,0,motion.z).normalized()*maxf(motion.length(),.12)
+	if test_move(raised,ahead):return
+	var moved:=raised.translated(ahead)
+	var hit:=KinematicCollision3D.new()
+	if test_move(moved,Vector3.DOWN*(STEP_HEIGHT+.05),hit) and hit.get_normal().y>.7:
+		global_position=moved.origin+hit.get_travel()
+		velocity.y=0.
+
+## Climbs onto a ledge in front: pier and boat edges from the water, walls up to chest height on land.
+func _try_climb(direction: Vector3) -> void:
+	var forward:=Vector3(direction.x,0,direction.z).normalized()
+	var reach:=2.1 if swimming else 1.7
+	var space:=get_world_3d().direct_space_state
+	for h: float in [.6,.9,1.2,1.5,1.8,2.1]:
+		if h>reach:break
+		var probe:=global_position+forward*.65+Vector3.UP*(h+.3)
+		var q:=PhysicsRayQueryParameters3D.create(probe,probe+Vector3.DOWN*.6,collision_mask,[get_rid()])
+		var hit:=space.intersect_ray(q)
+		if hit.is_empty() or (hit.normal as Vector3).y<.75 or hit.collider is CharacterBody3D:continue
+		var top: Vector3=hit.position
+		if top.y-global_position.y<.45:return
+		var stand:=Transform3D(global_basis,top+Vector3.UP*.05)
+		if test_move(stand,Vector3.UP*.1):continue
+		climbing=true;climb_clock=0.;climb_from=global_position
+		climb_top=Vector3(global_position.x,top.y+.05,global_position.z);climb_to=top+Vector3.UP*.05
+		velocity=Vector3.ZERO;swimming=false;diving=false;jump_buffer=0.
+		visual.rotation.y=atan2(-forward.x,-forward.z)
+		return
+
+func _climb(delta: float) -> void:
+	climb_clock+=delta
+	var t:=clampf(climb_clock/CLIMB_TIME,0.,1.)
+	# Up first, then over the edge.
+	var up:=smoothstep(0.,.6,t);var over:=smoothstep(.45,1.,t)
+	global_position=climb_from.lerp(climb_top,up).lerp(climb_to,over)
+	airborne=true;velocity=Vector3.ZERO
+	if t>=1.:climbing=false;airborne=false;land_recovery=.1
 
 func set_flying(value: bool) -> void:
 	flying = value

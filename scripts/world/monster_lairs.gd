@@ -10,6 +10,8 @@ extends Node3D
 const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const Waves=preload("res://scripts/world/wave_field.gd")
 ## name, kind, rough position (searched for deep water), territory radius, observation reward.
+## Height of the sea serpent model in metres (about a third of it stays under water).
+const SERPENT_SIZE: float=30.
 const LAIRS: Array=[["Fossa do Kraken","kraken",Vector2(-1500,-1450),240.,60],
 	["Abismo da Serpente","serpente",Vector2(1700,-2250),260.,70],
 	["Trono do Leviatã","leviata",Vector2(-2300,2300),300.,80]]
@@ -93,23 +95,14 @@ func _build(kind: String) -> Node3D:
 				arm.extra_cull_margin=16.;root.add_child(arm);arms.append(arm_mat)
 			root.set_meta("arms",arms)
 		"serpente":
-			var scales:=_wet(Color("1f5a54"),.3);var belly:=_wet(Color("c7c48a"),.5);var fin:=_wet(Color("b8432f"),.5);var eye:=_glow(Color("e8f76a"),3.)
-			var segments: Array[Node3D]=[]
-			for k: int in 18:
-				var seg:=Node3D.new();root.add_child(seg)
-				var r:=1.5*(1.-float(k)/24.)
-				_ball(seg,Vector3.ZERO,Vector3(r*2.,r*2.,r*2.6),scales,14)
-				_ball(seg,Vector3(0,-r*.35,0),Vector3(r*1.6,r*1.2,r*2.2),belly,10)
-				if k%2==0 and k<16:
-					var crest:=_ball(seg,Vector3(0,r*1.05,0),Vector3(.15,r*1.2,r*1.4),fin,8);crest.rotation.x=-.3
-				segments.append(seg)
-			var head:=segments[0]
-			_ball(head,Vector3(0,.3,-2.2),Vector3(2.4,1.8,3.2),scales,16)
-			_ball(head,Vector3(0,-.5,-2.6),Vector3(1.9,.8,2.6),belly,12)
-			for s: float in [-1.,1.]:
-				_ball(head,Vector3(s*.95,.85,-2.6),Vector3(.5,.5,.4),eye,10)
-				var horn:=_limb(head,1.8,.22,.02,_wet(Color("d8d0b0"),.6));horn.position=Vector3(s*.6,1.4,-1.4);horn.rotation=Vector3(.9,0,s*.4)
-			root.set_meta("segments",segments)
+			# Bruno's sea-dragon model, painted by the pipeline: the coil stays under water, neck and head
+			# rise above it. The shader sways the upper body and throws it forward when it strikes.
+			var body:=MeshInstance3D.new();body.name="Corpo";body.mesh=load("res://assets/models/imported/serpent.res")
+			var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/imported_model.gdshader");body.material_override=mat
+			body.scale=Vector3.ONE*SERPENT_SIZE;body.position.y=-.3*SERPENT_SIZE
+			body.set_instance_shader_parameter("model_scale",SERPENT_SIZE);body.set_instance_shader_parameter("sway",1.)
+			body.extra_cull_margin=12.;root.add_child(body)
+			root.set_meta("body",body)
 		_:
 			var hide:=_wet(Color("3a4a5c"),.4);var pale:=_wet(Color("c9d6dc"),.5);var glow:=_glow(Color("7fe6ff"),1.8)
 			var body:=_ball(root,Vector3(0,0,0),Vector3(9.,8.,34.),hide,24)
@@ -162,14 +155,14 @@ func _update(lair: Dictionary,delta: float,b: Vector3,boat: Node3D) -> void:
 			_hunt(lair,delta,b,boat,stealthy)
 			if gap>radius*1.1 or not aboard:lair.state="recuando";lair.clock=0.;game.hud.notify("A criatura afunda e volta às profundezas.")
 		"recuando":
-			var p: Vector3=lair.pos;p.y-=delta*3.;lair.pos=p
+			var p: Vector3=lair.pos;p.y-=delta*(5. if lair.kind=="serpente" else 3.);lair.pos=p
 			node.position=p
 			if float(lair.clock)>8.:lair.state="dormindo";node.visible=false;bubbles.emitting=false;lair.warned=false
 
 func _emerge(lair: Dictionary,b: Vector3) -> void:
 	var away:=Vector3(cos(_rng.randf()*TAU),0,sin(_rng.randf()*TAU))
 	lair.angle=atan2(away.z,away.x)
-	lair.pos=b+away*35.+Vector3(0,-14.,0)
+	lair.pos=b+away*35.+Vector3(0,-34. if lair.kind=="serpente" else -14.,0)
 	lair.state="caca";lair.clock=0.;lair.strike=6.;lair.watched=0.
 	(lair.node as Node3D).visible=true;(lair.node as Node3D).position=lair.pos
 	var text: Dictionary={"kraken":"O KRAKEN emerge ao lado do barco! Apague as luzes e vá devagar…","serpente":"Uma SERPENTE MARINHA rodeia o barco!","leviata":"Uma sombra colossal passa sob o casco… o LEVIATÃ!"}
@@ -180,19 +173,19 @@ func _hunt(lair: Dictionary,delta: float,b: Vector3,boat: Node3D,stealthy: bool)
 	var node: Node3D=lair.node
 	var kind: String=lair.kind
 	var t: float=lair.clock
-	lair.angle=float(lair.angle)+delta*(.12 if kind=="kraken" else (.32 if kind=="serpente" else .08))
-	var orbit:={"kraken":30.,"serpente":22.,"leviata":45.}
+	lair.angle=float(lair.angle)+delta*(.12 if kind=="kraken" else (.1 if kind=="serpente" else .08))
+	var orbit:={"kraken":30.,"serpente":30.,"leviata":45.}
 	var r: float=orbit.get(kind,30.)
 	var want:=b+Vector3(cos(float(lair.angle)),0,sin(float(lair.angle)))*r
 	var surface:=Waves.height_at(want)
 	var rise:=smoothstep(0.,5.,t)
-	var depth: float={"kraken":-1.5,"serpente":-.4,"leviata":-6.}.get(kind,-2.)
-	want.y=lerpf(surface-14.,surface+depth,rise)
+	var depth: float={"kraken":-1.5,"serpente":0.,"leviata":-6.}.get(kind,-2.)
+	want.y=lerpf(surface-(34. if kind=="serpente" else 14.),surface+depth,rise)
 	var p: Vector3=lair.pos
 	p=p.lerp(want,1.-exp(-delta*(.9 if kind=="serpente" else .5)))
 	lair.pos=p;node.position=p
 	var look:=b-p;look.y=0.
-	if look.length()>.1 and kind!="serpente":node.rotation.y=lerp_angle(node.rotation.y,atan2(-look.x,-look.z),1.-exp(-delta*1.5))
+	if look.length()>.1:node.rotation.y=lerp_angle(node.rotation.y,atan2(-look.x,-look.z),1.-exp(-delta*1.5))
 	_animate(lair,t)
 	# Calm, dark and slow: it only watches. Otherwise it attacks every few seconds.
 	if stealthy:
@@ -234,16 +227,11 @@ func _animate(lair: Dictionary,t: float) -> void:
 			var arms: Array=node.get_meta("arms")
 			(arms[0] as ShaderMaterial).set_shader_parameter("slam",clampf(slam/1.2,0.,1.))
 		"serpente":
-			var segs: Array=node.get_meta("segments")
-			node.rotation=Vector3.ZERO
-			for k: int in segs.size():
-				var seg: Node3D=segs[k]
-				var s:=float(k)*2.4
-				var ang:=float(lair.angle)-s/22.
-				var along:=Vector3(cos(ang),0,sin(ang))*22.-Vector3(cos(float(lair.angle)),0,sin(float(lair.angle)))*22.
-				seg.position=along+Vector3(0,sin(t*2.-float(k)*.55)*2.2,0)
-				var tangent:=Vector3(-sin(ang),0,cos(ang))
-				seg.rotation.y=atan2(-tangent.x,-tangent.z)
+			# Swaying while it watches; a strike throws the head forward onto the boat and back.
+			var body: GeometryInstance3D=node.get_meta("body")
+			var strike:=clampf(slam/1.2,0.,1.)
+			body.set_instance_shader_parameter("lunge",sin(strike*PI))
+			body.set_instance_shader_parameter("sway",lerpf(.6,1.4,.5+.5*sin(t*.37)))
 		_:
 			var tail: Node3D=node.get_node("Cauda")
 			tail.rotation.x=sin(t*.8)*.25

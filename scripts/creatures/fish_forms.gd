@@ -98,8 +98,13 @@ static func _paint(form: Dictionary,x: float,ny: float,angle: float) -> Color:
 	if x>.4:c=c.darkened(.12)
 	return c
 
+## Species drawn with a model from Bruno's marine pack instead of the parametric body
+## (head +X, length 1, painted by scripts/pipeline/color_imported.py).
+const MODELS: Dictionary={"tubarao_branco":"res://assets/models/imported/shark.res","tubarao_recife":"res://assets/models/imported/shark.res"}
+
 static func mesh(id: String) -> ArrayMesh:
 	if cache.has(id):return cache[id]
+	if MODELS.has(id):cache[id]=load(MODELS[id]);return cache[id]
 	var form: Dictionary=FORMS[id];var profile: Array=form.profile
 	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var belly_ratio:=float(form.get("belly_ratio",.82))
