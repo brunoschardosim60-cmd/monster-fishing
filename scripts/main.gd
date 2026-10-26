@@ -36,6 +36,8 @@ var cast_distance: float=14.
 var cast_marker: MeshInstance3D
 var graphics: RefCounted
 var marine: Node3D
+var creative_mode: bool=false
+var creative_snapshot: Dictionary={}
 const Economy=preload("res://scripts/inventory/harbor_economy.gd")
 
 func _ready() -> void:
@@ -130,6 +132,10 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if not started or get_tree().paused:
+		return
+	if event.is_action_pressed("creative_toggle") and not event.is_echo():
+		_set_creative_mode(not creative_mode)
+		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("fly_toggle") and not event.is_echo():
 		aiming = false
@@ -437,13 +443,49 @@ func return_to_harbor() -> void:
 	resume_play()
 	hud.notify("De volta ao porto.")
 
+func _set_creative_mode(enabled: bool) -> void:
+	creative_mode=enabled
+	if enabled:
+		creative_snapshot={
+			"money":inventory.money,"bait":inventory.bait,"materials":inventory.materials,
+			"equipment":inventory.equipment.duplicate(true),"goods":inventory.goods.duplicate(true),
+			"integrity":boat.integrity
+		}
+		inventory.money=99999
+		inventory.bait=99
+		inventory.materials=99
+		inventory.goods={"repair_kit":9,"tackle":9,"canvas":9}
+		inventory.equipment={"rod":3,"line":3,"hook":3,"engine":3,"reel":3,"searchlight":1,"hull":1}
+		boat.integrity=1.
+		Economy.apply(inventory,boat,fishing)
+		inventory.changed.emit()
+		if not player.flying:
+			boat.set_occupied(false)
+			boat.speed=0.;boat.velocity=Vector3.ZERO
+			player.set_boating(false)
+			player.set_flying(true)
+		hud.notify("MODO CRIATIVO · voo, itens e melhorias liberados · C para sair")
+		return
+	if not creative_snapshot.is_empty():
+		inventory.money=int(creative_snapshot.money)
+		inventory.bait=int(creative_snapshot.bait)
+		inventory.materials=int(creative_snapshot.materials)
+		inventory.equipment=creative_snapshot.equipment.duplicate(true)
+		inventory.goods=creative_snapshot.goods.duplicate(true)
+		boat.integrity=float(creative_snapshot.integrity)
+		Economy.apply(inventory,boat,fishing)
+		inventory.changed.emit()
+	creative_snapshot.clear()
+	player.set_flying(false)
+	hud.notify("Modo Criativo desligado · inventário normal restaurado")
+
 func _configure_input() -> void:
 	var bindings: Dictionary = {
 		"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D,
 		"sprint": KEY_SHIFT, "interact": KEY_E, "fish": KEY_Q, "jump":KEY_SPACE,"boat_lights":KEY_L,"observe_wildlife":KEY_V,
 		"camera_toggle": KEY_F, "pause": KEY_ESCAPE, "inventory": KEY_TAB,
 		"look_left": KEY_LEFT, "look_right": KEY_RIGHT,
-		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,
+		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,"creative_toggle":KEY_C,
 		"deck":KEY_R,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,
 	}
 	for action: String in bindings:
