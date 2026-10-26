@@ -5,5 +5,5 @@ Modelos de **Polygonal Mind**, publicados em CC0 1.0 e espelhados por ToxSam:
 - Índice e licença por coleção: https://github.com/ToxSam/open-source-3D-assets (data/projects.json, `license: CC0`)
 
 Coleções usadas: Medieval Fair (barris, carroça, barracas, taberna, mesa, placa),
-MomusPark (banco, cerca, flores, arbustos, rochas, tronco, chafariz, ruína, cogumelo) e
+MomusPark (cerca, flores, arbustos, rochas, tronco, ruína, cogumelo) e
 Avatar Garden (concha). Os arquivos foram copiados sem alteração; o jogo apenas os escala e posiciona.

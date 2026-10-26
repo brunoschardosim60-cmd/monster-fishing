@@ -266,21 +266,28 @@ func _plaza(centre: Vector2,y: float) -> void:
 		var p0:=centre+Vector2(cos(a0),sin(a0))*PLAZA_R;var p1:=centre+Vector2(cos(a1),sin(a1))*PLAZA_R
 		var c:=Vector3(centre.x,y,centre.y)
 		var v0:=Vector3(p0.x,maxf(y,Layout.height(p0)+.08),p0.y);var v1:=Vector3(p1.x,maxf(y,Layout.height(p1)+.08),p1.y)
-		for v: Vector3 in [c,v1,v0]:st.set_normal(Vector3.UP);st.add_vertex(v)
+		# Both windings: the square must show from above whatever the triangle order.
+		for v: Vector3 in [c,v1,v0,c,v0,v1]:st.set_normal(Vector3.UP);st.add_vertex(v)
 	var node:=MeshInstance3D.new();node.name="Praca_%d"%get_child_count();node.mesh=st.commit();node.material_override=_street;add_child(node)
 	var at:=Vector3(centre.x,y,centre.y)
-	if Props.exists("Str_Fountain_01_Art"):
-		Props.solid(Props.spawn(self,"Str_Fountain_01_Art",at,5.6,_rng.randf()*TAU,true,400.),Vector3(4.6,1.2,4.6))
-	else:
-		G.cylinder(self,at+Vector3(0,.3,0),2.6,.6,_curb,2.6,24)
-		G.cylinder(self,at+Vector3(0,1.3,0),.35,1.6,_curb,.25,12)
+	G.cylinder(self,at+Vector3(0,.35,0),2.8,.7,_curb,2.8,28)
+	var water:=House.flat(Color("2f7f9a"),.06,.1);water.emission_enabled=true;water.emission=Color("0d3a46");water.emission_energy_multiplier=.5
+	G.cylinder(self,at+Vector3(0,.62,0),2.5,.08,water,2.5,28)
+	G.cylinder(self,at+Vector3(0,1.4,0),.4,1.7,_curb,.3,14)
+	G.cylinder(self,at+Vector3(0,2.3,0),1.2,.22,_curb,.85,18)
+	G.cylinder(self,at+Vector3(0,2.6,0),.18,.5,_curb,.12,10)
+	var stone_body:=StaticBody3D.new();stone_body.collision_layer=1;stone_body.collision_mask=0
+	var stone_shape:=CollisionShape3D.new();var cyl:=CylinderShape3D.new();cyl.radius=2.8;cyl.height=1.4;stone_shape.shape=cyl;stone_shape.position=at+Vector3(0,.7,0)
+	stone_body.add_child(stone_shape);add_child(stone_body)
 	var wood:=M.surface("teak",Color("8a6a4a"),1.2)
 	for i: int in 4:
 		var a:=float(i)*PI*.5+PI*.25
 		var p:=at+Vector3(cos(a),0,sin(a))*(PLAZA_R-2.2)
-		if Props.exists("Bench_01_Art"):Props.spawn(self,"Bench_01_Art",p,2.2,-a+PI*.5,true)
-		else:
-			var bench:=G.box(self,p+Vector3(0,.45,0),Vector3(1.8,.12,.5),wood);bench.rotation.y=-a+PI*.5
+		var bench:=G.box(self,p+Vector3(0,.45,0),Vector3(1.9,.1,.5),wood);bench.rotation.y=-a+PI*.5
+		var back:=G.box(self,p+Vector3(0,.8,0)+Vector3(cos(a),0,sin(a))*.25,Vector3(1.9,.45,.07),wood);back.rotation.y=-a+PI*.5
+		for leg: float in [-.8,.8]:
+			var off:=Vector3(-sin(a),0,cos(a))*leg
+			G.box(self,p+off+Vector3(0,.22,0),Vector3(.08,.44,.45),House.flat(Color("2b2f33"),.4,.6)).rotation.y=-a+PI*.5
 		var lamp_a:=a+PI*.25
 		var lamp_at:=at+Vector3(cos(lamp_a),0,sin(lamp_a))*(PLAZA_R-.8)
 		village._lamp(lamp_at,wood);lamps+=1

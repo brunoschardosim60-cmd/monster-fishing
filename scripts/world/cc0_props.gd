@@ -7,6 +7,23 @@ const ROOT: String="res://assets/props/cc0/%s.glb"
 const NATURE: String="res://assets/environment/quaternius_nature/%s.gltf"
 static var _scenes: Dictionary={}
 static var _bounds: Dictionary={}
+static var _fixed: Dictionary={}
+
+## The Polygonal Mind exports carry a toon "outline" shell (inverted hull, meant to draw only its
+## back faces) and a high metallic/specular setup that reads as white in Godot. Fix once per model:
+## the shell renders back faces only, and surfaces get a painted, non-metallic response.
+static func _fix_materials(instance: Node3D) -> void:
+	for node: Node in instance.find_children("*","MeshInstance3D",true,false):
+		var mesh:=(node as MeshInstance3D).mesh
+		if mesh==null:continue
+		for i: int in mesh.get_surface_count():
+			var mat:=mesh.surface_get_material(i) as StandardMaterial3D
+			if mat==null:continue
+			if "outline" in mat.resource_name.to_lower():
+				mat.cull_mode=BaseMaterial3D.CULL_FRONT;mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;mat.albedo_color=Color(.08,.07,.06)
+				mat.albedo_texture=null
+			else:
+				mat.metallic=0.;mat.metallic_specular=.3;mat.roughness=maxf(mat.roughness,.75)
 
 static func path_of(model: String) -> String:
 	return NATURE%model.trim_prefix("nature:") if model.begins_with("nature:") else ROOT%model
@@ -19,9 +36,11 @@ static func spawn(parent: Node3D,model: String,at: Vector3,size: float,yaw: floa
 	var path:=path_of(model)
 	if not ResourceLoader.exists(path):return null
 	if not _scenes.has(path):_scenes[path]=load(path)
+	var first_use:=not _fixed.has(path)
 	var instance:=(_scenes[path] as PackedScene).instantiate() as Node3D
 	var holder:=Node3D.new();holder.name="CC0_%s_%d"%[model.trim_prefix("nature:"),parent.get_child_count()];holder.position=at;holder.rotation.y=yaw
 	parent.add_child(holder);holder.add_child(instance)
+	if first_use:_fix_materials(instance);_fixed[path]=true
 	var box: AABB=_measure(path,instance)
 	var span:=maxf(box.size.x,box.size.z) if by_width else box.size.y
 	var factor:=size/maxf(span,.0001)
@@ -36,11 +55,14 @@ static func spawn(parent: Node3D,model: String,at: Vector3,size: float,yaw: floa
 static func _measure(path: String,instance: Node3D) -> AABB:
 	if _bounds.has(path):return _bounds[path]
 	var first:=true;var box:=AABB()
-	var inverse:=instance.global_transform.affine_inverse()
 	for node: Node in instance.find_children("*","MeshInstance3D",true,false):
 		var mi:=node as MeshInstance3D
 		if mi.mesh==null:continue
-		var b:=inverse*mi.global_transform*mi.get_aabb()
+		# Transform relative to the model root, so this also works before it enters the scene tree.
+		var relative:=Transform3D.IDENTITY;var walker: Node=mi
+		while walker!=instance and walker is Node3D:
+			relative=(walker as Node3D).transform*relative;walker=walker.get_parent()
+		var b:=relative*mi.get_aabb()
 		box=b if first else box.merge(b);first=false
 	_bounds[path]=box
 	return box
