@@ -11,8 +11,8 @@ const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const Vessel=preload("res://scripts/boats/traffic_vessel.gd")
 const ROUTE: Array[Vector3]=[Vector3(20,0,-140),Vector3(320,0,-140),Vector3(440,0,200),Vector3(450,0,800),Vector3(70,0,1170),Vector3(-530,0,1030),Vector3(-530,0,540),Vector3(-340,0,-140)]
 ## kind, length, cruise speed (m/s), turn rate, start waypoint
-const TRADE_FLEET: Array=[["pesqueiro",14.,4.4,.5,1],["rebocador",21.,3.8,.6,4],["apoio",30.,5.2,.4,6],["cargueiro",72.,4.2,.15,2],["escuna",26.,4.6,.35,7],["veleiro",12.,4.3,.55,3]]
-const FAR_FLEET: Array=[["petroleiro",165.,4.,.08,0],["gigante",240.,5.,.06,6],["cargueiro",88.,4.6,.12,10]]
+const TRADE_FLEET: Array=[["pesqueiro",14.,4.4,.5,1],["rebocador",21.,3.8,.6,4],["apoio",30.,5.2,.4,6],["cargueiro",72.,4.2,.15,2],["escuna",26.,4.6,.35,7],["galeao",44.,4.8,.28,5],["veleiro",12.,4.3,.55,3]]
+const FAR_FLEET: Array=[["petroleiro",165.,4.,.08,0],["galeao",52.,5.,.22,3],["gigante",240.,5.,.06,6],["cargueiro",88.,4.6,.12,10]]
 ## kind, length, speed, turn, lobe, angle from, angle to (deg), distance off the coast, fishing stops
 const COASTAL_FLEET: Array=[["canoa",5.,1.8,1.,3,150.,230.,38.,false],["canoa",4.5,1.7,1.,1,140.,220.,35.,false],
 	["bote_remo",4.6,1.5,.8,2,-40.,40.,34.,false],["bote_remo",4.2,1.5,.8,8,160.,260.,36.,false],
@@ -131,7 +131,7 @@ func hailable(at: Vector3) -> CharacterBody3D:
 func offer_kind(ship: CharacterBody3D) -> String:
 	match ship.kind:
 		"bote","pesqueiro":return "isca"
-		"cargueiro","gigante","apoio","escuna","petroleiro":return "comercio"
+		"cargueiro","gigante","apoio","escuna","petroleiro","galeao":return "comercio"
 	return "noticias"
 
 func greeting(ship: CharacterBody3D) -> String:

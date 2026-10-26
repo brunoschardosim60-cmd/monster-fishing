@@ -8,7 +8,11 @@ extends RefCounted
 ##   [Vector3 position, float facing]) · seats (Array of [Vector3, float]) · sails (Array[Node3D]) ·
 ##   flag (Node3D) · oars (Array[Node3D]) · windows (StandardMaterial3D) · crew (int suggested size)
 const G=preload("res://scripts/world/geometry.gd")
-const KINDS: Array[String]=["canoa","bote_remo","bote","pesqueiro","veleiro","escuna","rebocador","apoio","cargueiro","petroleiro","gigante"]
+const KINDS: Array[String]=["canoa","bote_remo","bote","pesqueiro","veleiro","escuna","galeao","rebocador","apoio","cargueiro","petroleiro","gigante"]
+## Hulls sent by Bruno (Tripo models), painted by scripts/pipeline/color_imported.py and drawn with
+## imported_model.gdshader. Kind -> mesh file in assets/models/imported.
+const PAINTED: Dictionary={"gigante":"container_ship","cargueiro":"cargo_ship","galeao":"sailing_ship","bote_remo":"rowboat"}
+static var _painted_material: ShaderMaterial
 const FLAGS: Array=[[Color("009c3b"),Color("ffdf00"),Color("002776")],[Color("d52b1e"),Color("ffffff"),Color("d52b1e")],[Color("0055a4"),Color("ffffff"),Color("ef4135")],
 	[Color("000000"),Color("dd0000"),Color("ffce00")],[Color("ffffff"),Color("0038a8"),Color("ffffff")],[Color("006847"),Color("ffffff"),Color("ce1126")],[Color("c60b1e"),Color("ffc400"),Color("c60b1e")]]
 
@@ -21,15 +25,16 @@ static func build(kind: String,length_m: float,seed_value: int=1) -> Node3D:
 	root.set_meta("windows",windows)
 	match kind:
 		"canoa":_canoa(root,length_m,rng)
-		"bote_remo":_bote_remo(root,length_m,rng)
+		"bote_remo":_bote_remo_painted(root,length_m,rng)
 		"bote":_bote(root,length_m,rng)
 		"pesqueiro":_pesqueiro(root,length_m,rng)
 		"veleiro":_veleiro(root,length_m,rng)
 		"escuna":_escuna(root,length_m,rng)
+		"galeao":_galeao(root,length_m,rng)
 		"rebocador":_rebocador(root,length_m,rng)
 		"apoio":_apoio(root,length_m,rng)
-		"cargueiro":_cargueiro(root,length_m,rng,3,2)
-		"gigante":_cargueiro(root,length_m,rng,9,4)
+		"cargueiro":_merchant_painted(root,length_m,rng,"cargo_ship")
+		"gigante":_merchant_painted(root,length_m,rng,"container_ship")
 		"petroleiro":_petroleiro(root,length_m,rng)
 		_:_bote(root,length_m,rng)
 	# Small parts fade out with distance; hulls and superstructures stay visible to the horizon.
@@ -42,14 +47,15 @@ static func build(kind: String,length_m: float,seed_value: int=1) -> Node3D:
 static func beam_of(kind: String,L: float) -> float:
 	match kind:
 		"canoa":return .95
-		"bote_remo":return 1.65
+		"bote_remo":return L*.33
 		"bote":return 2.4
 		"pesqueiro","veleiro":return L*.32
 		"escuna":return L*.25
 		"rebocador":return L*.34
 		"apoio":return L*.28
-		"cargueiro":return 3.*2.55+2.4
-		"gigante":return 9.*2.55+2.4
+		"cargueiro":return L*.21
+		"gigante":return L*.222
+		"galeao":return L*.2
 		"petroleiro":return L*.15
 	return L*.3
 
@@ -207,6 +213,18 @@ static func _containers(root: Node3D,lanes: int,rows: int,levels: int,base_y: fl
 		mm.set_instance_transform(i,Transform3D(Basis.IDENTITY,items[i][0]));mm.set_instance_color(i,(items[i][1] as Color).darkened(rng.randf()*.15))
 	var mat:=StandardMaterial3D.new();mat.vertex_color_use_as_albedo=true;mat.roughness=.6
 	var node:=MultiMeshInstance3D.new();node.name="Conteineres";node.multimesh=mm;node.material_override=mat;root.add_child(node)
+
+## Adds a painted imported hull scaled to `L` metres. Livery and wear vary per ship through instance
+## uniforms, so every vessel shares one material.
+static func _painted(root: Node3D,file: String,L: float,paint: Color,rng: RandomNumberGenerator) -> MeshInstance3D:
+	if _painted_material==null:
+		_painted_material=ShaderMaterial.new();_painted_material.shader=preload("res://assets/shaders/imported_model.gdshader")
+	var node:=MeshInstance3D.new();node.name="Casco";node.mesh=load("res://assets/models/imported/%s.res"%file)
+	node.material_override=_painted_material;node.scale=Vector3.ONE*L
+	node.set_instance_shader_parameter("model_scale",L);node.set_instance_shader_parameter("hull_paint",paint)
+	node.set_instance_shader_parameter("seed",rng.randf()*100.)
+	root.add_child(node);root.set_meta("painted",node)
+	return node
 
 # ---------------------------------------------------------------- kinds
 static func _canoa(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
@@ -413,3 +431,46 @@ static func _petroleiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> voi
 	root.set_meta("helm",Vector3(0,f+14.2,bridge_z-L*.02));root.set_meta("walk",[Vector3(beam*.38,f,-L*.4),Vector3(beam*.38,f,L*.3)])
 	_rail(root,Vector3(-beam*.4,f,-L*.45),0.)
 	root.set_meta("crew",2)
+
+## Container ship and general cargo ship from Bruno's models: bridge aft, bow towards -Z.
+static func _merchant_painted(root: Node3D,L: float,rng: RandomNumberGenerator,file: String) -> void:
+	var containers:=file=="container_ship"
+	var paint: Color=_pick(rng,[Color("1f3d5c"),Color("7a1f2b"),Color("2a2a2a"),Color("1f5f4b"),Color("3a4a5a"),Color("8a3a1c")])
+	_painted(root,file,L,paint,rng)
+	var deck:=(.055 if containers else .063)*L;var beam:=beam_of("gigante" if containers else "cargueiro",L)
+	var bridge_z:=(.3125 if containers else .3575)*L;var bridge_top:=(.17 if containers else .155)*L
+	_nav_lights(root,Vector3(-beam*.5,bridge_top-1.,bridge_z),Vector3(beam*.5,bridge_top-1.,bridge_z),Vector3(0,bridge_top+3.,bridge_z))
+	_flag(root,Vector3(0,deck+4.,L*.5),1.6,rng);_detail(G.cylinder(root,Vector3(0,deck+2.,L*.5),.06,4.,_mat(Color("f2f2ee"))))
+	root.set_meta("deck",deck)
+	root.set_meta("helm",Vector3(0,bridge_top-2.6,bridge_z-L*.03));root.set_meta("walk",[Vector3(beam*.4,deck,-L*.38),Vector3(beam*.4,deck,L*.22)])
+	_rail(root,Vector3(-beam*.42,deck,L*.24),PI*.5)
+	root.set_meta("crew",3)
+
+## Three-masted galleon from Bruno's model: square rig, ochre gun stripe, quarterdeck aft.
+static func _galeao(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
+	var paint: Color=_pick(rng,[Color("3a2416"),Color("2a1d14"),Color("1e2a35")])
+	_painted(root,"sailing_ship",L,paint,rng)
+	var deck:=.068*L
+	_flag(root,Vector3(0,.63*L,.13*L),1.4,rng)
+	for side: float in [-1.,1.]:
+		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=1.8
+		_detail(G.sphere(root,Vector3(side*L*.07,deck+L*.06,L*.47),Vector3.ONE*.35,lamp,8))
+	root.set_meta("deck",deck)
+	root.set_meta("helm",Vector3(0,deck+L*.025,L*.38));root.set_meta("walk",[Vector3(-L*.05,deck,-L*.22),Vector3(-L*.05,deck,L*.2)])
+	_rail(root,Vector3(L*.085,deck,-L*.05),-PI*.5);_rail(root,Vector3(-L*.085,deck,L*.08),PI*.5);_rail(root,Vector3(0,deck+L*.02,-L*.33),0.)
+	root.set_meta("crew",rng.randi_range(4,6))
+
+## Weathered wooden rowing boat from Bruno's model: two thwarts, oars worked from the forward one.
+static func _bote_remo_painted(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
+	var paint: Color=_pick(rng,[Color("3d8b7a"),Color("2f6fb0"),Color("e8e2d0"),Color("c8553d"),Color("d9b44a"),Color("4f7a3a")])
+	_painted(root,"rowboat",L,paint,rng)
+	var thwart:=.052*L;var wood:=_mat(Color("8a6a48"))
+	root.set_meta("deck",-.005*L)
+	_seat(root,Vector3(0,thwart-.62,-.21*L),PI);root.set_meta("helm",Vector3(0,thwart-.62,-.21*L))
+	for side: float in [-1.,1.]:
+		var oar:=Node3D.new();oar.name="Remo";oar.position=Vector3(side*L*.15,.08*L,-.12*L);root.add_child(oar)
+		_detail(G.beam(oar,Vector3(-side*.6,.15,0),Vector3(side*1.7,-.55,0),.03,wood));_detail(G.box(oar,Vector3(side*1.75,-.6,0),Vector3(.38,.04,.14),wood))
+		(root.get_meta("oars") as Array).append(oar)
+	if rng.randf()<.5:_seat(root,Vector3(0,thwart-.62,.24*L),PI)
+	else:_cargo(root,Vector3(0,-.005*L,.24*L),1.1,rng)
+	root.set_meta("crew",(root.get_meta("seats") as Array).size())

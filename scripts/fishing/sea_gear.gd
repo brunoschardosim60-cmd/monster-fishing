@@ -20,6 +20,8 @@ const EXTRA: Dictionary={
 	"polvo":["Polvo-comum",1.,3.,55.,"Rara","b46a5a"]}
 var game: Node3D
 var traps: Array[Dictionary]=[]
+## Traps being hauled up: the cage rises along its line and hangs dripping beside the boat for a moment.
+var hauling: Array[Dictionary]=[]
 var net_state: String="pronta"
 var net_clock: float=0.
 var net_cooldown: float=0.
@@ -173,13 +175,12 @@ func trap_action() -> String:
 
 func _collect(t: Dictionary) -> String:
 	if float(t.soak)<TRAP_SOAK:return "O covo ainda está vazio. Espere mais %d s."%int(TRAP_SOAK-float(t.soak))
+	if not t.has("haul"):_fill(t)
 	var haul: Array[Dictionary]=[]
-	var crabs:=_rng.randi_range(1,3)
-	for i: int in crabs:haul.append(make_catch("caranguejo"))
-	if _rng.randf()<.55:haul.append(make_catch("lagosta"))
-	if _rng.randf()<.15:haul.append(make_catch("polvo"))
+	for id: String in t.haul:haul.append(make_catch(id))
 	for c: Dictionary in haul:game.inventory.record(c);game.inventory.add_catch(c)
-	(t.node as Node3D).queue_free();traps.erase(t)
+	traps.erase(t)
+	hauling.append({"node":t.node,"bottom":t.bottom,"clock":0.})
 	game.inventory.traps+=1;game.inventory.changed.emit()
 	game.audio.cue("chain")
 	var names: Array[String]=[]
@@ -193,7 +194,7 @@ func _build_trap(at: Vector3,bottom: float) -> Node3D:
 	G.cylinder(buoy,Vector3(0,.75,0),.025,1.1,G.material(Color("2b2f33"),.5))
 	var flag:=G.box(buoy,Vector3(.18,1.15,0),Vector3(.34,.22,.02),G.material(Color("d8432f"),.6));flag.name="Bandeira"
 	var rope:=G.beam(root,Vector3(0,0,0),Vector3(0,bottom+.5,0),.012,G.material(Color("c9b48a"),.9));rope.name="Cabo"
-	var cage:=Node3D.new();cage.position=Vector3(0,bottom+.25,0);root.add_child(cage)
+	var cage:=Node3D.new();cage.name="Gaiola";cage.position=Vector3(0,bottom+.25,0);root.add_child(cage)
 	var wire:=G.material(Color("3c4a48"),.5)
 	for x: float in [-.45,.45]:
 		for z: float in [-.3,.3]:G.box(cage,Vector3(x,0,z),Vector3(.04,.5,.04),wire)
@@ -202,9 +203,60 @@ func _build_trap(at: Vector3,bottom: float) -> Node3D:
 		for x: float in [-.45,.45]:G.box(cage,Vector3(x,y,0),Vector3(.03,.03,.64),wire)
 	return root
 
+## Decides what walked into the trap and puts it in the cage, where it can be seen from the boat or diving.
+func _fill(t: Dictionary) -> void:
+	var ids: Array[String]=[]
+	for i: int in _rng.randi_range(1,3):ids.append("caranguejo")
+	if _rng.randf()<.55:ids.append("lagosta")
+	if _rng.randf()<.15:ids.append("polvo")
+	t.haul=ids
+	var cage: Node3D=(t.node as Node3D).get_node("Gaiola")
+	var spots: Array[Vector3]=[Vector3(-.22,-.18,-.1),Vector3(.2,-.18,.12),Vector3(.05,-.18,-.14),Vector3(-.1,-.18,.15),Vector3(.25,-.18,-.12)]
+	for i: int in ids.size():
+		var animal:=_trap_animal(ids[i]);animal.position=spots[i%spots.size()];animal.rotation.y=_rng.randf()*TAU;cage.add_child(animal)
+
+static var _painted_mat: ShaderMaterial
+func _trap_animal(id: String) -> Node3D:
+	var root:=Node3D.new();root.name=id.capitalize()
+	match id:
+		"caranguejo":
+			# Crab from Bruno's marine pack, painted by the pipeline.
+			if _painted_mat==null:_painted_mat=ShaderMaterial.new();_painted_mat.shader=preload("res://assets/shaders/imported_model.gdshader")
+			var crab:=MeshInstance3D.new();crab.mesh=preload("res://assets/models/imported/crab.res");crab.material_override=_painted_mat
+			var s:=_rng.randf_range(.26,.34);crab.scale=Vector3.ONE*s;crab.position.y=.04;crab.set_instance_shader_parameter("model_scale",s);root.add_child(crab)
+		"lagosta":
+			var shell:=G.material(Color("8a3a22"),.45);var pale:=G.material(Color("d98a52"),.5)
+			for k: int in 6:G.ellipsoid(root,Vector3(0,.05,-.12+float(k)*.06),Vector3(.09-float(k)*.008,.07,.08),shell if k%2==0 else pale,8)
+			G.ellipsoid(root,Vector3(0,.04,.24),Vector3(.14,.03,.07),shell,8)
+			for side: float in [-1.,1.]:
+				var antenna:=G.beam(root,Vector3(side*.03,.07,-.15),Vector3(side*.18,.12,-.48),.006,shell);antenna.name="Antena"
+				G.ellipsoid(root,Vector3(side*.11,.04,-.2),Vector3(.05,.04,.1),shell,8)
+		"polvo":
+			var skin:=G.material(Color("b46a5a"),.35)
+			G.ellipsoid(root,Vector3(0,.12,.05),Vector3(.16,.14,.2),skin,12)
+			for k: int in 8:
+				var a:=float(k)*TAU/8.
+				G.beam(root,Vector3(cos(a)*.06,.03,sin(a)*.06),Vector3(cos(a)*.24,.0,sin(a)*.24+.04*sin(float(k))),.022,skin)
+	return root
+
 func _update_traps(delta: float) -> void:
+	for h: Dictionary in hauling.duplicate():
+		# Up the line in 3 s, a few seconds dripping at the surface, then aboard.
+		h.clock=float(h.clock)+delta
+		var root: Node3D=h.node
+		if not is_instance_valid(root):hauling.erase(h);continue
+		var cage: Node3D=root.get_node("Gaiola");var rope: Node3D=root.get_node("Cabo")
+		var surface:=Waves.height_at(root.global_position)
+		var y:=lerpf(float(h.bottom)+.25,surface+.55,smoothstep(0.,3.,float(h.clock)))
+		cage.position.y=y;cage.rotation.z=sin(float(h.clock)*2.)*.12
+		var top:=minf(y+.25,0.)
+		rope.position.y=top*.5;rope.scale.y=maxf(.01,-top/maxf(-float(h.bottom)-.5,.1));rope.visible=top<-.05
+		for animal: Node in cage.get_children():
+			if animal.name in ["Caranguejo","Lagosta","Polvo"]:(animal as Node3D).rotation.y+=sin(float(h.clock)*6.+(animal as Node3D).position.x*9.)*delta*1.5
+		if float(h.clock)>7.:root.queue_free();hauling.erase(h)
 	for t: Dictionary in traps:
 		t.soak=float(t.soak)+delta
+		if float(t.soak)>=TRAP_SOAK and not t.has("haul"):_fill(t)
 		var root: Node3D=t.node;var buoy: Node3D=root.get_node("Boia")
 		var p: Vector3=t.at
 		buoy.position.y=Waves.height_at(p)-.05+sin(Time.get_ticks_msec()*.002+p.x)*.05

@@ -9,9 +9,9 @@ const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const Models=preload("res://scripts/boats/vessel_models.gd")
 const Crew=preload("res://scripts/boats/crew_member.gd")
 const SMALL: Array[String]=["canoa","bote_remo","bote","veleiro"]
-const SAILS: Array[String]=["veleiro","escuna"]
+const SAILS: Array[String]=["veleiro","escuna","galeao"]
 const NAMES: Dictionary={"canoa":"Canoa","bote_remo":"Bote a remo","bote":"Bote de pesca","pesqueiro":"Pesqueiro","veleiro":"Veleiro",
-	"escuna":"Escuna","rebocador":"Rebocador","apoio":"Navio de apoio","cargueiro":"Cargueiro","petroleiro":"Petroleiro","gigante":"Porta-contêineres"}
+	"escuna":"Escuna","galeao":"Galeão","rebocador":"Rebocador","apoio":"Navio de apoio","cargueiro":"Cargueiro","petroleiro":"Petroleiro","gigante":"Porta-contêineres"}
 var route: Array[Vector3]=[]
 var base_route: Array[Vector3]=[]
 var waypoint: int=0
@@ -201,5 +201,7 @@ func set_night(value: float) -> void:
 	night=value
 	var windows: StandardMaterial3D=model.get_meta("windows") if model.has_meta("windows") else null
 	if windows!=null:windows.emission_energy_multiplier=value*2.2
+	var painted: GeometryInstance3D=model.get_meta("painted") if model.has_meta("painted") else null
+	if painted!=null:painted.set_instance_shader_parameter("night",value)
 	var lamp:=hull.get_node_or_null("Luz") as OmniLight3D
 	if lamp!=null:lamp.light_energy=value*(1.8 if length_m<40. else 4.)

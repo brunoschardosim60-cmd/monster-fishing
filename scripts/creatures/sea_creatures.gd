@@ -14,7 +14,7 @@ var rays: Array[Dictionary]=[]
 var jellies: Array[Dictionary]=[]
 var elapsed: float=0.
 var _rng:=RandomNumberGenerator.new()
-var _jelly_glow: Array[StandardMaterial3D]=[]
+var _jelly_glow: Array[ShaderMaterial]=[]
 var _frame: int=0
 
 ## spots: shallow-water points [Vector3(x, floor_y, z)] near the islands.
@@ -37,30 +37,19 @@ func _mat(color: Color,rough: float=.7) -> StandardMaterial3D:
 
 func _add_turtle(home: Vector3,size: float) -> void:
 	var root:=Node3D.new();root.name="Tartaruga_%d"%turtles.size();add_child(root)
-	# Sculpted carapace with painted scutes (turtle_shell shader), scaled skin on head, neck and flippers.
-	var Meshes:=preload("res://scripts/creatures/creature_meshes.gd")
-	var shell_mat:=ShaderMaterial.new();shell_mat.shader=preload("res://assets/shaders/turtle_shell.gdshader")
-	var tint:=_rng.randf()
-	shell_mat.set_shader_parameter("base_color",Color("3a2a14").lerp(Color("37331a"),tint))
-	shell_mat.set_shader_parameter("ray_color",Color("b07a34").lerp(Color("8c8a46"),tint))
-	var skin:=ShaderMaterial.new();skin.shader=preload("res://assets/shaders/turtle_skin.gdshader")
-	var body:=Node3D.new();body.scale=Vector3.ONE*size;root.add_child(body)
-	var shell:=MeshInstance3D.new();shell.mesh=Meshes.carapace("turtle_shell",1.,.8,.26);shell.material_override=shell_mat;shell.name="Casco";body.add_child(shell)
-	var neck:=G.ellipsoid(body,Vector3(0,.0,-.5),Vector3(.2,.15,.26),skin,12)
-	var head:=G.ellipsoid(body,Vector3(0,.04,-.68),Vector3(.2,.15,.24),skin,14)
-	var beak:=G.ellipsoid(body,Vector3(0,.0,-.79),Vector3(.12,.08,.1),_mat(Color("57513c"),.5),10)
-	for sx: float in [-1.,1.]:G.ellipsoid(body,Vector3(sx*.085,.07,-.73),Vector3(.045,.045,.045),_mat(Color("0e0e0c"),.15),8)
-	var flippers: Array[Node3D]=[]
-	for data: Array in [[-1.,-.24,.56,.27,.17],[1.,-.24,.56,.27,.17],[-1.,.36,.26,.14,.05],[1.,.36,.26,.14,.05]]:
-		var side: float=data[0]
-		var pivot:=Node3D.new();pivot.position=Vector3(side*.33,-.02,float(data[1]));body.add_child(pivot)
-		var fin:=MeshInstance3D.new();fin.mesh=Meshes.flipper("turtle_fin_%.2f"%float(data[2]),float(data[2]),float(data[3]),float(data[4]))
-		fin.material_override=skin;fin.scale=Vector3(side,1.,1.);fin.rotation.y=-side*.15;pivot.add_child(fin)
-		flippers.append(pivot)
-	beak.name="Bico";neck.name="Pescoco"
+	# Sea turtle from Bruno's marine pack, painted by the pipeline; the shader beats the flippers.
+	var body:=MeshInstance3D.new();body.name="Corpo";body.mesh=preload("res://assets/models/imported/turtle.res")
+	body.material_override=_painted();body.scale=Vector3.ONE*size*1.25;root.add_child(body)
+	body.set_instance_shader_parameter("model_scale",size*1.25);body.set_instance_shader_parameter("flap",.55)
+	body.set_instance_shader_parameter("seed",_rng.randf()*6.)
 	root.position=Vector3(home.x,home.y+1.,home.z)
-	turtles.append({"node":root,"home":home,"flippers":flippers,"head":head,"heading":_rng.randf()*TAU,"phase":_rng.randf()*TAU,
+	turtles.append({"node":root,"home":home,"body":body,"heading":_rng.randf()*TAU,"phase":_rng.randf()*TAU,"rate":1.6,
 		"breathe":_rng.randf_range(20.,45.),"surfacing":0.,"depth":0.,"size":size,"speed":.7+_rng.randf()*.3})
+
+var _painted_mat: ShaderMaterial
+func _painted() -> ShaderMaterial:
+	if _painted_mat==null:_painted_mat=ShaderMaterial.new();_painted_mat.shader=preload("res://assets/shaders/imported_model.gdshader")
+	return _painted_mat
 
 func _add_ray(home: Vector3,manta: bool) -> void:
 	var root:=Node3D.new();root.name=("Manta_%d" if manta else "Arraia_%d")%rays.size();add_child(root)
@@ -86,21 +75,21 @@ func _add_ray(home: Vector3,manta: bool) -> void:
 
 func _add_jellies(at: Vector3,count: int) -> void:
 	var swarm:=Node3D.new();swarm.name="AguasVivas_%d"%jellies.size();add_child(swarm)
+	# Four jellyfish shapes from Bruno's marine pack; one tint per swarm, translucent and glowing at night.
 	var colours: Array[Color]=[Color("9be8ff"),Color("ff9ee0"),Color("d6b4ff"),Color("fff1c4")]
 	var c: Color=colours[jellies.size()%colours.size()]
-	var bell_mat:=StandardMaterial3D.new();bell_mat.albedo_color=Color(c.r,c.g,c.b,.55);bell_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-	bell_mat.roughness=.15;bell_mat.emission_enabled=true;bell_mat.emission=c;bell_mat.emission_energy_multiplier=.25;bell_mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-	_jelly_glow.append(bell_mat)
-	var strand:=StandardMaterial3D.new();strand.albedo_color=Color(c.r,c.g,c.b,.35);strand.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;strand.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-	var dome:=SphereMesh.new();dome.radius=.32;dome.height=.32;dome.is_hemisphere=true;dome.radial_segments=16;dome.rings=6
+	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/jelly.gdshader")
+	mat.set_shader_parameter("tint",c.lightened(.2));mat.set_shader_parameter("glow",.25)
+	_jelly_glow.append(mat)
+	var shapes: Array[Mesh]=[preload("res://assets/models/imported/jelly_a.res"),preload("res://assets/models/imported/jelly_b.res"),
+		preload("res://assets/models/imported/jelly_c.res"),preload("res://assets/models/imported/jelly_d.res")]
 	var members: Array[Node3D]=[]
 	for i: int in count:
-		var jelly:=Node3D.new();jelly.position=Vector3(_rng.randf_range(-5.,5.),-_rng.randf_range(.5,2.2),_rng.randf_range(-5.,5.))
-		jelly.scale=Vector3.ONE*_rng.randf_range(.7,1.4);swarm.add_child(jelly)
-		var bell:=MeshInstance3D.new();bell.mesh=dome;bell.material_override=bell_mat;bell.name="Sino";jelly.add_child(bell)
-		for k: int in 5:
-			var a:=float(k)*TAU/5.
-			G.beam(jelly,Vector3(cos(a)*.18,0,sin(a)*.18),Vector3(cos(a)*.12,-.75-float(k%2)*.3,sin(a)*.12),.008,strand)
+		var jelly:=Node3D.new();jelly.position=Vector3(_rng.randf_range(-5.,5.),-_rng.randf_range(.8,2.4),_rng.randf_range(-5.,5.))
+		jelly.scale=Vector3.ONE*_rng.randf_range(.8,1.5);swarm.add_child(jelly)
+		var bell:=MeshInstance3D.new();bell.mesh=shapes[(i+jellies.size())%shapes.size()];bell.material_override=mat;bell.name="Sino"
+		bell.position.y=-.25;bell.set_instance_shader_parameter("phase",_rng.randf()*TAU)
+		bell.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;jelly.add_child(bell)
 		members.append(jelly)
 	swarm.position=Vector3(at.x,0,at.z)
 	jellies.append({"node":swarm,"origin":Vector3(at.x,0,at.z),"members":members,"phase":_rng.randf()*TAU})
@@ -131,7 +120,7 @@ func _physics_process(delta: float) -> void:
 		else:_ray(r,delta,player,boat,boat_fast)
 	var hour: float=float(game.world.ocean.hour)
 	var glow:=.25+(1.8 if hour<6. or hour>19.5 else 0.)
-	for m: StandardMaterial3D in _jelly_glow:m.emission_energy_multiplier=glow
+	for m: ShaderMaterial in _jelly_glow:m.set_shader_parameter("glow",glow)
 	if _frame%2==0:
 		for j: Dictionary in jellies:_jelly(j,delta*2.,player)
 
@@ -168,13 +157,9 @@ func _turtle(t: Dictionary,delta: float,player: Vector3,boat: Vector3,boat_fast:
 	node.rotation.y=float(t.heading)
 	node.rotation.x=clampf((next.y-p.y)/maxf(delta,.001)*.3,-.35,.35)
 	t.depth=surface-next.y
-	var beat:=elapsed*(3.2 if scared else 1.6)+float(t.phase)
-	var fl: Array=t.flippers
-	for i: int in fl.size():
-		var side:=-1. if i%2==0 else 1.
-		var amp:=.55 if i<2 else .25
-		(fl[i] as Node3D).rotation.z=side*sin(beat+(0. if i<2 else 1.4))*amp
-		(fl[i] as Node3D).rotation.x=cos(beat)*(.25 if i<2 else .1)
+	# Flipper beat speeds up when it flees; eased so the stroke never jumps.
+	t.rate=lerpf(float(t.rate),3.2 if scared else 1.6,1.-exp(-delta*.8))
+	(t.body as GeometryInstance3D).set_instance_shader_parameter("flap_rate",float(t.rate))
 
 func _ray(r: Dictionary,delta: float,player: Vector3,boat: Vector3,boat_fast: bool) -> void:
 	var node: Node3D=r.node
@@ -207,8 +192,6 @@ func _jelly(j: Dictionary,delta: float,player: Vector3) -> void:
 	for i: int in members.size():
 		var jelly: Node3D=members[i]
 		var pulse:=sin(elapsed*2.1+float(i)*.9+ph)
-		var bell: Node3D=jelly.get_child(0)
-		bell.scale=Vector3(1.+pulse*.14,1.-pulse*.2,1.+pulse*.14)
 		jelly.position.y=clampf(jelly.position.y+(maxf(pulse,0.)*.12-.035)*delta,-2.6,-.35)
 
 ## Positions of the turtles, for tests and the map.
