@@ -7,7 +7,7 @@ uniform bool manta=false;
 uniform float span=1.5;
 uniform float beat=1.;
 uniform float phase=0.;
-uniform vec3 top_color:source_color=vec3(.42,.36,.26);
+uniform vec3 top_color:source_color=vec3(.3,.25,.18);
 uniform vec3 spot_color:source_color=vec3(.2,.17,.12);
 uniform vec3 under_color:source_color=vec3(.93,.92,.88);
 varying vec2 disc;

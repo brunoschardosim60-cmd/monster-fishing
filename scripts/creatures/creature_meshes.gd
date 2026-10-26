@@ -94,7 +94,7 @@ static func ray_disc(key: String,span: float,length: float,thickness: float) -> 
 		# Half width at a normalised length position (-1 front, 1 back): widest a little ahead of the middle.
 		# Rounded diamond: the wing tips sit a little ahead of the middle, the back tapers to the tail.
 		var k:=zn+.15
-		return clampf(1.-pow(absf(k)/(1.15 if k<0. else 1.0),1.25),0.,1.)
+		return pow(clampf(1.-pow(absf(k)/(1.15 if k<0. else 1.0),1.5),0.,1.),.8)
 	for side: float in [1.,-1.]:
 		for i: int in nx:
 			for k: int in nz:

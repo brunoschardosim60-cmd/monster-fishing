@@ -199,6 +199,7 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 		if at.distance_to(Vector2(k.x,k.y))<k.z+reach:return false
 	var yard=village.get("shipyard")
 	if yard!=null and at.distance_to(Vector2(yard.footprint.x,yard.footprint.y))<float(yard.footprint.z)+reach:return false
+	if yard!=null and at.distance_to(Vector2(yard.camp_area.x,yard.camp_area.y))<float(yard.camp_area.z)+reach:return false
 	for f: Vector3 in footprints:
 		if at.distance_to(Vector2(f.x,f.y))<f.z+reach+2.5:return false
 	for avenue: Array in _avenues:

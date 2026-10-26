@@ -9,10 +9,10 @@ uniform float curl=.16;        // base curvature (rad per metre)
 uniform float wave=.08;        // travelling curvature wave
 uniform float phase=0.;
 uniform float slam=0.;         // 0..1
-uniform vec3 hide_color:source_color=vec3(.36,.07,.11);
-uniform vec3 mottle_color:source_color=vec3(.55,.16,.16);
-uniform vec3 belly_color:source_color=vec3(.85,.62,.55);
-uniform vec3 sucker_color:source_color=vec3(.93,.8,.72);
+uniform vec3 hide_color:source_color=vec3(.28,.035,.06);
+uniform vec3 mottle_color:source_color=vec3(.44,.09,.1);
+uniform vec3 belly_color:source_color=vec3(.66,.32,.3);
+uniform vec3 sucker_color:source_color=vec3(.86,.66,.58);
 varying vec3 local_pos;
 varying float inner;
 varying float along;
@@ -50,7 +50,7 @@ void fragment(){
 	if(tentacle){
 		// Pale inner side with two rows of suckers.
 		float side=smoothstep(.15,.55,inner);
-		col=mix(col,belly_color,side*.7);
+		col=mix(col,belly_color,side*.5);
 		float row=fract(along*44.);float ring=length(vec2(row-.5,(abs(UV.x-.25)*12.)));
 		float sucker=side*(1.-smoothstep(.28,.36,ring));
 		float rim=side*smoothstep(.22,.3,ring)*(1.-smoothstep(.36,.44,ring));

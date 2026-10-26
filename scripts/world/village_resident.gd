@@ -26,6 +26,8 @@ var hide_backpack: bool=false
 ## Animation choices (UAL clips): standing pose, work loop played while not walking (empty: none).
 var idle_pose: String=""
 var work_pose: String=""
+## When set (not INF), the direction (yaw) the resident turns to whenever it stands still: a shopkeeper faces the door.
+var rest_yaw: float=INF
 func _ready() -> void:
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
 	if look_id>=0:visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
@@ -82,6 +84,7 @@ func _process(delta: float) -> void:
 	velocity=velocity.move_toward(desired,delta*1.6)
 	position+=velocity*delta
 	if velocity.length()>.08:rotation.y=lerp_angle(rotation.y,atan2(-velocity.x,-velocity.z),1.-exp(-delta*3.2))
+	elif rest_yaw!=INF:rotation.y=lerp_angle(rotation.y,rest_yaw,1.-exp(-delta*2.5))
 	if visual.visible:visual.update_animation(velocity.length(),false,delta)
 	visual._rod.visible=false
 	_settle(delta,velocity.length(),near_camera)
