@@ -56,6 +56,7 @@ func _ready() -> void:
 		resident.follow_terrain=false
 		resident.route.assign([Vector3(-24.+i*17,1.4,-7),Vector3(25,1.4,-7),Vector3(29,1.4,-23),Vector3(29,1.4,-7),Vector3(-25,1.4,-7)])
 		add_child(resident);residents.append(resident)
+	var social:=preload("res://scripts/world/village_social.gd").new();social.name="VidaSocial";social.residents=residents;add_child(social)
 	_make_landmarks(stone,wood)
 	for p: Vector2 in [Vector2(-8,35),Vector2(8,18),Vector2(-35,15),Vector2(57,32),Vector2(-55,55)]:world._make_tree(Vector3(p.x,Layout.height(p),p.y),1.5)
 	var excluded: Array[Node3D]=[];excluded.append_array(residents)

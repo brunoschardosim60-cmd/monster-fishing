@@ -73,6 +73,7 @@ func _ready() -> void:
 	traffic=preload("res://scripts/world/maritime_traffic.gd").new();traffic.name="TrafegoMaritimo";add_child(traffic)
 	sea_events=preload("res://scripts/world/sea_events.gd").new();sea_events.name="EventosMarinhos";add_child(sea_events)
 	life=preload("res://scripts/world/coastal_life.gd").new();life.world=self;life.name="CoastalLife";add_child(life)
+	var seabed:=preload("res://scripts/world/seabed_life.gd").new();seabed.name="VidaNoFundo";add_child(seabed)
 
 func safe_spawn() -> Vector3:
 	return Vector3(0.0, 1.55, -17.0)
@@ -103,7 +104,7 @@ func _make_lighting() -> void:
 	env.tonemap_exposure = 1.02
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.08
-	env.adjustment_saturation = 1.22
+	env.adjustment_saturation = 1.0
 	if RenderingServer.get_current_rendering_method() == "forward_plus":
 		get_viewport().use_taa = true
 		env.ssao_enabled = true
@@ -117,8 +118,12 @@ func _make_lighting() -> void:
 	else:
 		env.adjustment_contrast = 1.04
 		env.ambient_light_energy = .8
+		env.glow_enabled = true
+		env.glow_intensity = 0.3
+		env.glow_bloom = 0.0
+		env.glow_hdr_threshold = 1.0
 	env.fog_enabled = true
-	env.fog_light_color = Color("93cfd6")
+	env.fog_light_color = Color("a8bfcf")
 	env.fog_light_energy = 0.7
 	env.fog_density = 0.0023
 	env.fog_sky_affect = 0.04

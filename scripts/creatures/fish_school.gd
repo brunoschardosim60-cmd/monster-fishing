@@ -6,6 +6,8 @@ const Forms=preload("res://scripts/creatures/fish_forms.gd")
 const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const Waves=preload("res://scripts/world/wave_field.gd")
 const ACTIVE_RANGE: float=380.
+## Schools are drawn larger than life so single fish read from the boat camera.
+const SCHOOL_SCALE: float=1.7
 var form_id: String=""
 var species: String=""            # id used by the fishing system
 var home: Vector3=Vector3.ZERO
@@ -44,7 +46,7 @@ func setup(form: String,fish_count: int,at: Vector3,spread: float,depths: Vector
 		pos.append(Vector3(spawn.x,-rng.randf_range(depths.x,depths.y),spawn.z))
 		var heading:=rng.randf()*TAU
 		vel.append(Vector3(cos(heading),0,sin(heading))*cruise*.6)
-		phase.append(rng.randf()*TAU);scale_of.append(body_length*rng.randf_range(.82,1.18)/tail*1.0)
+		phase.append(rng.randf()*TAU);scale_of.append(body_length*rng.randf_range(.82,1.18)/tail*SCHOOL_SCALE)
 		pace.append(rng.randf_range(.88,1.14));layer.append(rng.randf())
 	_write(0.)
 

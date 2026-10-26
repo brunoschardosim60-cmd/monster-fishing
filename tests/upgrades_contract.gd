@@ -23,5 +23,13 @@ func run() -> void:
 	inv.money=500
 	Shop.buy("line",inv,boat,fishing);Shop.buy("hook",inv,boat,fishing)
 	check(absf(fishing.line_bonus-.15)<1e-4 and absf(fishing.hook_bonus-.08)<1e-4,"line and hook bonuses apply after purchase")
+	# Crafting turns materials into goods and bait; missing parts are refused without spending anything.
+	inv.materials=5;inv.goods.tackle=0;inv.goods.canvas=0;inv.bait=0
+	check(Shop.buy("craft_tackle",inv,boat,fishing).begins_with("Montagem concluída") and inv.goods.tackle==1 and inv.materials==3,"crafting a tackle box spends 2 materials")
+	check(Shop.buy("craft_bait",inv,boat,fishing).begins_with("Montagem") and inv.bait==6 and inv.materials==2,"crafting bait turns 1 material into 6 baits")
+	inv.materials=3
+	check(Shop.buy("craft_canvas",inv,boat,fishing).begins_with("Montagem") and inv.goods.canvas==1 and inv.materials==0,"canvas crafting spends its 3 materials")
+	inv.materials=0
+	check(Shop.buy("craft_tackle",inv,boat,fishing).begins_with("Faltam materiais"),"crafting is refused without materials")
 	print("UPGRADES %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

@@ -140,6 +140,7 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: 
 		var item: Dictionary=catalog[key]
 		if item.service!=id:continue
 		var label_text:="%s  —  %d moedas"%[item.title,item.price]
+		if item.has("craft"):label_text=str(item.title)
 		if item.get("tiered",false):
 			var level:int=int(inventory.equipment.get(key,0))
 			label_text="%s  —  nível %d/3 · próximo: %d moedas"%[item.title,level,preload("res://scripts/inventory/harbor_economy.gd").next_cost(key,inventory)] if level<3 else "%s  —  nível máximo"%item.title

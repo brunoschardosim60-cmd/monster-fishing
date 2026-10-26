@@ -127,8 +127,9 @@ func _draw() -> void:
 			draw_circle(ev_at,6.,Color("ffd34e"))
 			draw_string(font,ev_at+Vector2(8,-6),"Kraken" if events.kind=="kraken" else "Baleia",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("ffd34e"))
 	_legend(font)
-	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Vermelho: predadores · Roxo: peixes raros · Dourado: monstro",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
-	draw_string(font,Vector2(25,640),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 6,4 × 6,4 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
+	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Vermelho: predadores",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
+	draw_string(font,Vector2(25,634),"Roxo: peixes raros · Dourado: monstro ativo",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
+	draw_string(font,Vector2(25,648),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 6,4 × 6,4 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
 
 func _screen(polygon: PackedVector2Array) -> PackedVector2Array:
 	var result:=PackedVector2Array()
@@ -160,9 +161,11 @@ func _legend(font: Font) -> void:
 	var entries:=[["harbor","Porto"],["tropical","Tropical"],["frost","Gelada"],["volcanic","Vulcânica"],["mountain","Montanhosa"],["desert","Deserta"],["mystic","Misteriosa"],["storm","Tempestade"],["shadow","Sombria"]]
 	var x:=25.;var y:=MAP_BOTTOM+22.
 	for entry: Array in entries:
+		var width:=font.get_string_size(str(entry[1]),HORIZONTAL_ALIGNMENT_LEFT,-1,11).x+30.
+		if x+width>size.x-20.:x=25.;y+=16.
 		draw_circle(Vector2(x+4,y-4),4.,_region_color(str(entry[0])))
 		draw_string(font,Vector2(x+12,y),str(entry[1]),HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("b9cfd0"))
-		x+=font.get_string_size(str(entry[1]),HORIZONTAL_ALIGNMENT_LEFT,-1,11).x+30.
+		x+=width
 
 func _fill_color(biome: String) -> Color:
 	match biome:

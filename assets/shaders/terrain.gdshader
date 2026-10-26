@@ -2,6 +2,7 @@ shader_type spatial;
 #include "res://assets/shaders/archipelago_coast.gdshaderinc"
 uniform float sea_time=0.;
 uniform float wet_weather=0.;
+uniform float caustic_strength=1.;
 uniform sampler2D sand_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D sand_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
@@ -45,6 +46,10 @@ void fragment(){
 	float wash=.12+.1*sin(sea_time*1.15-wp.x*.12-wp.z*.14);
 	float wet=max(wet_weather*.45,1.-smoothstep(wash,wash+.8,wp.y));
 	ALBEDO=mix(sand,turf,grass)*mix(1.,.52,wet);
+	// Below the waterline the ground is sea sand, not meadow.
+	float submerged=1.-smoothstep(-1.4,-.3,wp.y);
+	ALBEDO=mix(ALBEDO,sand*vec3(.84,.86,.76)*mix(.82,1.06,detail),submerged);
+	grass*=1.-submerged;
 	NORMAL_MAP=texture(sand_normal,wp.xz*.48).rgb;
 	NORMAL_MAP=mix(NORMAL_MAP,texture(ground_normal,wp.xz*.34).rgb,grass);
 	vec3 weights=pow(abs(normalize(wn)),vec3(4.));
@@ -62,5 +67,14 @@ void fragment(){
 	ALBEDO=mix(ALBEDO,vec3(.16,.15,.16),ash*.68);
 	NORMAL_MAP=mix(NORMAL_MAP,texture(rock_normal,wp.xz*.3).rgb,cliff);
 	NORMAL_MAP_DEPTH=.18;
+	// Caustics: two drifting noise layers; where they match, sunlight focuses into thin bright lines.
+	float depth=max(0.,-wp.y);
+	vec2 cuv=wp.xz*.3;
+	float c1=texture(noise_tex,cuv+vec2(TIME*.031,TIME*.017)).r;
+	float c2=texture(noise_tex,cuv*1.31+vec2(-TIME*.024,TIME*.029)).r;
+	float caustic=pow(clamp(1.-abs(c1-c2)*3.2,0.,1.),6.)*smoothstep(.15,.9,depth)*exp(-depth*.09);
+	ALBEDO*=1.+caustic*1.1*caustic_strength;
+	// Water absorbs red first: deeper ground shifts towards blue-green.
+	ALBEDO*=mix(vec3(1.),vec3(.52,.8,.84),smoothstep(0.,10.,depth));
 	ROUGHNESS=mix(.98,.68,wet);
 }
