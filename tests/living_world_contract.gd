@@ -48,8 +48,6 @@ func run() -> void:
 	Economy.buy("reel",game.inventory,game.boat,game.fishing);check(game.fishing.cast_range_bonus==12. and game.inventory.money==295,"Purchased reel extends cast range by 12 m")
 	Economy.buy("hull",game.inventory,game.boat,game.fishing);check(game.boat.hull_protection==.6 and game.inventory.money==215,"Purchased hull protection modifies collision damage")
 	Economy.buy("hull",game.inventory,game.boat,game.fishing);check(game.inventory.money==215,"Accessories cannot be charged twice")
-	check(game.world.village.old_harbor.model.length_m==58. and game.world.village.old_harbor.model.meshes.size()>20,"Complete supplied harbor exists at 58 m scale")
-	check(game.world.village.nearby_service(game.world.village.old_harbor.gear.global_position)=="gear_oldport","Full harbor fishing stall is reachable by proximity interaction")
 	var skeleton: Skeleton3D=game.player.visual.skeleton
 	var animator: AnimationPlayer=game.player.visual.animation
 	animator.play("Walk");animator.advance(0.);animator.seek(.1,true)

@@ -12,8 +12,6 @@ var night_lights: Array[OmniLight3D]=[]
 var moored: Array[Node3D]=[]
 var elapsed: float=0.
 var discovered: Dictionary={}
-var guardian: Node3D
-var old_harbor: Node3D
 var bridge_district: Node3D
 var lighting_fixtures: Node3D
 
@@ -62,8 +60,6 @@ func _ready() -> void:
 	var excluded: Array[Node3D]=[];excluded.append_array(residents)
 	preload("res://scripts/world/static_batch.gd").build(self,excluded)
 	_add_external_scenery()
-	old_harbor=preload("res://scripts/world/old_harbor.gd").new();old_harbor.name="PortoVelhoCompleto";old_harbor.position=Vector3(-110,-.3,-18);add_child(old_harbor)
-	services["gear_oldport"]=old_harbor.gear;services["workshop_oldport"]=old_harbor.workshop
 	bridge_district=preload("res://scripts/world/harbor_bridges.gd").new();bridge_district.name="PontesDoMercado";bridge_district.village=self;add_child(bridge_district)
 	for p: Vector2 in [Vector2(-18,-1),Vector2(17,7),Vector2(-20,20),Vector2(21,36),Vector2(0,24),Vector2(0,47),Vector2(-73,-4),Vector2(-88,-4),Vector2(-105,-4)]:_lamp(Vector3(p.x,1.3,p.y),wood)
 
@@ -121,7 +117,7 @@ func _make_landmarks(stone: Material,wood: Material) -> void:
 		G.box(self,p+Vector3(3,2.,0),Vector3(1.4,.35,.12),wood)
 
 func _add_external_scenery() -> void:
-	for data: Dictionary in [{"path":"res://assets/boats/tugboat.glb","at":Vector3(-34,0,-22),"length":11.,"family":"boat"},{"path":"res://assets/props/goat.glb","at":Vector3(-57,1.25,49),"length":1.25,"family":"original"}]:
+	for data: Dictionary in [{"path":"res://assets/boats/tugboat.glb","at":Vector3(-34,0,-22),"length":11.,"family":"boat"}]:
 		if not ResourceLoader.exists(data.path): continue
 		var wrapper:=preload("res://scripts/assets/external_model.gd").new();wrapper.asset_path=data.path;wrapper.length_m=data.length;wrapper.material_family=data.family;wrapper.waterline_m=.75 if data.family=="boat" else 0.;wrapper.position=data.at
 		add_child(wrapper)
@@ -130,16 +126,6 @@ func _add_external_scenery() -> void:
 			var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0
 			var collider:=CollisionShape3D.new();var hull:=BoxShape3D.new();hull.size=Vector3(3.2,2.,10.)
 			collider.shape=hull;collider.position.y=.5;body.add_child(collider);add_child(body);body.position=data.at
-	guardian=preload("res://scripts/creatures/marine_actor.gd").new();guardian.species=preload("res://data/fish/guardian.tres");guardian.behavior="rest"
-	guardian.position=Vector3(-120,Layout.height(Vector2(-120,316)),316);add_child(guardian)
-	world._make_rock(guardian.position+Vector3(0,.1,0),Vector3(3.,1.3,2.5))
-	var guardian_body:=StaticBody3D.new();guardian_body.collision_layer=1;guardian_body.collision_mask=0
-	var guardian_shape:=CollisionShape3D.new();var torso:=CapsuleShape3D.new();torso.radius=1.1;torso.height=4.5;guardian_shape.shape=torso;guardian_shape.position.y=2.25;guardian_body.add_child(guardian_shape);guardian.add_child(guardian_body)
-	# The complete supplied harbor remains a reusable scene. Its carved roof
-	# modules form the real village above; a tabletop harbor model is in the office.
-	var harbor: Node3D=preload("res://scenes/models/harbor_model.tscn").instantiate()
-	harbor.length_m=2.;harbor.position=Vector3(-17,2.38,29.8);add_child(harbor)
-	G.box(self,Vector3(-17,2.25,29.8),Vector3(2.3,.15,2.3),M.surface("teak",Color("a99164"),2.),true)
 
 func nearby_service(at: Vector3) -> String:
 	for key: String in services:

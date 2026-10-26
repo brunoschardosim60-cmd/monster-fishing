@@ -287,11 +287,6 @@ func interact() -> void:
 		else:
 			hud.notify("Sem capturas para vender.")
 	else:
-		if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:
-			world.village.guardian.observe()
-			if not inventory.encyclopedia.has("island_guardian"):
-				inventory.record({"id":"island_guardian","name":"Guardião da Vigia","rarity":"Lendária","weight":0.,"observation":true})
-			hud.notify("Guardião registrado.");return
 		var service: String=world.village.nearby_service(player.global_position)
 		if not service.is_empty():
 			service_id=service;hud.open_service(service,inventory,boat,world.village.bridge_district.stock);Input.mouse_mode=Input.MOUSE_MODE_VISIBLE;return
@@ -346,7 +341,6 @@ func _interaction_hint() -> String:
 	if not service.is_empty():return "E · %s"%hud.SERVICE_NAMES.get(service.replace("_oldport","").replace("_bridge",""),service)
 	var discovery: Dictionary=world.village.nearby_discovery(player.global_position)
 	if not discovery.is_empty():return "E · "+str(discovery.title)
-	if world.village.guardian!=null and not inventory.encyclopedia.has("island_guardian") and player.global_position.distance_to(world.village.guardian.global_position)<12.:return "E · Observar"
 	return ""
 
 func _on_caught(data: Dictionary) -> void:
