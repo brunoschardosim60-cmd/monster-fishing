@@ -64,7 +64,7 @@ func _living_forest(chunk: Node3D,origin: Vector2) -> void:
 	var kinds: Array[Array]=[[],[],[],[],[]]
 	for i: int in 60:
 		var p:=origin+Vector2(rng.randf_range(2,78),rng.randf_range(2,78));var h:=Layout.height(p);var coast:=Layout.coast(p).x
-		if coast> -9. or h>170. or Layout.path_at(p).x<6. or (p.y<76. and absf(p.x)<110.):continue
+		if coast> -9. or h>170. or Layout.path_at(p).x<6. or (p.y<76. and absf(p.x)<110.) or Layout.in_town(p):continue
 		if p.distance_to(Vector2(-110,310))<28. or p.distance_to(Vector2(-65,490))<22. or p.distance_to(Vector2(-170,210))<14.:continue
 		var slope:=absf(Layout.height(p+Vector2(2,0))-h)+absf(Layout.height(p+Vector2(0,2))-h)
 		if slope>2.2:continue
@@ -77,7 +77,7 @@ func _living_forest(chunk: Node3D,origin: Vector2) -> void:
 		var shape:=CollisionShape3D.new();var cylinder:=CylinderShape3D.new();cylinder.radius=.26*size;cylinder.height=4.*size;shape.shape=cylinder;shape.position=t.origin+Vector3(0,2.*size,0);body.add_child(shape);chunk.add_child(body)
 	for i: int in 70:
 		var p:=origin+Vector2(rng.randf_range(1,79),rng.randf_range(1,79));var h:=Layout.height(p)
-		if Layout.coast(p).x> -16. or Layout.path_at(p).x<3.3 or Layout.plot_ground(p) or h>155.:continue
+		if Layout.coast(p).x> -16. or Layout.path_at(p).x<3.3 or Layout.plot_ground(p) or Layout.in_town(p) or h>155.:continue
 		if p.y<75. and absf(p.x)<110.:continue
 		if absf(Layout.height(p+Vector2.ONE)-h)>1.:continue
 		kinds[4].append(Transform3D(Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3.ONE*rng.randf_range(.7,1.6)),Vector3(p.x-origin.x,h,p.y-origin.y)))

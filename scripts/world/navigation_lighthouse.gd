@@ -18,24 +18,14 @@ var glow: MeshInstance3D
 var glow_material: ShaderMaterial
 const BEAM_LENGTH: float=800.
 const BEAM_HALF_ANGLE: float=3.4
+## Tower height to the gallery floor (m) and paint scheme: faixas (red/white), preto (black/white),
+## pedra (bare granite), amarelo (yellow with a dark lantern). A keeper's house stands at the foot.
+var tower_height: float=30.
+var style: String="faixas"
+var keeper_house: bool=true
 func _ready() -> void:
-	var stone:=M.surface("lime_plaster",Color("ded9c3"),.7)
-	var metal:=G.material(Color("31484d"),.34);metal.metallic=.6
-	G.cylinder(self,Vector3(0,.3,0),3.,.6,stone,3.,48)
-	G.cylinder(self,Vector3(0,7.,0),2.25,13.4,stone,1.5,48)
-	for y: float in [1.1,7.8,12.8]:G.cylinder(self,Vector3(0,y,0),lerpf(2.25,1.5,y/14.)+.08,.22,metal,-1.,48)
-	G.box(self,Vector3(0,1.3,-2.19),Vector3(1.1,2.1,.12),M.surface("weathered_wood",Color("695743"),2.))
-	for y: float in [4.,8.,11.]:G.box(self,Vector3(0,y,-lerpf(2.25,1.5,y/14.)),Vector3(.45,.85,.12),metal)
-	G.cylinder(self,Vector3(0,13.6,0),2.5,.3,metal,2.5,48)
-	for i: int in 32:
-		var a:=float(i)*TAU/32.;var b:=float(i+1)*TAU/32.
-		G.beam(self,Vector3(cos(a)*2.3,13.75,sin(a)*2.3),Vector3(cos(a)*2.3,14.7,sin(a)*2.3),.035,metal)
-		G.beam(self,Vector3(cos(a)*2.3,14.7,sin(a)*2.3),Vector3(cos(b)*2.3,14.7,sin(b)*2.3),.045,metal)
-	for i: int in 8:
-		var a:=float(i)*TAU/8.;G.cylinder(self,Vector3(cos(a)*1.4,14.9,sin(a)*1.4),.05,2.3,metal,-1.,12)
-	G.cylinder(self,Vector3(0,16.3,0),1.9,1.1,metal,.08,48)
-	G.cylinder(self,Vector3(0,17.1,0),.035,1.,metal,-1.,12)
-	rotor=Node3D.new();rotor.position.y=14.9;add_child(rotor)
+	var top:=_build_tower()
+	rotor=Node3D.new();rotor.position.y=top+1.25;add_child(rotor)
 	lens=G.material(Color("fff0bc"));lens.emission_enabled=true; lens.emission=Color("ffedbd");lens.emission_energy_multiplier=5.
 	for y: int in 9:
 		var ring:=TorusMesh.new();ring.inner_radius=.37;ring.outer_radius=.48;ring.rings=32;ring.ring_segments=6;G.mesh_node(rotor,ring,lens,Vector3(0,(y-4)*.13,0))
@@ -53,7 +43,7 @@ func _ready() -> void:
 	preload("res://scripts/world/static_batch.gd").build(self,[rotor])
 	# Added after batching so the flare is never merged into the tower mesh.
 	glow_material=ShaderMaterial.new();glow_material.shader=preload("res://assets/shaders/lighthouse_glow.gdshader");glow_material.set_shader_parameter("tint",Vector3(tint.r,tint.g,tint.b))
-	glow=G.mesh_node(self,QuadMesh.new(),glow_material,Vector3(0,14.9,0));glow.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	glow=G.mesh_node(self,QuadMesh.new(),glow_material,Vector3(0,rotor.position.y,0));glow.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	glow.custom_aabb=AABB(Vector3(-300,-300,-300),Vector3(600,600,600));glow.visibility_range_end=7000.
 func _process(delta: float) -> void:
 	elapsed+=delta;rotor.rotation.y=fposmod(elapsed*TAU/period,TAU)
@@ -72,3 +62,49 @@ func _process(delta: float) -> void:
 		for arm: Node3D in arms:flash=maxf(flash,pow(maxf(0.,(-arm.global_basis.z).dot(to_camera)),40.))
 	lens.emission_energy_multiplier=(2.+flash*18.)*night
 	glow_material.set_shader_parameter("intensity",night*(.16+flash*1.5)*(1.+(haze-1.)*.5))
+
+## Tapered, banded tower with a gallery, glazed lantern room, dome and vent; returns the gallery height.
+func _build_tower() -> float:
+	var h:=tower_height
+	var plaster:=M.surface("lime_plaster",Color("f2efe6"),.7)
+	var stone:=M.surface("granite",Color("b9b6a8"),1.)
+	var metal:=G.material(Color("2a3a3f"),.34);metal.metallic=.6
+	var colours: Array[Material]
+	match style:
+		"preto":colours=[plaster,G.material(Color("1d1f22"),.6)]
+		"pedra":colours=[stone,stone]
+		"amarelo":colours=[M.surface("lime_plaster",Color("f2c84b"),.7),M.surface("lime_plaster",Color("f2c84b"),.7)]
+		_:colours=[plaster,M.surface("lime_plaster",Color("c0392b"),.7)]
+	G.cylinder(self,Vector3(0,.6,0),4.2,1.2,stone,4.4,48)
+	var bands:=8
+	for i: int in bands:
+		var y0:=1.2+(h-1.2)*float(i)/bands;var y1:=1.2+(h-1.2)*float(i+1)/bands
+		var r0:=lerpf(3.2,2.,float(i)/bands);var r1:=lerpf(3.2,2.,float(i+1)/bands)
+		G.cylinder(self,Vector3(0,(y0+y1)*.5,0),r1,y1-y0+.02,colours[i%2],r0,40)
+	G.box(self,Vector3(0,2.,-3.15),Vector3(1.3,2.6,.3),M.surface("teak",Color("5a3e2a"),1.2))
+	for i: int in 5:
+		var y:=4.+float(i)*(h-8.)/4.
+		var r:=lerpf(3.2,2.,(y-1.2)/(h-1.2))
+		G.box(self,Vector3(0,y,-r-.02),Vector3(.5,1.,.1),G.material(Color("26343d"),.2))
+	# Gallery and railing.
+	G.cylinder(self,Vector3(0,h+.15,0),3.2,.3,metal,3.,48)
+	for i: int in 36:
+		var a:=float(i)*TAU/36.;var b:=float(i+1)*TAU/36.
+		G.beam(self,Vector3(cos(a)*3.,h+.3,sin(a)*3.),Vector3(cos(a)*3.,h+1.3,sin(a)*3.),.035,metal)
+		G.beam(self,Vector3(cos(a)*3.,h+1.3,sin(a)*3.),Vector3(cos(b)*3.,h+1.3,sin(b)*3.),.045,metal)
+	# Lantern room: glass between thin mullions, a copper dome, a ventilator ball and a lightning rod.
+	var glass:=G.material(Color("cfe8ee"),.05);glass.metallic=.2;glass.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;glass.albedo_color.a=.35
+	G.cylinder(self,Vector3(0,h+.55,0),1.75,.5,metal,1.75,32)
+	G.cylinder(self,Vector3(0,h+1.95,0),1.6,2.3,glass,1.6,32)
+	for i: int in 10:
+		var a:=float(i)*TAU/10.
+		G.cylinder(self,Vector3(cos(a)*1.6,h+1.95,sin(a)*1.6),.045,2.3,metal,-1.,8)
+	var copper:=G.material(Color("3f6b5a"),.5);copper.metallic=.4
+	G.cylinder(self,Vector3(0,h+3.5,0),1.9,.8,copper,.25,32)
+	G.sphere(self,Vector3(0,h+4.05,0),Vector3.ONE*.42,copper,16)
+	G.cylinder(self,Vector3(0,h+4.9,0),.03,1.4,metal,-1.,8)
+	if keeper_house:
+		var rng:=RandomNumberGenerator.new();rng.seed=int(absf(position.x)+absf(position.z))
+		var house:=preload("res://scripts/world/town_house.gd").build("costeira",6.5,5.,rng,1.)
+		house.position=Vector3(-7.5,0.,-3.5);house.rotation.y=PI*.5;add_child(house)
+	return h

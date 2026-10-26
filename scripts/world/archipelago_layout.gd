@@ -91,6 +91,13 @@ static func region_at(p: Vector2) -> Dictionary:
 			distance=candidate;closest=i
 	return region_for_lobe(closest)
 
+## Town districts on the main island (x, z, radius). Trees keep out of them; town_planner builds them.
+const TOWN: Array[Vector3]=[Vector3(-160,30,62),Vector3(165,22,58),Vector3(205,112,36),Vector3(-80,108,26),Vector3(-128,-24,30)]
+static func in_town(p: Vector2) -> bool:
+	for t: Vector3 in TOWN:
+		if p.distance_to(Vector2(t.x,t.y))<t.z+6.:return true
+	return false
+
 static func plot_ground(p: Vector2) -> bool:
 	for plot: Vector4 in PLOTS:
 		if absf(p.x-plot.x)<plot.z*.5+2. and absf(p.y-plot.y)<plot.w*.5+2.:return true

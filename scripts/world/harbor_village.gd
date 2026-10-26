@@ -14,6 +14,7 @@ var elapsed: float=0.
 var discovered: Dictionary={}
 var bridge_district: Node3D
 var lighting_fixtures: Node3D
+var town: Node3D
 
 func _ready() -> void:
 	lighting_fixtures=Node3D.new();add_child(lighting_fixtures)
@@ -61,6 +62,8 @@ func _ready() -> void:
 	preload("res://scripts/world/static_batch.gd").build(self,excluded)
 	_add_external_scenery()
 	bridge_district=preload("res://scripts/world/harbor_bridges.gd").new();bridge_district.name="PontesDoMercado";bridge_district.village=self;add_child(bridge_district)
+	# The town grows across the main island: districts, squares, streets, stilt houses and a stone bridge.
+	town=preload("res://scripts/world/town_planner.gd").new();town.name="Cidade";town.village=self;add_child(town)
 	for p: Vector2 in [Vector2(-18,-1),Vector2(17,7),Vector2(-20,20),Vector2(21,36),Vector2(0,24),Vector2(0,47),Vector2(-73,-4),Vector2(-88,-4),Vector2(-105,-4)]:_lamp(Vector3(p.x,1.3,p.y),wood)
 
 	preload("res://scripts/world/static_batch.gd").build(lighting_fixtures,[])

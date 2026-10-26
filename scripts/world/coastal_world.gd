@@ -24,6 +24,7 @@ var traffic: Node3D
 var sea_events: Node3D
 var lighthouse: Node3D
 var harbor_lighthouse: Node3D
+var remote_lighthouses: Node3D
 
 var rng := RandomNumberGenerator.new()
 var gulls: Array[Node3D] = []
@@ -58,7 +59,8 @@ func _ready() -> void:
 	_make_dock()
 	village=preload("res://scripts/world/harbor_village.gd").new();village.world=self;village.name="VilaDaAurora";add_child(village)
 	_make_lighthouse(Vector3(-65,Layout.height(Vector2(-65,490)),490))
-	harbor_lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();harbor_lighthouse.world=self;harbor_lighthouse.position=Vector3(174,Layout.height(Vector2(174,96)),96);harbor_lighthouse.name="FarolDaEntrada";harbor_lighthouse.period=8.;harbor_lighthouse.tint=Color("ffd9a0");add_child(harbor_lighthouse)
+	harbor_lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();harbor_lighthouse.world=self;harbor_lighthouse.position=Vector3(174,Layout.height(Vector2(174,96)),96);harbor_lighthouse.name="FarolDaEntrada";harbor_lighthouse.tower_height=32.;harbor_lighthouse.style="faixas";harbor_lighthouse.period=8.;harbor_lighthouse.tint=Color("ffd9a0");add_child(harbor_lighthouse)
+	remote_lighthouses=preload("res://scripts/world/remote_lighthouses.gd").new();remote_lighthouses.world=self;remote_lighthouses.name="FaroisDistantes";add_child(remote_lighthouses)
 	_make_sign()
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
 		_make_buoy(p)
@@ -693,7 +695,7 @@ func _make_trail_walkers() -> Node3D:
 	return holder
 
 func _make_lighthouse(pos: Vector3) -> void:
-	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.period=16.;lighthouse.beam_angles=[0.,26.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");add_child(lighthouse)
+	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.tower_height=24.;lighthouse.style="preto";lighthouse.period=16.;lighthouse.beam_angles=[0.,26.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");add_child(lighthouse)
 
 func _make_wildlife() -> void:
 	var white := G.material(Color("eee6cf"))

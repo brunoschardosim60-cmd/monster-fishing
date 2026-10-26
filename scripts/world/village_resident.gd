@@ -59,7 +59,8 @@ func _process(delta: float) -> void:
 	var diff:=target-position;diff.y=0.
 	var desired:=Vector3.ZERO
 	if meeting:
-		if diff.length()>TALK_RANGE*.6:desired=diff.normalized()*minf(speed,sqrt(2.*1.6*diff.length()))
+		# A resting villager waits out the pause before walking over.
+		if wait<=0. and diff.length()>TALK_RANGE*.6:desired=diff.normalized()*minf(speed,sqrt(2.*1.6*diff.length()))
 	elif wait<=0. and diff.length()>.15:
 		desired=diff.normalized()*minf(speed,sqrt(2.*1.6*diff.length()))
 	elif wait<=0.:
