@@ -9,9 +9,9 @@ static var _scenes: Dictionary={}
 static var _bounds: Dictionary={}
 static var _fixed: Dictionary={}
 
-## The Polygonal Mind exports carry a toon "outline" shell (inverted hull, meant to draw only its
-## back faces) and a high metallic/specular setup that reads as white in Godot. Fix once per model:
-## the shell renders back faces only, and surfaces get a painted, non-metallic response.
+## The Polygonal Mind exports carry a toon "outline" shell, a logo decal and a high metallic/specular
+## setup that reads as white in Godot. Fix once per model: hide the shell and the logo, and give the
+## surfaces a painted, non-metallic response.
 static func _fix_materials(instance: Node3D) -> void:
 	for node: Node in instance.find_children("*","MeshInstance3D",true,false):
 		var mesh:=(node as MeshInstance3D).mesh
@@ -19,9 +19,11 @@ static func _fix_materials(instance: Node3D) -> void:
 		for i: int in mesh.get_surface_count():
 			var mat:=mesh.surface_get_material(i) as StandardMaterial3D
 			if mat==null:continue
-			if "outline" in mat.resource_name.to_lower():
-				mat.cull_mode=BaseMaterial3D.CULL_FRONT;mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;mat.albedo_color=Color(.08,.07,.06)
-				mat.albedo_texture=null
+			if "logo" in mat.resource_name.to_lower():
+				mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.albedo_color=Color(1,1,1,0);mat.emission_enabled=false
+			elif "outline" in mat.resource_name.to_lower():
+				# The toon outline shell would cover the model in this renderer; drop it.
+				mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.albedo_color=Color(0,0,0,0);mat.albedo_texture=null
 			else:
 				mat.metallic=0.;mat.metallic_specular=.3;mat.roughness=maxf(mat.roughness,.75)
 
@@ -41,6 +43,10 @@ static func spawn(parent: Node3D,model: String,at: Vector3,size: float,yaw: floa
 	var holder:=Node3D.new();holder.name="CC0_%s_%d"%[model.trim_prefix("nature:"),parent.get_child_count()];holder.position=at;holder.rotation.y=yaw
 	parent.add_child(holder);holder.add_child(instance)
 	if first_use:_fix_materials(instance);_fixed[path]=true
+	# The exports keep their collision proxies and a logo decal as visible meshes: hide them.
+	for node: Node in instance.find_children("*","MeshInstance3D",true,false):
+		var lower:=String(node.name).to_lower()
+		if "collider" in lower or lower=="logo":(node as MeshInstance3D).visible=false
 	var box: AABB=_measure(path,instance)
 	var span:=maxf(box.size.x,box.size.z) if by_width else box.size.y
 	var factor:=size/maxf(span,.0001)
@@ -57,7 +63,7 @@ static func _measure(path: String,instance: Node3D) -> AABB:
 	var first:=true;var box:=AABB()
 	for node: Node in instance.find_children("*","MeshInstance3D",true,false):
 		var mi:=node as MeshInstance3D
-		if mi.mesh==null:continue
+		if mi.mesh==null or not mi.visible:continue
 		# Transform relative to the model root, so this also works before it enters the scene tree.
 		var relative:=Transform3D.IDENTITY;var walker: Node=mi
 		while walker!=instance and walker is Node3D:

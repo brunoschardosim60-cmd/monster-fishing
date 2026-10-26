@@ -135,7 +135,7 @@ func _dress(record: Dictionary,water: bool,radius: float) -> void:
 			var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*(PLAZA_R+3.2)
 			if on_paving(q):continue
 			var y:=Layout.height(q)
-			Props.solid(Props.spawn(self,"Booth_Food01" if stalls==0 else "Booth_Food02",Vector3(q.x,y,q.y),4.2,atan2(-(centre-q).x,-(centre-q).y),true,260.),Vector3(3.6,2.5,2.4))
+			Props.solid(Props.spawn(self,"Table_Dinner",Vector3(q.x,y,q.y),2.6,atan2(-(centre-q).x,-(centre-q).y),true,200.),Vector3(2.4,1.,1.))
 			var side:=Vector2(-sin(a),cos(a))*3.2
 			Props.spawn(self,"Barrel",Vector3(q.x+side.x,Layout.height(q+side),q.y+side.y),1.05,_rng.randf()*TAU)
 			stalls+=1
@@ -144,7 +144,7 @@ func _dress(record: Dictionary,water: bool,radius: float) -> void:
 		var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*_rng.randf_range(0.,radius+20.)
 		var c:=Layout.coast(q).x
 		if c<-4. or c>.5:continue
-		if k%4==0:Props.spawn(self,"Rock_01_Art" if k%8==0 else "Rock_03_Art",Vector3(q.x,Layout.height(q)-.3,q.y),_rng.randf_range(.8,1.8),_rng.randf()*TAU,false,300.)
+		if k%4==0:Props.spawn(self,"nature:Rock_Medium_1" if k%8==0 else "nature:Rock_Medium_2",Vector3(q.x,Layout.height(q)-.3,q.y),_rng.randf_range(.8,1.8),_rng.randf()*TAU,false,300.)
 		else:Props.spawn(self,"Shell01",Vector3(q.x,Layout.height(q),q.y),.18,_rng.randf()*TAU,false,60.)
 	# Woodland edge: logs and mushrooms for the valley cabins.
 	if String(record.name)=="Vale do Meio":
