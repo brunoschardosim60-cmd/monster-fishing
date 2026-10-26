@@ -107,5 +107,28 @@ func _run() -> void:
 	check(top - ground > 1.0 and top - ground < 1.6, "jump height stays within 1.0-1.6 m (%.2f)" % (top - ground))
 	check(fall > 0 and fall < rise, "falling is firmer than rising (%d frames up, %d down)" % [rise, fall])
 	check(player.is_on_floor(), "player lands back on the floor")
+	# Walking slowly with Ctrl.
+	Input.action_press("move_forward"); Input.action_press("fly_down")
+	await frames(30)
+	check(absf(planar.call() - player.WALK_SPEED) < .1, "holding Ctrl walks slowly (%.2f m/s)" % planar.call())
+	Input.action_release("move_forward"); Input.action_release("fly_down")
+	await frames(30)
+	# A 0.3 m step ahead is walked over, a 1.2 m ledge is climbed with a jump.
+	var at: Vector3 = player.global_position
+	player.yaw = 0.
+	var add_box := func(size: Vector3, centre: Vector3) -> void:
+		var body := StaticBody3D.new(); var shape := CollisionShape3D.new(); var b := BoxShape3D.new(); b.size = size
+		shape.shape = b; body.add_child(shape); body.position = centre; root.add_child(body)
+	add_box.call(Vector3(6, .3, 3), Vector3(at.x, at.y + .15, at.z - 3.))
+	add_box.call(Vector3(6, 1.2, 3), Vector3(at.x, at.y + .6, at.z - 9.))
+	Input.action_press("move_forward")
+	await frames(40)
+	check(player.global_position.y > at.y + .25 and player.global_position.z < at.z - 1.8, "walks up a 0.3 m step without stopping (y %.2f)" % (player.global_position.y - at.y))
+	await frames(40)
+	var before_climb: float = player.global_position.y
+	Input.parse_input_event(press); await frames(2); Input.parse_input_event(release)
+	await frames(70)
+	Input.action_release("move_forward")
+	check(player.global_position.y > at.y + 1.1, "jumping at a 1.2 m ledge climbs onto it (y %.2f)" % (player.global_position.y - at.y))
 	print("LOCOMOTION %d checks / %d failures" % [checks, failures])
 	quit(1 if failures > 0 else 0)
