@@ -15,6 +15,7 @@ var jellies: Array[Dictionary]=[]
 var elapsed: float=0.
 var _rng:=RandomNumberGenerator.new()
 var _jelly_glow: Array[StandardMaterial3D]=[]
+var _frame: int=0
 
 ## spots: shallow-water points [Vector3(x, floor_y, z)] near the islands.
 func populate(shallow: Array[Vector3],open_points: Array[Vector3]) -> void:
@@ -114,12 +115,25 @@ func _physics_process(delta: float) -> void:
 	var boat: Vector3=game.boat.global_position
 	var boat_fast: bool=absf(float(game.boat.speed))>4.
 	var feed: Array=ecosystem.feed_targets()
-	for t: Dictionary in turtles:_turtle(t,delta,player,boat,boat_fast,feed)
-	for r: Dictionary in rays:_ray(r,delta,player,boat,boat_fast)
+	_frame+=1
+	# Animals far from the player move at half rate (alternating frames); close ones every frame.
+	for i: int in turtles.size():
+		var t: Dictionary=turtles[i]
+		if (t.node as Node3D).position.distance_to(player)>70.:
+			if (i+_frame)%2==1:continue
+			_turtle(t,delta*2.,player,boat,boat_fast,feed)
+		else:_turtle(t,delta,player,boat,boat_fast,feed)
+	for i: int in rays.size():
+		var r: Dictionary=rays[i]
+		if (r.node as Node3D).position.distance_to(player)>70.:
+			if (i+_frame)%2==0:continue
+			_ray(r,delta*2.,player,boat,boat_fast)
+		else:_ray(r,delta,player,boat,boat_fast)
 	var hour: float=float(game.world.ocean.hour)
 	var glow:=.25+(1.8 if hour<6. or hour>19.5 else 0.)
 	for m: StandardMaterial3D in _jelly_glow:m.emission_energy_multiplier=glow
-	for j: Dictionary in jellies:_jelly(j,delta,player)
+	if _frame%2==0:
+		for j: Dictionary in jellies:_jelly(j,delta*2.,player)
 
 func _turtle(t: Dictionary,delta: float,player: Vector3,boat: Vector3,boat_fast: bool,feed: Array) -> void:
 	var node: Node3D=t.node

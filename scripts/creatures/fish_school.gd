@@ -23,6 +23,11 @@ var shore_margin: float=18.
 var feed_time: float=0.
 ## Highest seabed level around home (shallow schools), so fish never sink into a sandbank.
 var floor_limit: float=-INF
+## Coastline sample per fish (distance, normal), refreshed a few fish per frame: Layout.coast is costly.
+var shore_cache: Array[Vector4]=[]
+## Distance from the player inside which the school is simulated and drawn (shallow shoals are only seen up close).
+var active_range: float=ACTIVE_RANGE
+var _tick: int=0
 var count: int=12
 var pos: PackedVector3Array=PackedVector3Array()
 var vel: PackedVector3Array=PackedVector3Array()
@@ -49,11 +54,13 @@ func setup(form: String,fish_count: int,at: Vector3,spread: float,depths: Vector
 	var tail:=1.+float(Forms.FORMS[form].get("tail_len",.17))
 	for i: int in count:
 		var spawn:=at+Vector3(rng.randf_range(-1.,1.),0,rng.randf_range(-1.,1.))*minf(spread*.35,body_length*4.+3.)
+		if Layout.coast(Vector2(spawn.x,spawn.z)).x<1.5:spawn=at+Vector3(rng.randf_range(-.5,.5),0,rng.randf_range(-.5,.5))
 		pos.append(Vector3(spawn.x,-rng.randf_range(depths.x,depths.y),spawn.z))
 		var heading:=rng.randf()*TAU
 		vel.append(Vector3(cos(heading),0,sin(heading))*cruise*.6)
 		phase.append(rng.randf()*TAU);scale_of.append(body_length*rng.randf_range(.82,1.18)/tail*SCHOOL_SCALE)
 		pace.append(rng.randf_range(.88,1.14));layer.append(rng.randf())
+		shore_cache.append(Layout.coast(Vector2(spawn.x,spawn.z)))
 	_write(0.)
 
 func _write(_delta: float) -> void:
@@ -70,7 +77,7 @@ func _write(_delta: float) -> void:
 
 ## ctx: boat (Vector3), boat_speed, player (Vector3), line_target (Vector3), line_active (bool), threats (Array[Vector3])
 func step(delta: float,ctx: Dictionary) -> void:
-	var near:=Vector2(center.x-ctx.player.x,center.z-ctx.player.z).length()<ACTIVE_RANGE+radius
+	var near:=Vector2(center.x-ctx.player.x,center.z-ctx.player.z).length()<active_range+radius
 	mmi.visible=near
 	if not near:return
 	elapsed+=delta
@@ -102,6 +109,7 @@ func step(delta: float,ctx: Dictionary) -> void:
 	center=mean_pos
 	var surface_at_center:=Waves.height_at(Vector3(center.x,0,center.z))
 	var tight:=1.6 if mode=="fuga" else 1.
+	_tick+=1
 	for i: int in count:
 		var p:=pos[i];var v:=vel[i]
 		var steer:=Vector3.ZERO
@@ -112,7 +120,9 @@ func step(delta: float,ctx: Dictionary) -> void:
 		steer+=(mean_vel-v)*.9
 		# Separation from close neighbours.
 		var clear:=body_length*.9
-		for j: int in count:
+		# Separation from close neighbours (a sliding window of the school is enough and keeps it cheap).
+		for k: int in mini(count-1,8):
+			var j:=(i+1+k*maxi(1,count/9))%count
 			if j==i:continue
 			var off:=p-pos[j]
 			var d2:=off.length_squared()
@@ -121,20 +131,22 @@ func step(delta: float,ctx: Dictionary) -> void:
 		var g:=goal-p;g.y=0.
 		if g.length()>1.:steer+=g.normalized()*cruise*.75
 		# Stay off the shore: push along the coast normal when close.
-		var shore:=Layout.coast(Vector2(p.x,p.z))
+		if (i+_tick)%6==0:shore_cache[i]=Layout.coast(Vector2(p.x,p.z))
+		var shore:=shore_cache[i]
 		if shore.x<shore_margin:steer+=Vector3(shore.y,0,shore.z)*cruise*(shore_margin-shore.x)*.35
 		# Depth layer: each fish has a preferred level that slowly breathes.
 		var want:=-lerpf(depth_range.x,depth_range.y,.5+.5*sin(elapsed*.22+phase[i]*1.3)*(.4+layer[i]*.6))
 		if surface_pull>0. and not predator:want=lerpf(want,-.35-layer[i]*.5,surface_pull)
-		var floor_y:=-(Waves.depth_at(Vector2(p.x,p.z))-1.2)
+		var floor_y:=-(maxf(0.,.8+shore.x*.65)-1.2)
 		want=maxf(want,maxf(floor_y,floor_limit))
 		steer.y+=(want-p.y)*1.4
 		var limit:=cruise*pace[i]*panic
 		v=v.move_toward(v+steer,delta*(2.6*panic)).limit_length(limit)
 		var next:=p+v*delta
-		if Layout.coast(Vector2(next.x,next.z)).x<minf(3.,shore_margin*.4):
+		# Distance to shore after the move, from the cached sample and the coast normal.
+		if shore.x+Vector2(next.x-p.x,next.z-p.z).dot(Vector2(shore.y,shore.z))<minf(3.,shore_margin*.4):
 			v=Vector3(shore.y,0,shore.z)*limit*.8;next=p+v*delta
-		next.y=minf(next.y,Waves.height_at(Vector3(next.x,0,next.z))-body_length*.25-.15)
+		next.y=minf(next.y,surface_at_center-body_length*.25-.25)
 		pos[i]=next;vel[i]=v
 		phase[i]+=delta*(5.+v.length()*(8./maxf(body_length,.6)))*(1. if body_length<1.8 else .55)
 	_write(delta)

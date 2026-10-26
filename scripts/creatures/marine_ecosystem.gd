@@ -36,6 +36,7 @@ var frenzy: float=0.
 var shallow_spots: Array[Vector3]=[]
 var shallow_schools: Array[Node3D]=[]
 var creatures: Node3D
+var _frame: int=0
 func _ready() -> void:
 	for data: Array in [[Vector3(-28,-3,-66),"mackerel"],[Vector3(250,-4,-170),"tuna"],[Vector3(480,-4,100),"tuna"]]:
 		var school:={"origin":data[0],"center":data[0],"species":data[1],"members":[],"velocities":[],"mode":"cardume"}
@@ -110,10 +111,10 @@ func _build_shallow_life() -> void:
 		var forms: Array[String]=["manjuba","donzela","manjuba","sargo","cirurgiao","donzela"]
 		var form:=forms[i%forms.size()]
 		var school:=School.new();add_child(school);seed_value+=13
-		var count:=34 if form=="manjuba" else 14
+		var count:=26 if form=="manjuba" else 14
 		var deepest:=minf(1.5,-spot.y-.6)
 		school.setup(form,count,Vector3(spot.x,0,spot.z),14.,Vector2(.3,deepest),seed_value)
-		school.shore_margin=5.;school.floor_limit=spot.y+.35
+		school.shore_margin=5.;school.floor_limit=spot.y+.35;school.active_range=170.
 		fish_schools.append(school);shallow_schools.append(school)
 	var offshore: Array[Vector3]=[]
 	for data: Vector2 in [Vector2(-420,-260),Vector2(620,-120),Vector2(260,-620),Vector2(-300,820),Vector2(980,520),Vector2(-820,260)]:
@@ -196,7 +197,15 @@ func _physics_process(delta: float) -> void:
 	for hunter: Node3D in predators:threats.append(hunter.center)
 	_update_feed(delta)
 	var ctx:={"boat":game.boat.position,"boat_speed":game.boat.speed,"player":game.player.global_position,"line_target":game.fishing_visual.target,"line_active":game.fishing.active(),"threats":threats,"feed":feed_targets(),"frenzy":frenzy}
-	for school: Node3D in fish_schools:school.step(delta,ctx)
+	# Shoals far from the player update at half rate (alternating), the nearest ones every frame.
+	_frame+=1
+	var me: Vector3=game.player.global_position
+	for si: int in fish_schools.size():
+		var school: Node3D=fish_schools[si]
+		if Vector2(school.center.x-me.x,school.center.z-me.z).length()>70.:
+			if (si+_frame)%2==1:continue
+			school.step(delta*2.,ctx)
+		else:school.step(delta,ctx)
 	for s: int in schools.size():
 		var school:=schools[s];var target: Vector3=school.origin+Vector3(cos(elapsed*.07+s)*10.,0,sin(elapsed*.07+s)*10.)
 		school.mode="cardume"

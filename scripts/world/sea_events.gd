@@ -227,7 +227,7 @@ func _shooting_star() -> void:
 	var dir:=Vector3(rng.randf_range(-1.,1.),-.35,rng.randf_range(-1.,1.)).normalized()
 	var streak:=MeshInstance3D.new();var box:=BoxMesh.new();box.size=Vector3(.12,.12,9.);streak.mesh=box
 	var mat:=StandardMaterial3D.new();mat.albedo_color=Color(1.,.97,.85);mat.emission_enabled=true;mat.emission=Color(1.,.95,.8);mat.emission_energy_multiplier=4.;streak.material_override=mat
-	streak.position=from;streak.look_at(from+dir,Vector3.UP);add_child(streak)
+	add_child(streak);streak.look_at_from_position(from,from+dir,Vector3.UP)
 	var tween:=create_tween();tween.tween_property(streak,"position",from+dir*70.,1.2);tween.tween_callback(streak.queue_free)
 
 func _update_rain() -> void:

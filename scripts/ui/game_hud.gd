@@ -134,7 +134,7 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: 
 	var scroll:=ScrollContainer.new();scroll.custom_minimum_size=Vector2(540,530);service_panel.add_child(scroll)
 	var box:=VBoxContainer.new();box.size_flags_horizontal=Control.SIZE_EXPAND_FILL;box.add_theme_constant_override("separation",10);scroll.add_child(box)
 	_label(box,str(SERVICE_NAMES.get(id,id)).to_upper(),25,GOLD)
-	_label(box,"%d moedas · %d iscas · %d materiais\nCasco: %d%% · Capturas no armazém: %d"%[inventory.money,inventory.bait,inventory.materials,int(boat.integrity*100.),inventory.stored_catches.size()],16,CREAM)
+	_label(box,"%d moedas · %d iscas · %d ração · %d covos · %d materiais\nCasco: %d%% · Capturas no armazém: %d"%[inventory.money,inventory.bait,inventory.feed,inventory.traps,inventory.materials,int(boat.integrity*100.),inventory.stored_catches.size()],16,CREAM)
 	var catalog: Dictionary=preload("res://scripts/inventory/harbor_economy.gd").CATALOG
 	for key: String in catalog:
 		var item: Dictionary=catalog[key]
