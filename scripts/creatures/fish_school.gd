@@ -17,6 +17,12 @@ var depth_range: Vector2=Vector2(2.,10.)
 var predator: bool=false          # scatters other schools within `scare_radius`
 var scare_radius: float=34.
 var mode: String="cardume"
+## Distance from the shore inside which the school is pushed back out. Shallow-water schools use a few metres.
+var shore_margin: float=18.
+## Seconds this school has been gathered at a feed point (predators arrive after a while).
+var feed_time: float=0.
+## Highest seabed level around home (shallow schools), so fish never sink into a sandbank.
+var floor_limit: float=-INF
 var count: int=12
 var pos: PackedVector3Array=PackedVector3Array()
 var vel: PackedVector3Array=PackedVector3Array()
@@ -74,6 +80,15 @@ func step(delta: float,ctx: Dictionary) -> void:
 	var panic:=1.
 	if ctx.line_active and species!="" and center.distance_to(ctx.line_target)<42. and not predator:
 		goal=ctx.line_target;mode="isca"
+	# Feed thrown in the water draws small fish fast and up to the surface; a long frenzy attracts predators.
+	var surface_pull:=0.
+	var feed: Array=ctx.get("feed",[])
+	var fed:=false
+	for point: Vector3 in feed:
+		var gap:=Vector2(center.x-point.x,center.z-point.z).length()
+		if (not predator and gap<75.) or (predator and gap<140. and float(ctx.get("frenzy",0.))>12.):
+			goal=point;mode="racao";panic=1.5 if gap>8. else 1.;surface_pull=1.;fed=true;break
+	feed_time=feed_time+delta if fed else 0.
 	var boat_gap:=Vector2(center.x-ctx.boat.x,center.z-ctx.boat.z).length()
 	if absf(ctx.boat_speed)>4. and boat_gap<38.:
 		goal=center+Vector3(center.x-ctx.boat.x,0,center.z-ctx.boat.z).normalized()*30.;mode="fuga";panic=2.1
@@ -107,16 +122,17 @@ func step(delta: float,ctx: Dictionary) -> void:
 		if g.length()>1.:steer+=g.normalized()*cruise*.75
 		# Stay off the shore: push along the coast normal when close.
 		var shore:=Layout.coast(Vector2(p.x,p.z))
-		if shore.x<18.:steer+=Vector3(shore.y,0,shore.z)*cruise*(18.-shore.x)*.35
+		if shore.x<shore_margin:steer+=Vector3(shore.y,0,shore.z)*cruise*(shore_margin-shore.x)*.35
 		# Depth layer: each fish has a preferred level that slowly breathes.
 		var want:=-lerpf(depth_range.x,depth_range.y,.5+.5*sin(elapsed*.22+phase[i]*1.3)*(.4+layer[i]*.6))
+		if surface_pull>0. and not predator:want=lerpf(want,-.35-layer[i]*.5,surface_pull)
 		var floor_y:=-(Waves.depth_at(Vector2(p.x,p.z))-1.2)
-		want=maxf(want,floor_y)
+		want=maxf(want,maxf(floor_y,floor_limit))
 		steer.y+=(want-p.y)*1.4
 		var limit:=cruise*pace[i]*panic
 		v=v.move_toward(v+steer,delta*(2.6*panic)).limit_length(limit)
 		var next:=p+v*delta
-		if Layout.coast(Vector2(next.x,next.z)).x<3.:
+		if Layout.coast(Vector2(next.x,next.z)).x<minf(3.,shore_margin*.4):
 			v=Vector3(shore.y,0,shore.z)*limit*.8;next=p+v*delta
 		next.y=minf(next.y,Waves.height_at(Vector3(next.x,0,next.z))-body_length*.25-.15)
 		pos[i]=next;vel[i]=v

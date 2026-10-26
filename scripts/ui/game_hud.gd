@@ -125,7 +125,7 @@ func _ready() -> void:
 	_set_hud(false)
 
 func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: Array[Dictionary]=[]) -> void:
-	id=id.replace("_oldport","").replace("_bridge","")
+	id=id.get_slice("_",0)
 	if service_panel!=null:service_panel.free()
 	service_open=true
 	service_panel=_panel(root,Vector2.ZERO,Vector2(580,570));service_panel.mouse_filter=Control.MOUSE_FILTER_STOP
@@ -269,7 +269,7 @@ func show_pause() -> void:
 	ledger.hide()
 	overlay_title.text = "O mar\npode esperar."
 	overlay_title.add_theme_font_size_override("font_size", 58)
-	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas"
+	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)"
 	play_button.text = "CONTINUAR  →"
 	return_button.show()
 	overlay.show()

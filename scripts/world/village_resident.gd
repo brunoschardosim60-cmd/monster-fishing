@@ -21,9 +21,12 @@ var talk_text: String=""
 var meet_with: Node3D
 var meet_timer: float=0.
 var bubble: Label3D
+## Workers and shopkeepers leave the survivalist backpack at home.
+var hide_backpack: bool=false
 func _ready() -> void:
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
 	if look_id>=0:visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
+	if hide_backpack and visual.get("backpack")!=null:visual.backpack.visible=false
 	if not route.is_empty(): position=route[0]
 func start_talk(partner: Node3D,text: String,duration: float) -> void:
 	talk_partner=partner;talk_text=text;talk_timer=duration;meet_with=null;meet_timer=0.

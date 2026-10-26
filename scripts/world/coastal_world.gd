@@ -152,14 +152,21 @@ func _make_ocean() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = OCEAN
 	ocean_material = mat
+	mat.set_shader_parameter("cloud_tex", load("res://assets/textures/cloud_noise.png"))
 	mat.set_shader_parameter("normal_tex", load("res://assets/textures/water_normal.png"))
 	mat.set_shader_parameter("foam_tex", load("res://assets/textures/foam_noise.png"))
 	var water := G.mesh_node(water_root, plane, mat, Vector3.ZERO)
 	water.name = "Ocean"
-	water.custom_aabb=AABB(Vector3(-240,-8,-240),Vector3(480,16,480))
+	water.custom_aabb=AABB(Vector3(-240,-12,-240),Vector3(480,24,480))
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# Four coarse horizon strips avoid doubling the fine mesh under the bay.
-	for data: Vector4 in [Vector4(0,-6120,24000,11760),Vector4(0,6120,24000,11760),Vector4(-6120,0,11760,480),Vector4(6120,0,11760,480)]:
+	# A mid ring (8 m cells) carries the long swells out to 1.2 km; four coarse strips reach the horizon.
+	for data: Vector4 in [Vector4(0,-720,2400,960),Vector4(0,720,2400,960),Vector4(-720,0,960,480),Vector4(720,0,960,480)]:
+		var mid_mesh:=PlaneMesh.new();mid_mesh.size=Vector2(data.z,data.w)
+		mid_mesh.subdivide_width=int(data.z/8.);mid_mesh.subdivide_depth=int(data.w/8.)
+		var mid_water:=G.mesh_node(water_root,mid_mesh,mat,Vector3(data.x,0,data.y));mid_water.name="OceanoMedio"
+		mid_water.custom_aabb=AABB(Vector3(-data.z*.5,-12,-data.w*.5),Vector3(data.z,24,data.w))
+		mid_water.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for data: Vector4 in [Vector4(0,-6600,24000,10800),Vector4(0,6600,24000,10800),Vector4(-6600,0,10800,2400),Vector4(6600,0,10800,2400)]:
 		var far_mesh := PlaneMesh.new()
 		far_mesh.size = Vector2(data.z, data.w)
 		far_mesh.subdivide_width = 32

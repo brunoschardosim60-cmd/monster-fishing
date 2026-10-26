@@ -41,7 +41,14 @@ const FORMS: Dictionary={
 		"dorsal":[[-.15,.0,.1,.4],[-.34,-.2,.07,.5]],"anal":[],"pectoral":.18,"rostrum":.46,"belly_ratio":.7},
 	"atum_rei":{"length":2.5,"speed":2.6,"profile":[[-.5,0,0],[-.43,.025,.02],[-.3,.075,.05],[-.05,.17,.11],[.15,.19,.12],[.33,.14,.09],[.46,.05,.035],[.5,0,0]],
 		"back":"1f3f78","belly":"dfe6ec","pattern":"stripe","pattern_color":"c9a227","fin":"d2b030","tail":"lunate","tail_span":.46,"tail_len":.24,"sharp":false,
-		"dorsal":[[-.16,.06,.1,.5],[.1,.26,.14,.4]],"anal":[[-.24,-.05,.1,.5]],"finlets":true,"pectoral":.16}
+		"dorsal":[[-.16,.06,.1,.5],[.1,.26,.14,.4]],"anal":[[-.24,-.05,.1,.5]],"finlets":true,"pectoral":.16},
+	# Shallow-water fish near the beaches: a silvery baitfish shoal and bright reef damselfish.
+	"manjuba":{"length":.22,"speed":2.,"profile":[[-.5,0,0],[-.42,.03,.02],[-.28,.06,.035],[-.05,.09,.05],[.15,.1,.052],[.33,.08,.042],[.46,.035,.02],[.5,0,0]],
+		"back":"5fa8a0","belly":"f4f8f6","pattern":"stripe","pattern_color":"c8d6d8","fin":"c9dcdc","tail":"forked","tail_span":.3,"tail_len":.17,
+		"dorsal":[[-.1,.08,.08,.4]],"anal":[[-.2,-.02,.04,.5]],"pectoral":.07},
+	"donzela":{"length":.3,"speed":1.3,"profile":[[-.5,0,0],[-.42,.05,.02],[-.3,.13,.035],[-.05,.21,.05],[.15,.22,.052],[.33,.15,.042],[.46,.06,.02],[.5,0,0]],
+		"back":"f0c419","belly":"fbe98a","pattern":"bars","pattern_color":"1c2a3a","pattern_count":5,"fin":"f5d43a","tail":"forked","tail_span":.32,"tail_len":.17,
+		"dorsal":[[-.3,.24,.14,.5]],"anal":[[-.26,.02,.08,.5]],"pectoral":.09,"belly_ratio":.9}
 }
 static var cache: Dictionary={}
 static var materials: Dictionary={}

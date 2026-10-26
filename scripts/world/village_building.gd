@@ -7,10 +7,14 @@ extends Node3D
 @export var use: String="home"
 const G=preload("res://scripts/world/geometry.gd")
 const M=preload("res://scripts/visuals/materials.gd")
+const Props=preload("res://scripts/world/cc0_props.gd")
 var entry: Marker3D
 var service: Marker3D
 var lamps: Array[OmniLight3D]=[]
 var windows: StandardMaterial3D
+## Fishing shops only: the furnished sales floor and the shopkeeper behind the counter.
+var interior: Node3D
+var keeper: Node3D
 
 func _ready() -> void:
 	var stone:=M.surface("granite",Color("afb2a6"),1.)
@@ -21,7 +25,9 @@ func _ready() -> void:
 	var half:=width*.5;var back:=depth*.5
 	var ground_low:=position.y
 	for x: float in [-half,half]:
-		for z: float in [-back,back]:ground_low=minf(ground_low,preload("res://scripts/world/archipelago_layout.gd").height(Vector2(position.x+x,position.z+z)))
+		for z: float in [-back,back]:
+			var corner:=Basis(Vector3.UP,rotation.y)*Vector3(x,0,z)
+			ground_low=minf(ground_low,preload("res://scripts/world/archipelago_layout.gd").height(Vector2(position.x+corner.x,position.z+corner.z)))
 	var foundation:=maxf(.3,position.y-ground_low+.25)
 	G.box(self,Vector3(0,-foundation*.5,0),Vector3(width+.5,foundation,depth+.5),stone,true)
 	G.box(self,Vector3(0,.04,0),Vector3(width,.08,depth),wood,true)
@@ -30,11 +36,12 @@ func _ready() -> void:
 	G.box(self,Vector3(0,1.65,back),Vector3(width,3.3,.18),wall,true)
 	for side: float in [-1.,1.]: G.box(self,Vector3(side*(half+.9)*.5,1.65,-back),Vector3(half-.9,3.3,.18),wall,true)
 	G.box(self,Vector3(0,2.94,-back),Vector3(1.8,.72,.18),wall,true)
-	var approach: float=preload("res://scripts/world/archipelago_layout.gd").height(Vector2(position.x,position.z-back-4.))-.0
+	var front:=Basis(Vector3.UP,rotation.y)*Vector3(0,0,-back-4.)
+	var approach: float=preload("res://scripts/world/archipelago_layout.gd").height(Vector2(position.x+front.x,position.z+front.z))
 	var rise_to_door:=position.y+.08-approach
 	var ramp:=G.box(self,Vector3(0,.03-rise_to_door*.5,-back-2.),Vector3(2.,.1,sqrt(16.+rise_to_door*rise_to_door)),wood,true);ramp.rotation.x=-atan2(rise_to_door,4.)
 	entry=Marker3D.new();entry.name="Entry";entry.position=Vector3(0,.1,-back-1.);add_child(entry)
-	service=Marker3D.new();service.name="Service";service.position=Vector3(0,.1,-.5);add_child(service)
+	service=Marker3D.new();service.name="Service";service.position=Vector3(0,.1,.55 if use=="shop" else -.5);add_child(service)
 	# A swung open timber door communicates access without covering the entrance.
 	var door:=G.box(self,Vector3(-.94,1.25,-back+.6),Vector3(.1,2.5,1.2),dark,true)
 	for y: float in [.5,.9,1.3,1.7,2.1,2.5,2.9]:
@@ -81,8 +88,16 @@ func _ready() -> void:
 		G.box(self,Vector3(side*half,3.15,0),Vector3(.3,.18,depth+.3),trim)
 	G.box(self,Vector3(half-.8,4.5,back-1),Vector3(.65,2.1,.65),stone)
 	G.box(self,Vector3(half-.8,5.6,back-1),Vector3(.85,.15,.85),stone)
-	G.box(self,Vector3(0,2.95,-back-.2),Vector3(2.5,.48,.12),dark)
+	G.box(self,Vector3(0,2.95,-back-.2),Vector3(maxf(2.5,float(title.length())*.13+.5),.48,.12),dark)
 	G.label(self,title,Vector3(0,2.96,-back-.28),18)
+	if use=="shop":
+		# Fishing shops hang a painted wooden fish over the door so they read from the street.
+		G.beam(self,Vector3(half-.2,2.35,-back-.1),Vector3(half-.2,2.35,-back-1.5),.04,dark)
+		var fish_sign:=Node3D.new();fish_sign.position=Vector3(half-.2,1.92,-back-1.1);add_child(fish_sign)
+		for k: float in [-.25,.25]:G.beam(fish_sign,Vector3(0,.43,k),Vector3(0,.18,k),.012,dark)
+		G.sphere(fish_sign,Vector3.ZERO,Vector3(.1,.42,1.05),M.surface("teak",Color("3f7f9e"),1.),14)
+		var tail:=G.box(fish_sign,Vector3(0,0,.62),Vector3(.08,.38,.28),M.surface("teak",Color("3f7f9e"),1.));tail.rotation.x=PI*.25
+		G.sphere(fish_sign,Vector3(0,.07,-.32),Vector3(.12,.08,.08),G.material(Color("f2efe4")),8)
 	# Furniture occupies the sides and back, leaving the doorway and centre clear.
 	if use in ["home","cabin","inn"]:
 		G.box(self,Vector3(-half+1.15,.4,back-1.2),Vector3(1.7,.65,2.),dark,true)
@@ -98,13 +113,15 @@ func _ready() -> void:
 		G.cylinder(self,Vector3(half-1.3,.89,.7),.23,.035,trim,.23,20)
 		G.cylinder(self,Vector3(half-.85,1.,.9),.085,.2,trim,.085,16)
 		G.box(self,Vector3(0,.09,.4),Vector3(1.8,.015,2.6),blanket)
+	elif use=="shop":_furnish_shop(half,back,depth)
 	else:
 		G.box(self,Vector3(0,.53,back-1.2),Vector3(width-2.,1.06,1.1),wood,true)
 		G.box(self,Vector3(0,1.1,back-1.2),Vector3(width-1.8,.12,1.3),trim)
-	for y: float in [.7,1.4,2.1]:
-		G.box(self,Vector3(half-.35,y,1.),Vector3(.6,.07,2.6),dark)
-		for z: float in [.1,.8,1.5]: G.cylinder(self,Vector3(half-.35,y+.18,z),.11,.3,trim,.09,12)
-	G.box(self,Vector3(-half+.45,.5,-.5),Vector3(.7,1.,1.),wood,true)
+	if use!="shop":
+		for y: float in [.7,1.4,2.1]:
+			G.box(self,Vector3(half-.35,y,1.),Vector3(.6,.07,2.6),dark)
+			for z: float in [.1,.8,1.5]: G.cylinder(self,Vector3(half-.35,y+.18,z),.11,.3,trim,.09,12)
+		G.box(self,Vector3(-half+.45,.5,-.5),Vector3(.7,1.,1.),wood,true)
 	# Timber verandas, garden pots and side siding follow each house frontage.
 	for x: float in [-half+.35,half-.35]:
 		G.cylinder(self,Vector3(x,.28,-back-.65),.32,.55,stone,.38,16)
@@ -206,3 +223,128 @@ func _furnish_room(half: float,back: float,depth: float) -> void:
 	G.box(self,Vector3(half-.1,2.5,back-1.6),Vector3(.04,.7,.9),frame)
 	G.box(self,Vector3(half-.12,2.5,back-1.6),Vector3(.02,.6,.8),sea)
 
+
+## Fishing shop sales floor: a counter with a lure case, scale and till; a pegboard of lures and reels
+## behind it, a rack of rods on the left wall, an ice chest of the day's fish and a live-bait tank by
+## the door, tackle shelves, a net with floats under the ceiling, and a shopkeeper behind the counter.
+## The doorway, the aisle to the counter and the service spot stay clear.
+func _furnish_shop(half: float,back: float,depth: float) -> void:
+	interior=Node3D.new();interior.name="InteriorLoja";add_child(interior)
+	var wood:=M.surface("teak",Color("a88762"),1.2)
+	var dark:=M.surface("weathered_wood",Color("4f4434"),1.5)
+	var board:=M.surface("weathered_wood",Color("8a6d4c"),1.)
+	var iron:=G.material(Color("3a3f44"),.45);iron.metallic=.5
+	var brass:=G.material(Color("b58d3f"),.35);brass.metallic=.7
+	var glass:=G.material(Color(.75,.9,.95,.22),.05);glass.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+	var water:=G.material(Color(.25,.58,.62,.55),.05);water.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+	var ice:=G.material(Color("dcecf0"),.25)
+	var net_mat:=G.material(Color("6f8d7c"),.9)
+	var cork:=G.material(Color("c79a5e"),.9)
+	var colors: Array[Color]=[Color("d8432f"),Color("f1c232"),Color("3d85c6"),Color("6aa84f"),Color("e69138"),Color("f3f3f3"),Color("a64d79")]
+	var paints: Array[StandardMaterial3D]=[]
+	for c: Color in colors:paints.append(G.material(c,.4))
+	# Counter across the back third, solid so the shopkeeper stays behind it.
+	var counter_z:=back-1.55;var counter_w:=width-3.4
+	G.box(interior,Vector3(0,.5,counter_z),Vector3(counter_w,1.,.75),dark,true)
+	G.box(interior,Vector3(0,1.03,counter_z),Vector3(counter_w+.2,.06,.9),wood)
+	for x: float in range(-int(counter_w*.5)+0,int(counter_w*.5)+1):G.box(interior,Vector3(float(x),.5,counter_z-.39),Vector3(.05,.9,.03),wood)
+	# Lure case on the counter: glass box with lures lying in rows.
+	var case_x:=-counter_w*.5+.9
+	G.box(interior,Vector3(case_x,1.08,counter_z),Vector3(1.4,.04,.62),dark)
+	G.box(interior,Vector3(case_x,1.26,counter_z),Vector3(1.4,.34,.62),glass)
+	for i: int in 12:
+		var lure:=G.sphere(interior,Vector3(case_x-.55+float(i%6)*.22,1.13,counter_z-.15+float(i/6)*.3),Vector3(.13,.045,.05),paints[i%paints.size()],8)
+		lure.rotation.y=float(i)*.4
+	# Till and scale.
+	G.box(interior,Vector3(counter_w*.5-.6,1.19,counter_z+.1),Vector3(.5,.26,.4),iron)
+	G.box(interior,Vector3(counter_w*.5-.6,1.35,counter_z+.2),Vector3(.44,.12,.12),brass)
+	G.box(interior,Vector3(.4,1.12,counter_z),Vector3(.26,.12,.22),brass)
+	G.cylinder(interior,Vector3(.4,1.25,counter_z),.03,.14,brass,.03,8)
+	G.cylinder(interior,Vector3(.4,1.33,counter_z),.17,.03,brass,.15,16)
+	# Pegboard behind the counter: hanging lures, reels and spools of line.
+	G.box(interior,Vector3(0,2.15,back-.13),Vector3(width-1.8,1.5,.04),board)
+	for row: int in 3:
+		for col: int in 9:
+			var x:=-(width-2.6)*.5+float(col)*(width-2.6)/8.;var y:=2.7-float(row)*.48
+			G.beam(interior,Vector3(x,y,back-.15),Vector3(x,y,back-.3),.012,iron)
+			match (row+col)%3:
+				0:G.sphere(interior,Vector3(x,y-.12,back-.28),Vector3(.06,.16,.04),paints[(row*9+col)%paints.size()],8)
+				1:
+					var reel:=G.cylinder(interior,Vector3(x,y-.12,back-.26),.08,.07,iron,.08,12);reel.rotation.x=PI*.5
+				_:G.cylinder(interior,Vector3(x,y-.1,back-.26),.05,.12,paints[(col+2)%paints.size()],.05,10)
+	var sign_board:=G.box(interior,Vector3(0,2.78,counter_z),Vector3(2.6,.42,.05),dark)
+	G.beam(interior,Vector3(-1.1,3.05,counter_z),Vector3(-1.1,2.99,counter_z),.015,iron)
+	G.beam(interior,Vector3(1.1,3.05,counter_z),Vector3(1.1,2.99,counter_z),.015,iron)
+	G.label(interior,"ISCAS · VARAS · REDES",Vector3(0,2.78,counter_z-.04),20)
+	# Rod rack on the left wall: eight rods standing in a two-rail rack.
+	for y: float in [.3,1.55]:G.box(interior,Vector3(-half+.22,y,.9),Vector3(.12,.08,3.),dark)
+	for i: int in 8:
+		var z:=-.45+float(i)*.39
+		var base:=Vector3(-half+.3,.1,z);var tip:=Vector3(-half+.18,2.85,z+.05)
+		G.beam(interior,base,base.lerp(tip,.25),.03,cork)
+		G.beam(interior,base.lerp(tip,.25),tip,.014,paints[i%paints.size()] if i%2==0 else iron)
+		var reel:=G.cylinder(interior,base.lerp(tip,.2)+Vector3(.09,0,0),.07,.06,iron,.07,10);reel.rotation.z=PI*.5
+	# Ice chest with the day's fish, by the door on the left.
+	var chest:=Vector3(-half+.85,0,-back+1.15)
+	G.box(interior,chest+Vector3(0,.3,0),Vector3(1.1,.6,.85),wood,true)
+	G.box(interior,chest+Vector3(0,.62,0),Vector3(1.,.05,.75),ice)
+	# The day's catch on crushed ice: silver mackerel, a red snapper and a striped bass.
+	var catch_colors: Array[Color]=[Color("8fa9b5"),Color("c1382f"),Color("8fa9b5"),Color("6e7a52"),Color("d9c46c")]
+	for i: int in 5:
+		var fish_mat:=G.material(catch_colors[i],.3);fish_mat.metallic=.35
+		var fish:=Node3D.new();fish.name="PeixeNoGelo%d"%i;fish.position=chest+Vector3(-.36+float(i)*.18,.69,-.05+float(i%2)*.12);fish.rotation.y=PI*.5+float(i%3-1)*.25;interior.add_child(fish)
+		G.sphere(fish,Vector3.ZERO,Vector3(.12,.07,.46),fish_mat,10)
+		var tail:=G.box(fish,Vector3(0,0,.27),Vector3(.02,.1,.09),fish_mat);tail.rotation.x=PI*.25
+		G.sphere(fish,Vector3(.045,.015,-.17),Vector3(.025,.025,.025),G.material(Color("141414"),.2),6)
+	G.label(interior,"PEIXE DO DIA",chest+Vector3(0,1.05,0),14).billboard=BaseMaterial3D.BILLBOARD_FIXED_Y
+	# Live-bait tank on a stand, by the door on the right, with sardines and a worm bucket.
+	var tank:=Vector3(half-.55,0,-back+1.35)
+	G.box(interior,tank+Vector3(0,.38,0),Vector3(.7,.76,1.4),dark,true)
+	G.box(interior,tank+Vector3(0,1.06,0),Vector3(.64,.58,1.32),glass)
+	G.box(interior,tank+Vector3(0,1.,0),Vector3(.6,.44,1.28),water)
+	var silver:=G.material(Color("c9d3d6"),.3);silver.metallic=.6
+	for i: int in 7:
+		var bait:=G.sphere(interior,tank+Vector3(-.15+float(i%3)*.15,.9+float(i%2)*.14,-.45+float(i)*.15),Vector3(.03,.035,.13),silver,6)
+		bait.rotation.y=float(i)*.9
+	for i: int in 2:
+		var bucket:=tank+Vector3(-.7,0,-.3+float(i)*.6)
+		G.cylinder(interior,bucket+Vector3(0,.2,0),.2,.4,paints[2-i],.22,12)
+		G.cylinder(interior,bucket+Vector3(0,.39,0),.19,.02,G.material(Color("4a3426")),.19,12)
+	G.label(interior,"ISCA VIVA",tank+Vector3(0,1.55,0),14).billboard=BaseMaterial3D.BILLBOARD_FIXED_Y
+	# Tackle shelves on the right wall, clear of the windows.
+	for y: float in [.55,1.15,1.75]:
+		G.box(interior,Vector3(half-.3,y,0),Vector3(.5,.05,2.2),dark)
+		for k: int in 4:G.box(interior,Vector3(half-.32,y+.12,-.8+float(k)*.53),Vector3(.38,.2,.4),paints[(k+int(y*3.))%paints.size()])
+	G.box(interior,Vector3(half-.3,.9,-1.1),Vector3(.5,1.8,.05),dark);G.box(interior,Vector3(half-.3,.9,1.1),Vector3(.5,1.8,.05),dark)
+	# Net with cork floats sagging under the ceiling, over the front-left of the room.
+	for i: int in 7:
+		var x:=-half+.6+float(i)*.45
+		var a:=Vector3(x,3.05,-back+.5);var mid:=Vector3(x,2.55,-back+1.6);var b:=Vector3(x,3.05,-back+2.7)
+		G.beam(interior,a,mid,.008,net_mat);G.beam(interior,mid,b,.008,net_mat)
+	for j: int in 5:
+		var t:=float(j)/4.;var z:=-back+.5+t*2.2;var y:=3.05-sin(t*PI)*.5
+		G.beam(interior,Vector3(-half+.6,y,z),Vector3(-half+3.3,y,z),.008,net_mat)
+		if j%2==0:
+			for k: int in 3:G.sphere(interior,Vector3(-half+.9+float(k)*1.1,y-.05,z),Vector3(.1,.1,.1),paints[4],8)
+	# Life ring and crossed oars beside the door.
+	var ring:=TorusMesh.new();ring.inner_radius=.22;ring.outer_radius=.34;ring.rings=24;ring.ring_segments=8
+	var buoy:=G.mesh_node(interior,ring,paints[0],Vector3(1.6,2.25,-back+.16));buoy.rotation.x=PI*.5
+	for s: float in [-1.,1.]:
+		var oar_a:=Vector3(-1.6-s*.45,1.3,-back+.16);var oar_b:=Vector3(-1.6+s*.45,2.9,-back+.16)
+		G.beam(interior,oar_a,oar_b,.03,wood)
+		G.box(interior,oar_a+Vector3(0,.15,0),Vector3(.16,.38,.03),wood)
+	# Rope barrel and a runner rug from the door to the counter.
+	Props.spawn(interior,"Barrel",Vector3(half-.7,0,back-.7),1.,.5)
+	for r: int in 3:G.cylinder(interior,Vector3(half-.7,1.05+float(r)*.07,back-.7),.2,.06,cork,.2,12)
+	G.box(interior,Vector3(0,.09,-1.),Vector3(1.4,.012,3.6),G.material(Color("7b3b2e"),.95))
+	# Warm light over the counter and two lanterns hanging by the shelves.
+	var warm:=G.material(Color("ffe1a6"));warm.emission_enabled=true;warm.emission=Color("ffc477");warm.emission_energy_multiplier=1.6
+	for x: float in [-2.2,2.2]:
+		G.beam(interior,Vector3(x,3.08,.3),Vector3(x,2.6,.3),.012,iron)
+		G.cylinder(interior,Vector3(x,2.45,.3),.1,.28,warm,.08,10)
+	var counter_light:=OmniLight3D.new();counter_light.position=Vector3(0,2.6,counter_z-.4);counter_light.light_color=Color("ffcf8a");counter_light.omni_range=6.;counter_light.light_energy=1.1
+	counter_light.set_meta("interior",true);add_child(counter_light);lamps.append(counter_light)
+	# The shopkeeper paces behind the counter.
+	keeper=preload("res://scripts/world/village_resident.gd").new();keeper.name="Lojista";keeper.look_id=46+absi(title.hash())%5;keeper.speed=.45;keeper.follow_terrain=false;keeper.hide_backpack=true
+	keeper.route.assign([Vector3(-counter_w*.5+.6,.08,back-.72),Vector3(counter_w*.5-.6,.08,back-.72)])
+	add_child(keeper)

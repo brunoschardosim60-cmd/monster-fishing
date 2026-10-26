@@ -25,6 +25,14 @@ var houses: Array[Node3D]=[]
 var footprints: Array[Vector3]=[]
 var districts: Array[Dictionary]=[]
 var residents: Array[Node3D]=[]
+## Fishing shops in the districts: walk-in buildings with a furnished sales floor and a shopkeeper.
+var shops: Array[Node3D]=[]
+## Building sites: a timber frame going up, with carpenters carrying planks to it and one on the scaffold.
+var sites: Array[Node3D]=[]
+var workers: Array[Node3D]=[]
+const Porter=preload("res://scripts/world/village_porter.gd")
+const SITE_DISTRICTS: Array[String]=["Bairro do Nascente","Bairro do Poente"]
+const SHOP_TITLES: Dictionary={"Bairro do Poente":"Loja de Pesca do Poente","Bairro do Nascente":"Anzol do Nascente"}
 var lamps: int=0
 var _rng:=RandomNumberGenerator.new()
 var _avenues: Array=[]
@@ -43,6 +51,8 @@ func _ready() -> void:
 	_bridge(Vector3(-61,1.4,-4),Vector3(-93,Layout.height(Vector2(-93,-4))+.25,-4),1.6)
 	_clear_ground_cover()
 	var dynamic: Array[Node3D]=[];dynamic.append_array(residents)
+	for shop: Node3D in shops:dynamic.append(shop.keeper)
+	dynamic.append_array(workers)
 	preload("res://scripts/world/static_batch.gd").build(self,dynamic)
 
 func _district(data: Array) -> void:
@@ -67,6 +77,15 @@ func _district(data: Array) -> void:
 		for attempt: int in 40:
 			var angle:=_rng.randf()*TAU
 			if _place("taberna",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+11.+float(attempt)*.5),_size_of("taberna"),centre,water,record):break
+	if SHOP_TITLES.has(name_text):
+		record["shop_title"]=SHOP_TITLES[name_text]
+		for attempt: int in 60:
+			var angle:=_rng.randf()*TAU
+			if _place("loja_pesca",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+8.+float(attempt)*.4),_size_of("loja_pesca"),centre,water,record):break
+	if name_text in SITE_DISTRICTS:
+		for attempt: int in 80:
+			var angle:=_rng.randf()*TAU
+			if _place("obra",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+12.+float(attempt)*.4),_size_of("obra"),centre,water,record):break
 	var tries:=0
 	while (record.houses as Array).size()<count+(1 if not landmark.is_empty() else 0) and tries<600:
 		tries+=1
@@ -163,6 +182,8 @@ func _size_of(style: String) -> Vector2:
 		"escola":return Vector2(14.,8.)
 		"galpao":return Vector2(11.,9.)
 		"taberna":return Vector2(7.6,13.6)
+		"loja_pesca":return Vector2(9.,7.)
+		"obra":return Vector2(8.,6.)
 	return Vector2(_rng.randf_range(7.,9.),_rng.randf_range(6.,7.5))
 
 ## Tries to put a building at `at`, facing `face`. Returns false when the ground does not allow it.
@@ -201,12 +222,26 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 		House._plinth(building,size.x,size.y,depth,M.surface("granite",Color("a9aa9c"),1.))
 		Props.spawn(building,"Tabern",Vector3.ZERO,9.,0.,false,500.)
 		House._collider(building,Vector3(size.x,9.,size.y),Vector3(0,4.5,0))
+	elif style=="obra":
+		building=Node3D.new()
+		House._plinth(building,size.x,size.y,depth,M.surface("granite",Color("a9aa9c"),1.))
+		_frame(building,size)
+	elif style=="loja_pesca":
+		building=preload("res://scripts/world/village_building.gd").new()
+		building.title=record.get("shop_title","Loja de Pesca");building.width=size.x;building.depth=size.y;building.use="shop"
+		building.tint=Color("c9b991") if shops.is_empty() else Color("8fb0a6")
 	else:building=House.build(style,size.x,size.y,_rng,depth)
 	building.set_meta("style",style);building.set_meta("size",size)
 	building.name="Casa_%s_%d"%[style,houses.size()]
 	building.position=Vector3(at.x,floor_y,at.y);building.rotation.y=yaw
 	add_child(building);houses.append(building);footprints.append(Vector3(at.x,at.y,reach))
 	(record.houses as Array).append(building)
+	if style=="obra":
+		sites.append(building);_site_crew(building,size)
+	if style=="loja_pesca":
+		shops.append(building)
+		village.services["gear_%d"%shops.size()]=building.service
+		village.buildings.append(building);village.night_lights.append_array(building.lamps)
 	var door:=Vector2(at.x,at.y)+to_face*(half.y+1.6)
 	(record.doors as Array).append(door)
 	if not water:_street_line(door,Vector2(record.centre)+(door-Vector2(record.centre)).normalized()*PLAZA_R*.9,1.8)
@@ -336,6 +371,55 @@ func _people(record: Dictionary,plaza_y: float) -> void:
 		person.route.assign(route)
 		add_child(person);residents.append(person)
 		if social!=null:social.residents.append(person)
+
+## Timber frame of a house under construction: posts, plates, joists, half the rafters, a ladder,
+## a scaffold board, a plank stack and a sawhorse beside it.
+func _frame(root: Node3D,size: Vector2) -> void:
+	var fresh:=M.surface("teak",Color("d2b07c"),1.2)
+	var old:=M.surface("weathered_wood",Color("8c7356"),1.5)
+	var hx:=size.x*.5;var hz:=size.y*.5;var h:=3.
+	G.box(root,Vector3(0,.07,0),Vector3(size.x,.1,size.y),old)
+	for x: float in [-hx,-hx*.33,hx*.33,hx]:
+		for z: float in [-hz,hz]:G.box(root,Vector3(x,h*.5,z),Vector3(.18,h,.18),fresh,true)
+	for x: float in [-hx,hx]:G.box(root,Vector3(x,h*.5,0),Vector3(.18,h,.18),fresh,true)
+	for z: float in [-hz,hz]:G.box(root,Vector3(0,h,z),Vector3(size.x+.2,.2,.2),fresh)
+	for x: float in [-hx,hx]:G.box(root,Vector3(x,h,0),Vector3(.2,.2,size.y+.2),fresh)
+	for i: int in 7:G.box(root,Vector3(-hx+float(i)*size.x/6.,h+.05,0),Vector3(.12,.16,size.y),old)
+	# Diagonal braces and the first rafter pairs.
+	for z: float in [-hz,hz]:G.beam(root,Vector3(-hx,.3,z),Vector3(-hx*.33,h-.2,z),.06,fresh)
+	for i: int in 3:
+		var x:=-hx+float(i)*1.4
+		G.beam(root,Vector3(x,h,-hz-.3),Vector3(x,h+1.7,0),.07,fresh);G.beam(root,Vector3(x,h+1.7,0),Vector3(x,h,hz+.3),.07,fresh)
+	G.box(root,Vector3(-hx+1.4,h+1.7,0),Vector3(2.9,.14,.14),fresh)
+	# Half-boarded back wall.
+	for i: int in 6:G.box(root,Vector3(0,.35+float(i)*.22,hz+.03),Vector3(size.x,.2,.04),fresh)
+	# Ladder and a scaffold board on trestles along the front.
+	var ladder:=Node3D.new();ladder.position=Vector3(hx-.8,0,-hz-.7);ladder.rotation.x=-.25;root.add_child(ladder)
+	for x: float in [-.25,.25]:G.box(ladder,Vector3(x,1.6,0),Vector3(.06,3.2,.06),old)
+	for i: int in 8:G.box(ladder,Vector3(0,.3+float(i)*.38,0),Vector3(.5,.04,.05),old)
+	for x: float in [-hx+.6,-.6]:
+		for z: float in [-hz-.5,-hz-1.2]:G.box(root,Vector3(x,.9,z),Vector3(.08,1.8,.08),old)
+	G.box(root,Vector3(-hx*.5-.3,1.8,-hz-.85),Vector3(hx+.6,.07,.8),fresh,true)
+	# Plank stack and sawhorse on the side.
+	for i: int in 5:G.box(root,Vector3(hx+1.8,.12+float(i)*.06,-.5+float(i%2)*.06),Vector3(.24,.05,3.4),fresh)
+	for z: float in [-.4,.4]:
+		G.beam(root,Vector3(hx+3.4,0,z-.25),Vector3(hx+3.4,.8,z),.04,old);G.beam(root,Vector3(hx+3.4,0,z+.25),Vector3(hx+3.4,.8,z),.04,old)
+	G.box(root,Vector3(hx+3.4,.82,0),Vector3(.1,.08,1.2),old)
+	G.label(root,"OBRA · CASA NOVA",Vector3(0,h+.8,-hz-.15),22)
+
+## Two carpenters carry planks from the stack to the frame; one works up on the scaffold board.
+func _site_crew(site: Node3D,size: Vector2) -> void:
+	var hx:=size.x*.5;var hz:=size.y*.5
+	for i: int in 2:
+		var p:=Porter.new();p.look_id=60+sites.size()*4+i;p.speed=.8+float(i)*.12;p.follow_terrain=true
+		var stack:=site.position+site.basis*Vector3(hx+1.3,0,-.3+float(i)*.6)
+		var frame:=site.position+site.basis*Vector3(-hx*.2+float(i)*1.5,0,-hz-1.6)
+		var route: Array[Vector3]=[Vector3(stack.x,0,stack.z),Vector3(frame.x,0,frame.z)]
+		p.route.assign(route);p.cargo=Porter.plank_load();p.add_child(p.cargo);p.loaded_legs.assign([1])
+		add_child(p);workers.append(p)
+	var up:=Resident.new();up.look_id=63+sites.size()*4;up.follow_terrain=false;up.hide_backpack=true
+	var board:=site.position+site.basis*Vector3(-hx*.5,1.85,-hz-.85)
+	up.route.assign([board]);up.rotation.y=site.rotation.y+PI;add_child(up);workers.append(up)
 
 ## Stone arch bridge with parapets and lamps, walkable (collision on every deck segment).
 func _bridge(a: Vector3,b: Vector3,rise: float) -> void:

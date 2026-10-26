@@ -10,6 +10,7 @@ const House=preload("res://scripts/world/town_house.gd")
 const Props=preload("res://scripts/world/cc0_props.gd")
 const Models=preload("res://scripts/boats/vessel_models.gd")
 const Resident=preload("res://scripts/world/village_resident.gd")
+const Porter=preload("res://scripts/world/village_porter.gd")
 ## Shore point and the direction out to sea (from the coast normal there).
 const SITE: Vector2=Vector2(130,-2)
 const BERTH_RADIUS: float=7.
@@ -86,18 +87,45 @@ func _ready() -> void:
 	G.label(self,"VAGA DO ESTALEIRO",Vector3(b.x,3.2,b.y),30)
 	_people(hull_at,pile_at,shed_at,floor_y)
 
-## Shipwrights carry planks from the timber stack to the hull on the slipway.
+## Shipwrights carry planks from the timber stack to the hull on the slipway; two woodcutters bring
+## logs down from the woods behind the yard to the stack.
 func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) -> void:
-	var plank_mat:=M.surface("teak",Color("c9a46a"),1.2)
 	for i: int in 3:
-		var person:=Resident.new();person.look_id=40+i;person.speed=.9+float(i)*.1
+		var person:=Porter.new();person.look_id=40+i;person.speed=.9+float(i)*.1
 		var a:=pile_at+_side*float(i)*1.2;var h:=hull_at+_side*(2.8 if i%2==0 else -2.8)+_out*float(i-1)*2.
 		var route: Array[Vector3]=[Vector3(a.x,Layout.height(a),a.y),Vector3(h.x,Layout.height(h),h.y)]
-		person.route.assign(route);add_child(person);workers.append(person)
-		var plank:=G.box(person,Vector3(.25,1.55,0),Vector3(.12,.08,3.),plank_mat);plank.name="Tabua"
-	var keeper:=Resident.new();keeper.look_id=44
+		person.route.assign(route);person.loaded_legs.assign([1])
+		person.cargo=Porter.plank_load();person.add_child(person.cargo)
+		add_child(person);workers.append(person)
+	for i: int in 2:
+		var cutter:=Porter.new();cutter.look_id=50+i;cutter.speed=.8+float(i)*.08
+		var wood:=_woods(pile_at)+_side*float(i)*1.5
+		var drop:=pile_at+_side*(1.5+float(i))-_out*1.5
+		var route: Array[Vector3]=[Vector3(wood.x,Layout.height(wood),wood.y),Vector3(drop.x,Layout.height(drop),drop.y)]
+		cutter.route.assign(route);cutter.loaded_legs.assign([1])
+		cutter.cargo=Porter.log_load();cutter.add_child(cutter.cargo)
+		add_child(cutter);workers.append(cutter)
+	# Felling site: standing trees, fresh stumps and a felled trunk where the woodcutters load up.
+	var camp:=_woods(pile_at)
+	var bark:=G.material(Color("6b4e33"),.95);var cut:=G.material(Color("d8b884"),.8)
+	for k: int in 3:
+		var t:=camp-_out*(4.+float(k)*2.5)+_side*(float(k)*3.-3.)
+		Props.spawn(self,"nature:CommonTree_%d"%(k%3+1),Vector3(t.x,Layout.height(t),t.y),7.5+float(k),float(k)*1.7)
+	for k: int in 3:
+		var st:=camp+_side*(float(k)*2.2-1.)+_out*1.8
+		G.cylinder(self,Vector3(st.x,Layout.height(st)+.22,st.y),.3,.5,bark,.28,10)
+		G.cylinder(self,Vector3(st.x,Layout.height(st)+.475,st.y),.28,.02,cut,.28,10)
+	Props.spawn(self,"Log_01_Art",Vector3(camp.x,Layout.height(camp),camp.y)-Vector3(_out.x,0,_out.y)*1.,1.,atan2(_side.x,_side.y))
+	var keeper:=Resident.new();keeper.look_id=44;keeper.hide_backpack=true
 	var desk:=shed_at+_side*-5.+_out*-1.4
 	keeper.route.assign([Vector3(desk.x,floor_y,desk.y)]);keeper.follow_terrain=false;add_child(keeper);workers.append(keeper)
+
+## A spot inland of the timber stack, on gentle dry ground, where the woodcutters fell trees.
+func _woods(pile_at: Vector2) -> Vector2:
+	for k: int in 12:
+		var p:=pile_at-_out*(30.-float(k)*2.)+_side*float(k%3)*4.
+		if Layout.coast(p).x<-8. and absf(Layout.height(p)-Layout.height(pile_at))<9.:return p
+	return pile_at-_out*8.
 
 ## True when a (slow) boat lies inside the marked berth.
 func in_berth(at: Vector3) -> bool:

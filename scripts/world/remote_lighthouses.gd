@@ -8,7 +8,8 @@ const Lighthouse=preload("res://scripts/world/navigation_lighthouse.gd")
 const SPECS: Array=[[4,"faixas",28.,10.,[0.],Color("ffe7af"),1.],[5,"pedra",22.,14.,[0.,180.],Color("fff4d6"),3.],
 	[6,"amarelo",26.,9.,[0.],Color("ffd9a0"),5.],[11,"preto",30.,12.,[0.,30.,60.],Color("f6f3e6"),2.],
 	[12,"faixas",24.,7.,[0.],Color("ffe0c0"),6.],[15,"pedra",34.,18.,[0.,24.],Color("e8f0ff"),0.],
-	[16,"amarelo",20.,11.,[0.,180.],Color("ffe7af"),4.],[13,"preto",26.,15.,[0.],Color("fff0d0"),7.]]
+	[16,"amarelo",20.,11.,[0.,180.],Color("ffe7af"),4.],[13,"preto",26.,15.,[0.],Color("fff0d0"),7.],
+	[22,"faixas",26.,8.5,[0.],Color("ffe9c0"),2.5],[25,"pedra",30.,16.5,[0.,120.,240.],Color("e8f0ff"),1.5],[27,"amarelo",24.,19.,[0.,90.],Color("ffdcaa"),3.5]]
 var world: Node3D
 var lighthouses: Array[Node3D]=[]
 func _ready() -> void:

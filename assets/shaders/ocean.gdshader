@@ -7,6 +7,8 @@ uniform sampler2D foam_tex : filter_linear_mipmap, repeat_enable;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
 #include "res://assets/shaders/ocean_common.gdshaderinc"
+#include "res://assets/shaders/cloud_shadow.gdshaderinc"
+uniform sampler2D cloud_tex : filter_linear_mipmap, repeat_enable;
 uniform vec3 deep_color : source_color = vec3(0.02,0.19,0.25);
 uniform vec3 shallow_color : source_color = vec3(0.09,0.50,0.48);
 uniform vec3 abyss_color : source_color = vec3(0.01,0.09,0.16);
@@ -85,7 +87,9 @@ void fragment() {
 	float towards_sun=pow(max(dot(-v_world,normalize(vec3(sun_dir.x,0.,sun_dir.z))),0.),3.);
 	vec3 sss=shallow_color*smoothstep(.05,.8,crest)*(.25+towards_sun*.9)*sun_strength*.35;
 	vec3 surface=mix(body,sky,fresnel*(1.-foam));
-	ALBEDO=mix(surface*(1.-fresnel*.6),vec3(.86,.9,.88),foam);
+	float shade=cloud_shadow(cloud_tex,p);
+	glint*=1.-shade;sss*=1.-shade*.7;
+	ALBEDO=mix(surface*(1.-fresnel*.6),vec3(.86,.9,.88),foam)*mix(1.,.72,shade);
 	EMISSION=(sky*fresnel*.55+sss)*(1.-foam)+sun_color*glint*6.*(1.-foam)+col*sea_glow*(1.-foam);
 	ROUGHNESS=mix(.06+wind_strength*.08+rain_strength*.1,.85,foam)+.05*(1.-distance_fade);
 	METALLIC=0.;

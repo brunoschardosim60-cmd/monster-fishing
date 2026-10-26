@@ -12,7 +12,7 @@ var bait: int=0
 var owned_boats: Array[String]=["aurora"]
 var boat_id: String="aurora"
 ## Fish feed handfuls, crab traps carried aboard.
-var feed: int=0
+var feed: int=3
 var traps: int=0
 var materials: int=0
 var goods: Dictionary={"repair_kit":0,"tackle":0,"canvas":0}

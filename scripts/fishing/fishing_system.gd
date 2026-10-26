@@ -45,6 +45,8 @@ var hook_bonus: float=0.
 var line_stretch: float=0.
 var cast_range_bonus: float=0.
 var surging: bool=false
+## Set by the game when the line lands where feed was thrown: fish bite sooner.
+var feed_bonus: float=0.
 
 var _wait_duration: float = 4.0
 var _reeling: bool = false
@@ -82,7 +84,7 @@ func start_cast(region: String = "coast", school_species: String = "") -> bool:
 	bite_time_remaining = 0.0
 	_reeling = false
 	_slack_time = 0.0
-	_wait_duration = rng.randf_range(3.0, 5.8)*(1.-bait_bonus)
+	_wait_duration = rng.randf_range(3.0, 5.8)*(1.-bait_bonus)*(1.-feed_bonus)
 	_fight_phase = rng.randf_range(0.0, TAU)
 	_change_state(State.CASTING)
 	_message("Lançando a linha…")

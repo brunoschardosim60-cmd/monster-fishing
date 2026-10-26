@@ -47,6 +47,14 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 "%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/shipyard_contract.gd
 if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/fishing_shop_contract.gd
+if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/working_life_contract.gd
+if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/shallow_life_contract.gd
+if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/open_sea_contract.gd
+if errorlevel 1 exit /b 1
 "%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/island_life_contract.gd
 if errorlevel 1 exit /b 1
 "%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/searchlight_contract.gd

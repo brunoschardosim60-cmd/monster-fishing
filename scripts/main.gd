@@ -38,6 +38,10 @@ var cast_distance: float=14.
 var cast_marker: MeshInstance3D
 var graphics: RefCounted
 var marine: Node3D
+## Feed, cast net and crab traps (C, N, B).
+var gear: Node3D
+## Monster territories in the deep ocean (kraken, sea serpent, leviathan).
+var lairs: Node3D
 const Economy=preload("res://scripts/inventory/harbor_economy.gd")
 
 func _ready() -> void:
@@ -81,6 +85,8 @@ func _ready() -> void:
 	surface_fish=preload("res://scripts/fishing/surface_fish.gd").new()
 	_add_system(surface_fish); surface_fish.effects=world.ocean.effects
 	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
+	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
+	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
 	hud = HUD.new()
 	world.sea_events.event_started.connect(func(text: String) -> void: hud.notify(text))
 	add_child(hud)
@@ -154,6 +160,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("deck"): toggle_deck()
 	if event.is_action_pressed("anchor") and player.in_boat:toggle_anchor()
+	if event.is_action_pressed("feed") and not event.is_echo():hud.notify(gear.throw_feed())
+	if event.is_action_pressed("cast_net") and not event.is_echo():hud.notify(gear.cast_net())
+	if event.is_action_pressed("trap") and not event.is_echo():hud.notify(gear.trap_action())
 	if event.is_action_pressed("boat_lights"):
 		boat.toggle_lights();hud.notify("Luzes do barco acesas." if boat.lights_enabled else "Luzes do barco apagadas.")
 	if event.is_action_pressed("observe_wildlife"):
@@ -271,6 +280,10 @@ func fish_action() -> void:
 		fishing_visual.cast_start=player.rod_tip();fishing_visual.cast_elapsed=0.
 		fishing.bait_bonus=.25 if inventory.bait>0 else 0.
 		if inventory.bait>0:inventory.bait-=1
+		var fed:=false
+		for f: Vector3 in marine.feed_targets():
+			if Vector2(f.x-target.x,f.z-target.z).length()<14.:fed=true
+		fishing.feed_bonus=.55 if fed else 0.
 		fishing.start_cast(marine.region_at(target),marine.school_at(target))
 	else:
 		fishing.strike()
@@ -378,12 +391,14 @@ func _interaction_hint() -> String:
 		var near_ship=world.traffic.hailable(boat.global_position)
 		if near_ship!=null:return ("E · Trocar com " if near_ship.activity=="saudado" and not near_ship.get_meta("traded",false) else "E · Saudar ")+near_ship.ship_name
 		var anchor_hint: String={"up":"Z · Âncora","dropping":"Âncora descendo…","down":"Ancorado · Z recolher","raising":"Recolhendo âncora…"}[boat.anchor.state]
-		if player.on_deck:return "R · Leme    E · Sair    "+anchor_hint
+		var trap: Dictionary=gear.nearest_trap(boat.global_position)
+		if not trap.is_empty():return "B · Recolher covo" if float(trap.soak)>=gear.TRAP_SOAK else "Covo na água · %d s"%int(gear.TRAP_SOAK-float(trap.soak))
+		if player.on_deck:return "R · Leme    E · Sair    C · Ração    N · Tarrafa    "+anchor_hint
 		return "%.0f nós · %d%% casco    R · Convés    %s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),anchor_hint]
 	if player.global_position.distance_to(boat.global_position+Vector3(0,1,0))<5.:return "E · Embarcar"
 	if near_market():return "E · Vender capturas"
 	var service: String=world.village.nearby_service(player.global_position)
-	if not service.is_empty():return "E · %s"%hud.SERVICE_NAMES.get(service.replace("_oldport","").replace("_bridge",""),service)
+	if not service.is_empty():return "E · %s"%hud.SERVICE_NAMES.get(service.get_slice("_",0),service)
 	var discovery: Dictionary=world.village.nearby_discovery(player.global_position)
 	if not discovery.is_empty():return "E · "+str(discovery.title)
 	return ""
@@ -484,7 +499,7 @@ func _configure_input() -> void:
 		"camera_toggle": KEY_F, "pause": KEY_ESCAPE, "inventory": KEY_TAB,
 		"look_left": KEY_LEFT, "look_right": KEY_RIGHT,
 		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,
-		"deck":KEY_R,"anchor":KEY_Z,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,
+		"deck":KEY_R,"anchor":KEY_Z,"feed":KEY_C,"cast_net":KEY_N,"trap":KEY_B,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,
 	}
 	for action: String in bindings:
 		if not InputMap.has_action(action):

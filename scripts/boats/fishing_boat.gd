@@ -10,6 +10,8 @@ var water_effects: Node3D
 var imported_model: Node3D
 var bucket: Marker3D
 var integrity: float=1.
+## Extra roll from a blow (monster strike, rogue wave); decays back to the wave-driven attitude.
+var kick_roll: float=0.
 var trail: MeshInstance3D
 var heave_velocity: float=0.
 var impact_cooldown: float=0.
@@ -116,7 +118,8 @@ func _physics_process(delta: float) -> void:
 		_hull.position.y+=heave_velocity*delta
 		_hull.position.y=clampf(_hull.position.y,target-.2,target+.2)
 		var blend: float=1.-exp(-delta*hydrodynamics.angular_response)
-		var roll: float=atan((right-left)/hydrodynamics.beam)-steering*wake_strength*.065
+		kick_roll=move_toward(kick_roll,0.,delta*.35)
+		var roll: float=atan((right-left)/hydrodynamics.beam)-steering*wake_strength*.065+kick_roll*sin(Time.get_ticks_msec()*.004)
 		var pitch: float=atan((front-back)/hydrodynamics.waterline_length)+wake_strength*.025
 		_hull.rotation.z=lerpf(_hull.rotation.z,clampf(roll,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
 		_hull.rotation.x=lerpf(_hull.rotation.x,clampf(pitch,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
@@ -130,6 +133,12 @@ func _physics_process(delta: float) -> void:
 		_foam_right.scale.z = 0.5 + wake_strength * 2.3
 		Waves.bind(_wake_material)
 		_wake_material.set_shader_parameter("strength", wake_strength)
+
+## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.
+func take_hit(damage: float,kick: float) -> void:
+	integrity=maxf(.05,integrity-damage*hull_protection)
+	kick_roll=clampf(kick_roll+absf(kick),0.,.55)
+	heave_velocity+=absf(kick)*2.5
 
 func set_occupied(value: bool) -> void:
 	occupied = value

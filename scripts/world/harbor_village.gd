@@ -16,6 +16,8 @@ var bridge_district: Node3D
 var lighting_fixtures: Node3D
 var town: Node3D
 var shipyard: Node3D
+## Dock porters carrying the boats' catch from the fishing pier to the fish stall on the quay, and back empty.
+var porters: Array[Node3D]=[]
 
 func _ready() -> void:
 	lighting_fixtures=Node3D.new();add_child(lighting_fixtures)
@@ -56,10 +58,27 @@ func _ready() -> void:
 		resident.follow_terrain=false
 		resident.route.assign([Vector3(-24.+i*17,1.4,-7),Vector3(25,1.4,-7),Vector3(29,1.4,-23),Vector3(29,1.4,-7),Vector3(-25,1.4,-7)])
 		add_child(resident);residents.append(resident)
+	var Porter:=preload("res://scripts/world/village_porter.gd")
+	for i: int in 2:
+		var porter:=Porter.new();porter.look_id=30+i*2;porter.speed=1.15+float(i)*.1;porter.follow_terrain=false
+		var lane:=float(i)*.9-.45
+		var route: Array[Vector3]=[]
+		# Fishing pier → seafront boardwalk → the fish stall by the quay, and back.
+		for p: Vector3 in [Vector3(29.+lane,1.42,-25.+float(i)*2.),Vector3(29.+lane,1.42,-7.6+lane),Vector3(14.,1.42,-7.4+lane),Vector3(8.2+lane*1.5,1.42,-5.95),Vector3(14.,1.42,-7.4+lane),Vector3(29.+lane,1.42,-7.6+lane)]:route.append(p)
+		# The second porter starts at the stall on the way back, so the two are out of step.
+		if i==1:
+			var back: Array[Vector3]=[route[3],route[4],route[5],route[0],route[1],route[2]]
+			route=back
+		porter.route.assign(route);porter.loaded_legs.assign([1,2,3] if i==0 else [4,5,0])
+		porter.cargo=Porter.fish_crate();porter.add_child(porter.cargo)
+		porter.ground_sampler=_floor_at
+		add_child(porter);porters.append(porter)
 	var social:=preload("res://scripts/world/village_social.gd").new();social.name="VidaSocial";social.residents=residents;add_child(social)
 	_make_landmarks(stone,wood)
 	for p: Vector2 in [Vector2(-8,35),Vector2(8,18),Vector2(-35,15),Vector2(57,32),Vector2(-55,55)]:world._make_tree(Vector3(p.x,Layout.height(p),p.y),1.5)
-	var excluded: Array[Node3D]=[];excluded.append_array(residents)
+	var excluded: Array[Node3D]=[];excluded.append_array(residents);excluded.append_array(porters)
+	for b: Node3D in buildings:
+		if b.keeper!=null:excluded.append(b.keeper)
 	preload("res://scripts/world/static_batch.gd").build(self,excluded)
 	_add_external_scenery()
 	bridge_district=preload("res://scripts/world/harbor_bridges.gd").new();bridge_district.name="PontesDoMercado";bridge_district.village=self;add_child(bridge_district)
@@ -132,6 +151,18 @@ func _add_external_scenery() -> void:
 			var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0
 			var collider:=CollisionShape3D.new();var hull:=BoxShape3D.new();hull.size=Vector3(3.2,2.,10.)
 			collider.shape=hull;collider.position.y=.5;body.add_child(collider);add_child(body);body.position=data.at
+
+## Walkable floor under a point: piers, boardwalks and floors first, then the terrain.
+func _floor_at(p: Vector3) -> float:
+	var ground:=Layout.height(Vector2(p.x,p.z))+.08
+	if not is_inside_tree():return ground
+	# Two rays a hand apart, so the small gaps between deck planks never drop a walker through.
+	var best:=ground
+	for dx: float in [-.12,.12]:
+		var query:=PhysicsRayQueryParameters3D.create(Vector3(p.x+dx,p.y+2.,p.z),Vector3(p.x+dx,p.y-3.,p.z),1)
+		var hit:=get_world_3d().direct_space_state.intersect_ray(query)
+		if not hit.is_empty():best=maxf(best,float(hit.position.y)+.04)
+	return best
 
 func nearby_service(at: Vector3) -> String:
 	for key: String in services:

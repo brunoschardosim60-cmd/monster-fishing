@@ -161,8 +161,16 @@ static func _box_walls(root: Node3D,w: float,d: float,h: float,wall: Material,tr
 ## Front door, then windows on every face and floor, with shutters on coastal styles.
 static func _openings(root: Node3D,w: float,d: float,floors: int,floor_h: float,door: Material,shutter: Material,rng: RandomNumberGenerator,shutters: bool) -> void:
 	var glass:=_glass();var sill:=flat(Color("f4f1ea"),.7)
+	# Own generator for decoration, so the town layout drawn from `rng` stays the same.
+	var flowers:=RandomNumberGenerator.new();flowers.seed=hash(Vector3(w,d,floor_h))
 	G.box(root,Vector3(0,1.1,-d*.5-.05),Vector3(1.15,2.2,.1),door)
 	G.box(root,Vector3(0,.08,-d*.5-.45),Vector3(1.6,.16,.8),flat(Color("a9aa9c"),.9))
+	# Wall lantern beside the door and a small house-number plate.
+	var lamp_glow:=flat(Color("ffe0a8"),.4);lamp_glow.emission_enabled=true;lamp_glow.emission=Color("ffc477");lamp_glow.emission_energy_multiplier=.8
+	G.box(root,Vector3(.85,2.15,-d*.5-.12),Vector3(.05,.05,.22),flat(Color("2b2f33"),.5))
+	G.box(root,Vector3(.85,2.05,-d*.5-.24),Vector3(.16,.24,.16),lamp_glow)
+	G.box(root,Vector3(.85,2.19,-d*.5-.24),Vector3(.2,.04,.2),flat(Color("2b2f33"),.5))
+	G.box(root,Vector3(-.85,1.75,-d*.5-.07),Vector3(.26,.18,.03),flat(Color("2f5f8a"),.6))
 	for f: int in floors:
 		var y:=float(f)*floor_h+1.75
 		for face: Array in [[-1.,w,true],[1.,w,true],[-1.,d,false],[1.,d,false]]:
@@ -176,6 +184,16 @@ static func _openings(root: Node3D,w: float,d: float,floors: int,floor_h: float,
 				else:pos=Vector3(sign_value*(w*.5+.04),y,off);size=Vector3(.06,1.25,.95)
 				G.box(root,pos,size,glass)
 				G.box(root,pos+Vector3(0,-.7,0)+(Vector3(0,0,sign_value*.06) if front else Vector3(sign_value*.06,0,0)),Vector3(1.15,.1,.18) if front else Vector3(.18,.1,1.15),sill)
+				# Window boxes with flowers on about half the street-facing windows.
+				if front and sign_value<0. and flowers.randf()<.55:
+					var box_at:=pos+Vector3(0,-.86,-.16)
+					G.box(root,box_at,Vector3(1.,.22,.24),flat(Color("6b4a32"),.85))
+					G.box(root,box_at+Vector3(0,.13,0),Vector3(.94,.06,.18),flat(Color("4f7a3a"),.9))
+					var petals: Array[Color]=[Color("d8432f"),Color("f2a7c3"),Color("f1c232"),Color("f3f3f3"),Color("a64d79")]
+					var pick:=flowers.randi()%petals.size()
+					for k: int in 4:
+						G.sphere(root,box_at+Vector3(-.36+float(k)*.24,.2,0),Vector3(.16,.13,.16),flat(Color("4f7a3a"),.9),6)
+						G.sphere(root,box_at+Vector3(-.3+float(k)*.24,.27,-.03),Vector3(.09,.08,.09),flat(petals[(pick+k%2)%petals.size()],.7),6)
 				if shutters:
 					for s: float in [-1.,1.]:
 						var sp:=pos+(Vector3(s*.72,0,sign_value*.03) if front else Vector3(sign_value*.03,0,s*.72))

@@ -64,6 +64,32 @@ static func _detail(node: Node):
 	return node
 static func _rail(root: Node3D,at: Vector3,facing: float) -> void:
 	(root.get_meta("rails") as Array).append([at,facing])
+## Load carried in a small open boat: crates of fish on ice, a bundle of logs or sacks and a net.
+## Kind is kept in the "cargo" meta ("peixe", "madeira", "redes").
+static func _cargo(root: Node3D,at: Vector3,width: float,rng: RandomNumberGenerator) -> void:
+	var bundle:=Node3D.new();bundle.name="Carga";bundle.position=at;root.add_child(bundle)
+	var pick:=rng.randi()%3
+	match pick:
+		0:
+			var crate:=_mat(Color("a07a4f"),.85);var ice:=_mat(Color("dbeef2"),.3);var fish:=_mat(Color("8fa7b0"),.35,.4)
+			for i: int in 2:
+				var z:=(float(i)-.5)*.55
+				G.box(bundle,Vector3(0,.15,z),Vector3(width*.75,.3,.5),crate);G.box(bundle,Vector3(0,.31,z),Vector3(width*.68,.03,.44),ice)
+				for k: int in 3:G.sphere(bundle,Vector3(-width*.22+float(k)*width*.22,.34,z),Vector3(.09,.06,.34),fish,8)
+			root.set_meta("cargo","peixe")
+		1:
+			var bark:=_mat(Color("6b4e33"),.95);var cut:=_mat(Color("d8b884"),.8)
+			for i: int in 3:
+				var piece:=G.cylinder(bundle,Vector3((float(i)-1.)*.2,.12+(.16 if i==1 else 0.),0),.11,1.5,bark,.1,8);piece.rotation.x=PI*.5
+			G.beam(bundle,Vector3(-.3,.2,.45),Vector3(.3,.2,.45),.02,_mat(Color("c9b48a")))
+			root.set_meta("cargo","madeira")
+		_:
+			var sack:=_mat(Color("bfa982"),.95);var net:=_mat(Color("5e7f7a"),.9);var float_mat:=_mat(Color("e69138"),.6)
+			for i: int in 2:G.sphere(bundle,Vector3((float(i)-.5)*.32,.18,-.15),Vector3(.3,.32,.38),sack,10)
+			G.sphere(bundle,Vector3(0,.12,.32),Vector3(width*.6,.18,.45),net,10)
+			for k: int in 3:G.sphere(bundle,Vector3(-.2+float(k)*.2,.24,.36),Vector3(.08,.08,.08),float_mat,6)
+			root.set_meta("cargo","redes")
+
 static func _seat(root: Node3D,at: Vector3,facing: float) -> void:
 	(root.get_meta("seats") as Array).append([at,facing])
 
@@ -193,6 +219,7 @@ static func _canoa(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	_detail(G.beam(paddle,Vector3(0,.3,0),Vector3(.25,-.85,.1),.03,oak));_detail(G.box(paddle,Vector3(.25,-.95,.1),Vector3(.04,.42,.16),oak))
 	(root.get_meta("oars") as Array).append(paddle)
 	root.set_meta("crew",rng.randi_range(1,2));root.set_meta("helm",Vector3(0,-.42,L*.19))
+	_cargo(root,Vector3(0,-.38,0),.7,rng)
 
 static func _bote_remo(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var paint: Color=_pick(rng,[Color("f2f0ea"),Color("2f6fb0"),Color("3d8b5a"),Color("c8553d"),Color("e0b040")])
@@ -206,6 +233,7 @@ static func _bote_remo(root: Node3D,L: float,rng: RandomNumberGenerator) -> void
 		_detail(G.beam(oar,Vector3(-side*.6,.15,0),Vector3(side*1.7,-.55,0),.03,wood));_detail(G.box(oar,Vector3(side*1.75,-.6,0),Vector3(.38,.04,.14),wood))
 		(root.get_meta("oars") as Array).append(oar)
 	if rng.randf()<.5:_seat(root,Vector3(0,-.36,L*.25),PI)
+	else:_cargo(root,Vector3(0,-.32,L*.24),1.2,rng)
 	root.set_meta("crew",(root.get_meta("seats") as Array).size())
 
 static func _bote(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
