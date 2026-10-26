@@ -76,7 +76,7 @@ func _add_ray(home: Vector3,manta: bool) -> void:
 	if manta:
 		for side: float in [-1.,1.]:
 			var horn:=G.ellipsoid(root,Vector3(side*span*.1,0,-span*.33),Vector3(.14,.06,.55),dark,8);horn.rotation.y=side*.2
-	var tail:=G.beam(root,Vector3(0,0,span*.38),Vector3(0,0,span*(1.15 if not manta else .75)),.018*span,dark)
+	var tail:=G.beam(root,Vector3(0,0,span*(.27 if manta else .38)),Vector3(0,0,span*(1.15 if not manta else .75)),.018*span,dark)
 	var wings: Array[Node3D]=[]
 	var floor_y: float=home.y
 	var y:=-1.2-_rng.randf() if manta else floor_y+.25

@@ -19,6 +19,8 @@ var village: Node3D
 var counter: Marker3D
 var berth: Vector3
 var footprint: Vector3
+## Felling site (x, z, radius): the town keeps it free of houses.
+var camp_area: Vector3
 var workers: Array[Node3D]=[]
 var _out: Vector2
 var _side: Vector2
@@ -108,6 +110,7 @@ func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) 
 		add_child(cutter);workers.append(cutter)
 	# Felling site: standing trees, fresh stumps and a felled trunk where the woodcutters load up.
 	var camp:=_woods(pile_at)
+	camp_area=Vector3(camp.x,camp.y,16.)
 	var bark:=G.material(Color("6b4e33"),.95);var cut:=G.material(Color("d8b884"),.8)
 	for k: int in 3:
 		var t:=camp-_out*(4.+float(k)*2.5)+_side*(float(k)*3.-3.)
@@ -133,12 +136,22 @@ func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) 
 	var desk:=shed_at+_side*-5.+_out*-1.4
 	keeper.route.assign([Vector3(desk.x,floor_y,desk.y)]);keeper.follow_terrain=false;add_child(keeper);workers.append(keeper)
 
-## A spot inland of the timber stack, on gentle dry ground, where the woodcutters fell trees.
+## A spot inland of the timber stack, on gentle dry ground clear of the town districts, where the woodcutters fell trees.
 func _woods(pile_at: Vector2) -> Vector2:
-	for k: int in 12:
-		var p:=pile_at-_out*(30.-float(k)*2.)+_side*float(k%3)*4.
-		if Layout.coast(p).x<-8. and absf(Layout.height(p)-Layout.height(pile_at))<9.:return p
-	return pile_at-_out*8.
+	var districts: Array=preload("res://scripts/world/town_planner.gd").DISTRICTS
+	var best:=pile_at-_out*8.;var best_score:=1e9
+	for ring: int in 4:
+		for k: int in 16:
+			var a:=float(k)/16.*TAU
+			var p:=pile_at+Vector2(cos(a),sin(a))*(28.+float(ring)*12.)
+			if Layout.coast(p).x>-10. or Layout.in_town(p):continue
+			var clear:=true
+			for d: Array in districts:
+				if p.distance_to(d[1] as Vector2)<float(d[2])+12.:clear=false;break
+			if not clear:continue
+			var score:=absf(Layout.height(p)-Layout.height(pile_at))+p.distance_to(pile_at)*.1
+			if score<best_score:best_score=score;best=p
+	return best
 
 ## True when a (slow) boat lies inside the marked berth.
 func in_berth(at: Vector3) -> bool:
