@@ -23,6 +23,8 @@ func _ready() -> void:
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
 	visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
 	visual.seated=role in ["helm","rower"]
+	# Sailors do not carry the survivalist backpack.
+	if visual.backpack!=null:visual.backpack.visible=false
 	rotation.y=facing;_target=walk_b;_wait=_rng.randf_range(0.,3.)
 
 func _process(delta: float) -> void:

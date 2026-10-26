@@ -69,7 +69,7 @@ static func _seat(root: Node3D,at: Vector3,facing: float) -> void:
 
 ## Lofted hull with painted bands: antifouling below the waterline, hull colour, a decorative stripe
 ## under the gunwale and a deck. `pointed_stern` gives canoe/double-ended shapes; `sheer` lifts the bow.
-static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: float,hull: Color,bottom: Color,stripe: Color,deck: Color,pointed_stern: bool=false,sheer: float=0.) -> void:
+static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: float,hull: Color,bottom: Color,stripe: Color,deck: Color,pointed_stern: bool=false,sheer: float=0.,open_floor: float=-1.) -> void:
 	var mat:=StandardMaterial3D.new();mat.vertex_color_use_as_albedo=true;mat.roughness=.55;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
 	var sections:=20
 	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -82,8 +82,11 @@ static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: floa
 		else:w=beam*.5*pow(smoothstep(0.,.36,t),.55)*(1.-.12*smoothstep(.8,1.,t))
 		var f:=freeboard+sheer*pow(1.-t,2.)
 		var d:=draft*(.35+.65*sin(PI*clampf(t*.9+.05,0.,1.)))
+		# Open boats (canoes, rowing boats) have inner walls down to low floorboards instead of a deck.
+		var inner_l:=Vector3(-w*.97,f,z) if open_floor<0. else Vector3(-w*.78,open_floor,z)
+		var inner_r:=Vector3(w*.97,f,z) if open_floor<0. else Vector3(w*.78,open_floor,z)
 		rings.append([Vector3(0,-d,z),Vector3(-w*.72,-d*.45,z),Vector3(-w*.98,-.05,z),Vector3(-w,.08,z),Vector3(-w*.995,f*.84,z),Vector3(-w*.99,f*.86,z),
-			Vector3(-w*.975,f*.95,z),Vector3(-w*.97,f,z),Vector3(-w*.97,f,z),Vector3(w*.97,f,z),Vector3(w*.97,f,z),Vector3(w*.975,f*.95,z),
+			Vector3(-w*.975,f*.95,z),Vector3(-w*.97,f,z),inner_l,inner_r,Vector3(w*.97,f,z),Vector3(w*.975,f*.95,z),
 			Vector3(w*.99,f*.86,z),Vector3(w*.995,f*.84,z),Vector3(w,.08,z),Vector3(w*.98,-.05,z),Vector3(w*.72,-d*.45,z)])
 	var n:=17
 	for s: int in sections:
@@ -182,27 +185,27 @@ static func _containers(root: Node3D,lanes: int,rows: int,levels: int,base_y: fl
 # ---------------------------------------------------------------- kinds
 static func _canoa(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var wood: Color=_pick(rng,[Color("8a5a2b"),Color("a0522d"),Color("6b4226"),Color("b8433a"),Color("2f6f8f")])
-	_hull(root,L,.95,.42,.16,wood,wood.darkened(.35),wood.lightened(.25),Color("c9a46a"),true,.18)
+	_hull(root,L,.95,.42,.16,wood,wood.darkened(.35),wood.lightened(.25),Color("c9a46a"),true,.18,.06)
 	var oak:=_mat(Color("d8b07a"))
 	for i: int in 2:_detail(G.box(root,Vector3(0,.3,(float(i)-.5)*L*.38),Vector3(.8,.04,.22),oak))
-	_seat(root,Vector3(0,.12,-L*.19),0.);_seat(root,Vector3(0,.12,L*.19),0.)
+	_seat(root,Vector3(0,-.42,-L*.19),0.);_seat(root,Vector3(0,-.42,L*.19),0.)
 	var paddle:=Node3D.new();paddle.name="Remo";paddle.position=Vector3(.42,.75,-L*.19);root.add_child(paddle)
 	_detail(G.beam(paddle,Vector3(0,.3,0),Vector3(.25,-.85,.1),.03,oak));_detail(G.box(paddle,Vector3(.25,-.95,.1),Vector3(.04,.42,.16),oak))
 	(root.get_meta("oars") as Array).append(paddle)
-	root.set_meta("crew",rng.randi_range(1,2));root.set_meta("helm",Vector3(0,.12,L*.19))
+	root.set_meta("crew",rng.randi_range(1,2));root.set_meta("helm",Vector3(0,-.42,L*.19))
 
 static func _bote_remo(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var paint: Color=_pick(rng,[Color("f2f0ea"),Color("2f6fb0"),Color("3d8b5a"),Color("c8553d"),Color("e0b040")])
-	_hull(root,L,1.65,.58,.22,paint,Color("6e2b25"),Color("2a2a2a") if paint.v>.6 else Color("f2f0ea"),Color("9c7a4e"),false,.2)
+	_hull(root,L,1.65,.58,.22,paint,Color("6e2b25"),Color("2a2a2a") if paint.v>.6 else Color("f2f0ea"),Color("9c7a4e"),false,.2,.08)
 	var wood:=_mat(Color("9c7a4e"))
 	for z: float in [-L*.22,0.,L*.25]:_detail(G.box(root,Vector3(0,.42,z),Vector3(1.4,.05,.26),wood))
 	# The rower sits on the middle thwart facing aft and pulls two oars.
-	_seat(root,Vector3(0,.18,0.),PI);root.set_meta("helm",Vector3(0,.18,0.))
+	_seat(root,Vector3(0,-.36,0.),PI);root.set_meta("helm",Vector3(0,-.36,0.))
 	for side: float in [-1.,1.]:
 		var oar:=Node3D.new();oar.name="Remo";oar.position=Vector3(side*.78,.62,-.15);root.add_child(oar)
 		_detail(G.beam(oar,Vector3(-side*.6,.15,0),Vector3(side*1.7,-.55,0),.03,wood));_detail(G.box(oar,Vector3(side*1.75,-.6,0),Vector3(.38,.04,.14),wood))
 		(root.get_meta("oars") as Array).append(oar)
-	if rng.randf()<.5:_seat(root,Vector3(0,.18,L*.25),PI)
+	if rng.randf()<.5:_seat(root,Vector3(0,-.36,L*.25),PI)
 	root.set_meta("crew",(root.get_meta("seats") as Array).size())
 
 static func _bote(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
@@ -347,7 +350,9 @@ static func _cargueiro(root: Node3D,L: float,rng: RandomNumberGenerator,lanes: i
 	G.box(root,Vector3(0,f+bridge_h*.5,bridge_z),Vector3(beam*.62,bridge_h,L*.09),white)
 	G.box(root,Vector3(0,f+bridge_h+.3,bridge_z-L*.01),Vector3(beam*1.02,.6,L*.06),_mat(Color("2a2a2a")))
 	for floor_i: int in int(bridge_h/2.6):
-		_windows(root,Vector3(0,f+1.5+float(floor_i)*2.6,bridge_z-L*.045-.02),beam*.55,.7,8)
+		var wy:=f+1.5+float(floor_i)*2.6
+		_windows(root,Vector3(0,wy,bridge_z-L*.045-.02),beam*.55,.7,8)
+		for side: float in [-1.,1.]:_windows(root,Vector3(side*(beam*.31+.02),wy,bridge_z),L*.07,.7,4,true)
 	G.cylinder(root,Vector3(0,f+bridge_h+2.,bridge_z+L*.05),beam*.08,5.,_mat(Color("2a2a2a")),beam*.08,12)
 	var rows:=int(L*.62/6.3)
 	_containers(root,lanes,rows,levels,f,-L*.4,rng)
@@ -366,7 +371,10 @@ static func _petroleiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> voi
 	var bridge_z:=L*.38
 	G.box(root,Vector3(0,f+8.,bridge_z),Vector3(beam*.6,16.,L*.08),white)
 	G.box(root,Vector3(0,f+16.3,bridge_z-L*.01),Vector3(beam*1.02,.7,L*.05),_mat(Color("333333")))
-	for floor_i: int in 5:_windows(root,Vector3(0,f+2.+float(floor_i)*2.8,bridge_z-L*.04-.02),beam*.5,.8,9)
+	for floor_i: int in 5:
+		var wy:=f+2.+float(floor_i)*2.8
+		_windows(root,Vector3(0,wy,bridge_z-L*.04-.02),beam*.5,.8,9)
+		for side: float in [-1.,1.]:_windows(root,Vector3(side*(beam*.3+.02),wy,bridge_z),L*.06,.8,5,true)
 	G.cylinder(root,Vector3(0,f+19.,bridge_z+L*.04),beam*.09,6.,_mat(Color("2a2a2a")),beam*.08,12)
 	var pipe:=_mat(Color("b8a04a"),.5,.4)
 	for x: float in [-2.,0.,2.]:_detail(G.beam(root,Vector3(x,f+.6,-L*.44),Vector3(x,f+.6,L*.32),.3,pipe))

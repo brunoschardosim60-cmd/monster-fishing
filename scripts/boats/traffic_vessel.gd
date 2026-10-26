@@ -202,4 +202,4 @@ func set_night(value: float) -> void:
 	var windows: StandardMaterial3D=model.get_meta("windows") if model.has_meta("windows") else null
 	if windows!=null:windows.emission_energy_multiplier=value*2.2
 	var lamp:=hull.get_node_or_null("Luz") as OmniLight3D
-	if lamp!=null:lamp.light_energy=value*1.8
+	if lamp!=null:lamp.light_energy=value*(1.8 if length_m<40. else 4.)
