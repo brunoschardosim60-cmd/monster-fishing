@@ -66,6 +66,11 @@ void fragment(){
 	ALBEDO=mix(ALBEDO,vec3(.72,.82,.84),max(frost*.92,regional_snow*.94));
 	float ash=biome_ash*smoothstep(4.,18.,wp.y)*(1.-cliff*.45);
 	ALBEDO=mix(ALBEDO,vec3(.16,.15,.16),ash*.68);
+	// Deep under water the island ground meets the open seabed (seabed.gdshader): paint it the same sea
+	// sand so the line where the two surfaces cross does not show as a pale ribbon.
+	float seafloor=1.-smoothstep(-1.6,-.75,wp.y);
+	vec3 seabed_sand=texture(sand_color,wp.xz*.35).rgb*mix(vec3(.38,.55,.43),vec3(.83,.82,.65),texture(noise_tex,wp.xz*.045).r);
+	ALBEDO=mix(ALBEDO,seabed_sand,seafloor*(1.-cliff));
 	NORMAL_MAP=mix(NORMAL_MAP,texture(rock_normal,wp.xz*.3).rgb,cliff);
 	NORMAL_MAP_DEPTH=.18;
 	// Caustics: two drifting noise layers; where they match, sunlight focuses into thin bright lines.

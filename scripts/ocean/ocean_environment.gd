@@ -180,10 +180,12 @@ func _update_lighting(delta: float) -> void:
 	world.environment.ambient_light_color=Color("8197b5").lerp(Color("c3d6e2"),daylight)
 	world.environment.ambient_light_sky_contribution=lerpf(.2,.85,daylight)
 	world.environment.ambient_light_energy=lerpf(.48,.55,daylight)
-	world.environment.fog_density=.055 if underwater else weather.fog+cold*.012
-	world.environment.fog_light_color=Color("0a5460") if underwater else Color("182d43").lerp(Color("a8bfcf").lerp(Color("6f8290"),weather.cloud),daylight)
-	world.environment.fog_sky_affect=1. if underwater else .04+weather.rain*.45
-	world.environment.tonemap_exposure=.72 if underwater else 1.02
+	if underwater:_underwater_look(daylight)
+	else:
+		world.environment.fog_density=weather.fog+cold*.012
+		world.environment.fog_light_color=Color("182d43").lerp(Color("a8bfcf").lerp(Color("6f8290"),weather.cloud),daylight)
+		world.environment.fog_sky_affect=.04+weather.rain*.45
+		world.environment.tonemap_exposure=1.02
 	if world.ocean_material!=null:
 		var ocean_mat: ShaderMaterial=world.ocean_material
 		ocean_mat.set_shader_parameter("sea_glow",.04*daylight*(1.-weather.cloud*.55))
@@ -227,3 +229,17 @@ func _update_lighting(delta: float) -> void:
 			mat.set_shader_parameter("sea_time",Waves.time)
 			mat.set_shader_parameter("caustic_strength",caustics)
 			mat.set_shader_parameter("wet_weather",weather.rain)
+
+## Water clarity by sea: tropical reefs are clear and bright turquoise, the harbour greener and murkier,
+## storm and shadow seas dark; rough weather stirs up sediment, night and depth darken it.
+const WATER: Dictionary={"tropical":[.02,"1f9aa3"],"desert":[.024,"2a9a9a"],"harbor":[.034,"16707a"],"frost":[.03,"2f6f86"],
+	"volcanic":[.042,"1d4f57"],"storm":[.05,"14505a"],"shadow":[.055,"103a46"]}
+func _underwater_look(daylight: float) -> void:
+	var eye:=get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d()!=null else Vector3.ZERO
+	var biome: String=str(Layout.region_at(Vector2(eye.x,eye.z)).get("biome","harbor"))
+	var water: Array=WATER.get(biome,WATER.harbor)
+	var depth: float=maxf(0.,-eye.y)
+	world.environment.fog_density=float(water[0])*(1.+weather.energy*.6)
+	world.environment.fog_light_color=Color(str(water[1])).darkened(clampf(depth/60.,0.,.6)+(1.-daylight)*.55)
+	world.environment.fog_sky_affect=1.
+	world.environment.tonemap_exposure=lerpf(.78,.92,daylight)-clampf(depth/80.,0.,.2)

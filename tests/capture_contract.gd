@@ -56,6 +56,8 @@ func run() -> void:
 	check(game.hooked.landing() and not game.catch_display.visible,"landing: lifted out on the line, the trophy in hand not yet shown")
 	await frames(45)
 	check(not game.hooked.visible and game.catch_display.visible,"after the lift only the fish in hand is visible")
+	var anim: AnimationPlayer=game.player.visual.animation
+	check(anim.has_animation(game.player.visual.hold_clip) and game.player.visual.current==game.player.visual.hold_clip,"the angler holds the fish with a hold pose (%s)"%game.player.visual.current)
 	var count: int=game.inventory.count()
 	game.finish_catch(false);await frames(60)
 	check(game.inventory.count()==count+1 and not game.catch_display.visible and game.pending_catch.is_empty(),"keeping stows exactly one fish")
@@ -68,6 +70,7 @@ func run() -> void:
 		count=game.inventory.count()
 		game.finish_catch(true);await frames(3)
 		check(game.hooked.visible and game.hooked.mode=="release" and not game.catch_display.visible,"releasing puts the same fish back in the water")
+		check(game.player.visual.current=="ual/PickUp","the angler kneels to put it back (%s)"%game.player.visual.current)
 		var start: Vector3=game.hooked.global_position
 		await frames(150)
 		check(game.hooked.global_position.distance_to(start)>1.5 and game.hooked.global_position.y<Waves.height_at(game.hooked.global_position),"the released fish swims away under water")

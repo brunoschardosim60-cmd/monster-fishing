@@ -17,6 +17,8 @@ var animation_time: float = 0.0
 var on_deck: bool=false
 var deck_boat: CharacterBody3D
 var deck_local:=Vector3(0,1.12,2.4)
+## -1 on the main deck, else the index of the cabin roof (hull_classes roofs) the player climbed onto.
+var deck_level: int=-1
 var swimming: bool=false
 var holding_fish: bool=false
 var fishing_active: bool=false
@@ -135,8 +137,23 @@ func _physics_process(delta: float) -> void:
 		deck_local+=deck_velocity*delta
 		# Each hull class has its own walkable deck; cabins, wheelhouses and masts are walked around.
 		var deck: Dictionary=deck_boat.deck_layout() if deck_boat.has_method("deck_layout") else {"y":1.12,"x":1.4,"z0":-3.3,"z1":3.1,"blocks":[]}
-		deck_local.x=clampf(deck_local.x,-float(deck.x),float(deck.x));deck_local.z=clampf(deck_local.z,float(deck.z0),float(deck.z1));deck_local.y=float(deck.y)
-		deck_local=preload("res://scripts/boats/hull_classes.gd").resolve_blocks(deck_local,deck.blocks)
+		var roofs: Array=deck.get("roofs",[])
+		if deck_level>=0 and deck_level<roofs.size():
+			# On a cabin roof: its edges are the limit; Space by the ladder climbs back down.
+			var roof: Dictionary=roofs[deck_level];var r: Rect2=roof.rect
+			deck_local.x=clampf(deck_local.x,r.position.x+.15,r.end.x-.15);deck_local.z=clampf(deck_local.z,r.position.y+.15,r.end.y-.15)
+			deck_local.y=move_toward(deck_local.y,float(roof.y),delta*2.6)
+			if jump_buffer>0. and Vector2(deck_local.x-roof.top.x,deck_local.z-roof.top.z).length()<.9:
+				deck_level=-1;deck_local.x=roof.ladder.x;deck_local.z=roof.ladder.z;jump_buffer=0.
+		else:
+			deck_level=-1
+			deck_local.x=clampf(deck_local.x,-float(deck.x),float(deck.x));deck_local.z=clampf(deck_local.z,float(deck.z0),float(deck.z1))
+			deck_local.y=move_toward(deck_local.y,float(deck.y),delta*2.6)
+			deck_local=preload("res://scripts/boats/hull_classes.gd").resolve_blocks(deck_local,deck.blocks)
+			for i: int in roofs.size():
+				var roof: Dictionary=roofs[i]
+				if jump_buffer>0. and Vector2(deck_local.x-roof.ladder.x,deck_local.z-roof.ladder.z).length()<.9:
+					deck_level=i;deck_local.x=roof.top.x;deck_local.z=roof.top.z;jump_buffer=0.
 		if jump_buffer>0. and deck_jump<=.001:
 			deck_vertical_speed=JUMP_SPEED;jump_buffer=0.
 		deck_vertical_speed-=20.*delta
@@ -326,3 +343,13 @@ func keep_camera_above_water() -> void:
 	var water: float=sea.height_at(camera.global_position)
 	var deficit:=water+.3-camera.global_position.y
 	if deficit>0.: camera.global_position.y+=deficit
+
+## HUD prompt when standing by a ladder (or at its top).
+func ladder_hint() -> String:
+	if not on_deck or not is_instance_valid(deck_boat) or not deck_boat.has_method("deck_layout"):return ""
+	var roofs: Array=deck_boat.deck_layout().get("roofs",[])
+	for i: int in roofs.size():
+		var roof: Dictionary=roofs[i]
+		if deck_level==i and Vector2(deck_local.x-roof.top.x,deck_local.z-roof.top.z).length()<.9:return "ESPAÇO · Descer"
+		if deck_level<0 and Vector2(deck_local.x-roof.ladder.x,deck_local.z-roof.ladder.z).length()<.9:return "ESPAÇO · Subir"
+	return ""

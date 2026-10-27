@@ -28,6 +28,11 @@ var locomotion_phase: float=0.
 var _rod: Node3D
 ## Load on the rod, 0 straight … 1 bent hard (set by the game from line tension).
 var rod_bend: float=0.
+## Clip used while a caught fish is in the hands: one hand for small fish, both arms for big ones.
+var hold_clip: String="ual/FishHold"
+## A short one-shot action (kneel to release a fish, reach to stow it) that overrides the pose until done.
+var action_clip: String=""
+var action_time: float=0.
 const ROD_JOINTS: int=7
 var _rod_joints: Array[Node3D]=[]
 var _bend_now: float=0.
@@ -119,8 +124,11 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 	var locomotion: String=[still,walk_clip,"ual/Jog","ual/Sprint"][gait_state]
 	var fish_clip: String="ual/FishCast" if fishing_state==1 else ("ual/FishReel" if fishing_state==4 else "ual/FishIdle")
 	var swim_clip: String="ual/Swim" if gait_speed>.3 else "ual/SwimIdle"
-	var next: String="Hold" if holding_fish else (swim_clip if swimming else (fish_clip if fishing else (seated_clip if seated else locomotion)))
+	action_time=maxf(0.,action_time-delta)
+	var held: String=hold_clip if animation.has_animation(hold_clip) else "Hold"
+	var next: String=held if holding_fish else (swim_clip if swimming else (fish_clip if fishing else (seated_clip if seated else locomotion)))
 	if airborne and not swimming:next="ual/JumpStart" if vertical_speed>0. else "ual/JumpLoop"
+	if action_time>0. and animation.has_animation(action_clip):next=action_clip
 	if next!=current:
 		# Locomotion clips share a phase convention (left foot first), so keep the cycle position and the feet do not pop.
 		var cycles: Array[String]=["ual/Walk","ual/WalkCarry","ual/Jog","ual/Sprint"]
@@ -173,3 +181,7 @@ func two_hand_point() -> Vector3:
 	var b:=(skeleton.global_transform*_bone_global(right)).origin if right>=0 else a
 	return (a+b)*.5+Vector3(0,-.12,0)
 func catch_hand_transform() -> Transform3D:return skeleton.global_transform*_bone_global(left_hand)
+
+## Plays a one-shot clip (e.g. "ual/PickUp" to kneel and put a fish back) for `seconds`.
+func play_action(clip: String,seconds: float) -> void:
+	action_clip=clip;action_time=seconds

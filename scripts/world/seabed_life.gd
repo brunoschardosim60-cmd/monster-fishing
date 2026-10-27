@@ -97,7 +97,7 @@ func _scatter(centre: Vector3,radius: float) -> Vector3:
 ## [rock, brain, branch, kelp, fan, table, sponge, anemone] as [min,max] counts.
 const BIOME_MIX: Dictionary={
 	"tropical":[[5,8],[12,18],[14,20],[0,2],[4,7],[3,6],[2,4],[4,7]],
-	"harbor":[[7,11],[9,15],[10,16],[5,9],[1,3],[0,2],[2,4],[2,4]],
+	"harbor":[[7,11],[12,18],[13,19],[6,10],[2,4],[1,3],[3,5],[3,6]],
 	"frost":[[9,13],[0,0],[0,0],[16,24],[0,0],[0,0],[3,6],[5,8]],
 	"volcanic":[[11,15],[2,4],[3,5],[2,4],[0,2],[0,1],[5,8],[3,5]],
 	"storm":[[10,14],[3,6],[3,6],[9,14],[0,1],[0,0],[3,5],[2,4]],
@@ -132,7 +132,11 @@ func _reef(centre: Vector3) -> void:
 		if spot!=Vector3.INF:_crab(spot)
 
 func _put(kind: String,centre: Vector3,radius: float,size: float,color: Color,sink: float) -> void:
-	var p:=_scatter(centre,radius)
+	# A few tries: on a sloping reef many random points land on dry or too-shallow ground.
+	var p:=Vector3.INF
+	for attempt: int in 4:
+		p=_scatter(centre,radius*(1.-.15*float(attempt)))
+		if p!=Vector3.INF:break
 	if p==Vector3.INF:return
 	var batch: Dictionary=_batches[kind]
 	var variant:=rng.randi()%(batch.meshes as Array).size()

@@ -594,6 +594,7 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 			G.cylinder(_alt_body,Vector3(wheel[0].x,(deck_y+wheel[0].y)*.5,wheel[0].z+.12),.07,wheel[0].y-deck_y,brass)
 			helm_wheel=_build_helm_wheel(_alt_body,wheel[0],float(wheel[1]),float(wheel[2]))
 		_build_bucket(_alt_body,hull_spec.bucket)
+		for roof: Dictionary in hull_spec.deck.get("roofs",[]):_build_ladder(_alt_body,roof)
 		deck_lights=[];lamp_materials=[]
 		var lamp:=OmniLight3D.new();lamp.position=hull_spec.helm+Vector3(0,2.1,-.4);lamp.light_color=Color("ffd69c");lamp.light_energy=1.8;lamp.omni_range=6.;_alt_body.add_child(lamp);deck_lights.append(lamp)
 		if float(hull_spec.sails)>0.:
@@ -678,3 +679,16 @@ func point_of_sail() -> String:
 	if angle<115.:return "través"
 	if angle<155.:return "largo"
 	return "popa"
+
+## Wooden ladder from the deck up the cabin side to its roof (hull_classes roofs).
+func _build_ladder(parent: Node3D,roof: Dictionary) -> void:
+	var wood:=Materials.surface("teak",Color("7a5532"),2.)
+	var foot: Vector3=roof.ladder;var top: Vector3=roof.top
+	# The ladder leans on the cabin face, between the foot and the roof edge.
+	var edge:=Vector3(foot.x,float(roof.y)+.35,lerpf(foot.z,top.z,.35))
+	for side: float in [-.2,.2]:G.beam(parent,foot+Vector3(side,0,0),edge+Vector3(side,0,0),.025,wood)
+	var steps:=int((edge.y-foot.y)/.3)
+	for i: int in range(1,steps+1):
+		var t:=float(i)/float(steps+1)
+		var at:=foot.lerp(edge,t)
+		G.beam(parent,at+Vector3(-.2,0,0),at+Vector3(.2,0,0),.02,wood)

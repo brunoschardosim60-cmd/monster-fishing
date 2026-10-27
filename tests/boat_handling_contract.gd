@@ -87,6 +87,17 @@ func _fleet(boat: CharacterBody3D) -> void:
 					if b.grow(-.02).has_point(Vector2(p.x,p.z)):inside=true
 			Input.action_release(dir);Input.action_release("sprint")
 		check(not left and not inside,"%s: deck walking stays on deck and out of cabins/masts"%id)
+		for roof: Dictionary in spec.deck.get("roofs",[]):
+			var pl=game.player
+			pl.deck_local=roof.ladder;pl.deck_level=-1;await frames(2)
+			check(pl.ladder_hint()=="ESPAÇO · Subir","%s: the ladder offers a climb"%id)
+			pl.jump_buffer=.16;await frames(60)
+			check(pl.deck_level==0 and absf(pl.deck_local.y-float(roof.y))<.02,"%s: climbs the ladder onto the cabin roof (y %.2f)"%[id,pl.deck_local.y])
+			Input.action_press("move_forward");await frames(90);Input.action_release("move_forward")
+			var r: Rect2=roof.rect
+			check(r.has_point(Vector2(pl.deck_local.x,pl.deck_local.z)),"%s: walking on the roof stays on the roof"%id)
+			pl.deck_local=roof.top;await frames(2);pl.jump_buffer=.16;await frames(60)
+			check(pl.deck_level==-1 and absf(pl.deck_local.y-float(spec.deck.y))<.02,"%s: climbs back down to the deck"%id)
 		game.toggle_deck();await frames(2)
 		game.interact();await frames(2)
 		check(not game.player.in_boat and game.player.global_position.distance_to(boat.global_position)>float(spec.beam)*.5,"%s: stepping off lands beside the hull"%id)

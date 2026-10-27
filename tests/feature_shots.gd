@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -291,4 +291,43 @@ func _reef() -> void:
 	var life=game.world.get_node("VidaNoFundo")
 	for i: int in mini(life.reefs.size(),4):
 		var c: Vector3=life.reefs[i]
-		await shot("reef_%d_%s"%[i,life.reef_biomes[i]],c+Vector3(7,3.5,7),c+Vector3(0,.6,0),4)
+		# Keep the camera in open water above the slope (a grazing view under the ground shows its edge).
+		var eye: Vector3=c+Vector3(7,3.5,7);eye.y=maxf(eye.y,life.floor_at(Vector2(eye.x,eye.z))+1.8)
+		await shot("reef_%d_%s"%[i,life.reef_biomes[i]],eye,c+Vector3(0,.6,0),4)
+
+func _reefdbg() -> void:
+	var life=game.world.get_node("VidaNoFundo")
+	var c: Vector3=life.reefs[0]
+	var groups: Array[Node]=[]
+	for n: Node in game.get_children():if n!=game.world and n is Node3D:groups.append(n)
+	for n: Node in game.world.get_children():if n is Node3D:groups.append(n)
+	var k:=0
+	for g: Node in groups:
+		var n3:=g as Node3D;var was:=n3.visible;n3.visible=false
+		await shot("bis_%02d_%s"%[k,String(g.name).left(20)],c+Vector3(7,3.5,7),c+Vector3(0,.6,0),1)
+		n3.visible=was;k+=1
+
+func _poses() -> void:
+	var b: CharacterBody3D=game.boat
+	var Econ=load("res://scripts/inventory/harbor_economy.gd")
+	game.inventory.owned_boats.append("veleiro");game.inventory.boat_id="veleiro";Econ.apply(game.inventory,b,game.fishing)
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.;b.sail_target=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for i: int in 5:await process_frame
+	game.toggle_deck()
+	var roof: Dictionary=b.hull_spec.deck.roofs[0]
+	game.player.deck_local=roof.ladder;game.player.jump_buffer=.16
+	for i: int in 40:await process_frame
+	var p: Vector3=game.player.global_position
+	await shot("pose_roof",p+b.global_basis*Vector3(4.,2.,4.),p,2)
+	game.player.deck_local=Vector3(-1.,1.1,3.);game.player.deck_level=-1
+	for i: int in 30:await process_frame
+	game.pending_catch={"id":"seabass","species_id":"seabass","name":"Robalo","weight":3.,"value":20,"color":"6e7a52"}
+	game.catch_display.show_catch(game.pending_catch);game.catch_display.held=true;game.player.visual.hold_clip="ual/FishHold"
+	for i: int in 30:await process_frame
+	p=game.player.global_position
+	var front: Vector3=game.player.visual.global_basis.z
+	await shot("pose_hold",p+front*2.4+Vector3(0,1.4,0)+b.global_basis.x*.8,p+Vector3(0,1.1,0),1)
+	game.finish_catch(true)
+	for i: int in 25:await process_frame
+	await shot("pose_release",p+front*2.6+Vector3(0,1.2,0)+b.global_basis.x*1.5,p+Vector3(0,.6,0),1)

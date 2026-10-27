@@ -6,6 +6,8 @@ extends RefCounted
 ##   deck: walkable box in hull space (y = deck height, x = half width, z0..z1 bow..stern) plus blocks,
 ##         rectangles (x, z, width, depth) the player walks around: cabins, masts, hatches.
 ##   helm: where the skipper stands; wheel: [position, radius, tilt, turns lock-to-lock (negative = tiller)]
+##   roofs: walkable cabin tops reached by a ladder: {"rect": Rect2 (x,z,w,d), "y": roof height,
+##          "ladder": deck point at the ladder's foot, "top": roof point where it arrives}
 ##   sails: drive per m/s of wind at full sail and best point of sail (0 = motor only)
 const SPECS: Dictionary={
 	"tripo":{"length":8.1,"beam":3.65,"mass":4200.,"draft":.1,"heave":155000.,"angular":3.8,"tilt":.32,
@@ -15,10 +17,12 @@ const SPECS: Dictionary={
 		"deck":{"y":.1,"x":.24,"z0":-2.,"z1":2.2,"start":Vector3(0,.1,.6),"blocks":[]},
 		"helm":Vector3(0,.1,2.25),"wheel":[Vector3(0,.42,2.95),0.,0.,-.15],"bucket":Vector3(0,.08,-1.1),"sails":0.},
 	"veleiro":{"kind":"veleiro","model_length":11.,"length":10.4,"beam":3.5,"mass":6500.,"draft":.0,"heave":210000.,"angular":3.,"tilt":.38,
-		"deck":{"y":1.1,"x":1.35,"z0":-4.5,"z1":4.6,"start":Vector3(.9,1.1,2.4),"blocks":[Rect2(-.99,-1.87,1.98,3.3)]},
+		"deck":{"y":1.1,"x":1.35,"z0":-4.5,"z1":4.6,"start":Vector3(.9,1.1,2.4),"blocks":[Rect2(-.99,-1.87,1.98,3.3)],
+			"roofs":[{"rect":Rect2(-.85,-1.75,1.7,3.05),"y":1.7,"ladder":Vector3(.5,1.1,1.75),"top":Vector3(.5,1.7,1.15)}]},
 		"helm":Vector3(0,1.1,4.35),"wheel":[Vector3(0,1.95,3.75),.38,PI*.3,1.5],"bucket":Vector3(-.9,1.1,2.6),"sails":.55},
 	"escuna":{"kind":"escuna","model_length":20.,"length":19.,"beam":5.,"mass":32000.,"draft":.05,"heave":1100000.,"angular":1.9,"tilt":.24,
-		"deck":{"y":2.2,"x":2.05,"z0":-8.6,"z1":8.6,"start":Vector3(1.5,2.2,-1.),"blocks":[Rect2(-1.45,3.35,2.9,3.3),Rect2(-.3,-4.3,.6,.6),Rect2(-.3,1.3,.6,.6)]},
+		"deck":{"y":2.2,"x":2.05,"z0":-8.6,"z1":8.6,"start":Vector3(1.5,2.2,-1.),"blocks":[Rect2(-1.45,3.35,2.9,3.3),Rect2(-.3,-4.3,.6,.6),Rect2(-.3,1.3,.6,.6)],
+			"roofs":[{"rect":Rect2(-1.3,3.5,2.6,3.),"y":3.3,"ladder":Vector3(.8,2.2,3.05),"top":Vector3(.8,3.3,3.75)}]},
 		"helm":Vector3(0,2.2,7.9),"wheel":[Vector3(0,3.15,7.25),.5,PI*.32,2.],"bucket":Vector3(-1.4,2.2,1.),"sails":.72},
 }
 

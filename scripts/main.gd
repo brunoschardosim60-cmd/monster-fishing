@@ -389,7 +389,7 @@ func toggle_deck() -> void:
 	player.on_deck=not player.on_deck;player.deck_boat=boat
 	player.visual.seated=not player.on_deck
 	if player.on_deck:
-		player.deck_local=boat.deck_layout().start
+		player.deck_local=boat.deck_layout().start;player.deck_level=-1
 		player.deck_velocity=Vector3.ZERO;player.deck_sway=Vector3.ZERO;player.prev_boat_speed=boat.speed
 	boat.set_occupied(not player.on_deck)
 	hud.notify("R · Assumir o leme" if player.on_deck else "Você assumiu o leme.")
@@ -457,7 +457,9 @@ func _interaction_hint() -> String:
 		var anchor_hint: String={"up":"Z · Âncora","dropping":"Âncora descendo…","down":"Ancorado · Z recolher","raising":"Recolhendo âncora…"}[boat.anchor.state]
 		var trap: Dictionary=gear.nearest_trap(boat.global_position)
 		if not trap.is_empty():return "B · Recolher covo" if float(trap.soak)>=gear.TRAP_SOAK else "Covo na água · %d s"%int(gear.TRAP_SOAK-float(trap.soak))
-		if player.on_deck:return "R · Leme    E · Sair    C · Ração    N · Tarrafa    "+anchor_hint
+		if player.on_deck:
+			var ladder: String=player.ladder_hint()
+			return ("%s    "%ladder if ladder!="" else "")+"R · Leme    E · Sair    C · Ração    N · Tarrafa    "+anchor_hint
 		var turbo:="TURBO!" if boat.boost>0. else ("SHIFT turbo" if boat.boost_cooldown<=0. else "turbo %ds"%int(ceil(boat.boost_cooldown)))
 		var sails:=("    P · Velas: %s"%boat.point_of_sail()) if boat.has_sails() else ""
 		return "%.0f nós · %d%% casco · %s    R · Convés    %s%s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),turbo,anchor_hint,sails]
@@ -473,6 +475,7 @@ func _on_caught(data: Dictionary) -> void:
 	if stow_tween!=null: stow_tween.kill()
 	stowing=false;catch_display.scale=Vector3.ONE
 	pending_catch=data.duplicate(true)
+	if "hold_clip" in player.visual:player.visual.hold_clip="Hold" if float(data.get("weight",1.))>6. else "ual/FishHold"
 	caught_once = true
 	audio.cue("catch")
 	if hooked.visible:hooked.land(player.visual.catch_hand_transform().origin)
@@ -493,6 +496,7 @@ func finish_catch(release: bool) -> void:
 		var water: Vector3=(boat.global_position if player.in_boat else player.global_position)+(boat.global_basis.x*-reach if player.in_boat else ahead*reach)
 		water.y=preload("res://scripts/world/wave_field.gd").height_at(water)-.15
 		hooked.release(fishing.species_current,catch_display.global_position,water)
+		if player.visual.has_method("play_action") and not player.swimming:player.visual.play_action("ual/PickUp",1.2)
 		hud.notify("Peixe devolvido.")
 	else:
 		if inventory.add_catch(pending_catch):
@@ -503,6 +507,7 @@ func finish_catch(release: bool) -> void:
 		catch_display.held=false;catch_display.remaining=0.;catch_display.hide()
 	else:
 		stowing=true;stow_origin=catch_display.global_position
+		if player.visual.has_method("play_action"):player.visual.play_action("ual/Interact",.8)
 		stow_tween=create_tween()
 		stow_tween.tween_method(_stow_frame,0.,1.,.65).set_trans(Tween.TRANS_SINE)
 		stow_tween.tween_callback(func() -> void:
