@@ -121,11 +121,15 @@ func _run() -> void:
 	await _frames(30)
 	Input.action_release("move_left")
 	_check(game.boat.rotation.y > angle_before + 0.05, "A steers the moving boat left")
-	angle_before = game.boat.rotation.y
+	# The hull carries its swing for a moment (rudder and yaw inertia), so check that D has reversed the
+	# swing: the boat is now turning to starboard and its heading has started coming back.
 	Input.action_press("move_right")
-	await _frames(30)
+	var peak: float=game.boat.rotation.y
+	for i: int in 48:
+		await process_frame
+		peak=maxf(peak,game.boat.rotation.y)
 	Input.action_release("move_right")
-	_check(game.boat.rotation.y < angle_before - 0.05, "D steers the moving boat right")
+	_check(game.boat.yaw_rate < -0.1 and game.boat.rotation.y < peak - 0.05, "D steers the moving boat right")
 	Input.action_release("move_forward")
 	var speed_before: float = game.boat.speed
 	Input.action_press("move_back")

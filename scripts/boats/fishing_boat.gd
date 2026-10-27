@@ -53,7 +53,7 @@ var yaw_rate: float=0.
 var engine_rpm: float=0.
 ## Per-class handling (set by harbor_economy.apply): wheel speed, turning power, acceleration,
 ## yaw inertia (seconds to answer the rudder) and astern speed.
-var handling: Dictionary={"rudder_rate":1.6,"turn":1.,"accel":2.7,"inertia":.55,"reverse":3.2}
+var handling: Dictionary={"rudder_rate":2.2,"turn":1.,"accel":2.7,"inertia":.2,"reverse":3.2}
 var helm_wheel: Node3D
 ## Hull class (hull_classes.gd): "tripo" is the imported launch, the others are built by vessel_models.
 const HullClasses=preload("res://scripts/boats/hull_classes.gd")
@@ -137,7 +137,9 @@ func _physics_process(delta: float) -> void:
 	if anchored:
 		throttle=0.;steering=0.
 	# Wheel → rudder: limited rate, slower self-centring when the wheel is let go.
-	var rudder_rate: float=float(handling.rudder_rate)*(.65 if absf(steering)<.01 else 1.)
+	var rudder_rate: float=float(handling.rudder_rate)*(.9 if absf(steering)<.01 else 1.)
+	# Spinning the wheel across to the other side goes quicker than easing it further over.
+	if absf(steering)>.01 and absf(rudder)>.05 and signf(steering)!=signf(rudder):rudder_rate*=2.2
 	rudder=move_toward(rudder,steering,rudder_rate*delta)
 	# Engine spools up gradually and drops faster than it rises; boost answers at once.
 	# Shifting from ahead to astern (or back) goes through neutral quickly: that is how a skipper brakes.

@@ -85,7 +85,7 @@ const MAX_LEVEL: int=3
 ## Paint schemes sold at the shipyard: hull, superstructure.
 const PAINTS: Array=[[Color("2b4c7e"),Color("f2efe6")],[Color("b8433a"),Color("f4f1e8")],[Color("e9c46a"),Color("264653")],[Color("2a9d8f"),Color("f1faee")],[Color("1d1d1d"),Color("c9a227")],[Color("f4f4f0"),Color("7a1f2b")]]
 const BOATS: Dictionary={
-	"aurora":{"title":"Lancha Aurora · equilibrada","price":0,"speed":11.,"protection":1.,"capacity":1.,"scale":1.,"handling":{"rudder_rate":1.6,"turn":1.,"accel":2.7,"inertia":.55,"reverse":3.2},"hull":Color("e2d2ad"),"top":Color("364c50")},
+	"aurora":{"title":"Lancha Aurora · equilibrada","price":0,"speed":11.,"protection":1.,"capacity":1.,"scale":1.,"handling":{"rudder_rate":2.2,"turn":1.,"accel":2.7,"inertia":.2,"reverse":3.2},"hull":Color("e2d2ad"),"top":Color("364c50")},
 	"veloz":{"title":"Lancha Veloz · +35% velocidade, casco leve","price":300,"speed":14.8,"protection":1.25,"capacity":.8,"scale":.94,"handling":{"rudder_rate":2.2,"turn":1.15,"accel":3.6,"inertia":.4,"reverse":3.6},"hull":Color("c0392b"),"top":Color("f2f2ee")},
 	"expedicao":{"title":"Barco de Expedição · farol de proa incluso, mais alcance","price":380,"speed":12.6,"protection":.8,"capacity":1.2,"scale":1.08,"handling":{"rudder_rate":1.5,"turn":.95,"accel":2.5,"inertia":.65,"reverse":3.},"hull":Color("2e6b4f"),"top":Color("efe6d2"),"searchlight":true},
 	"traineira":{"title":"Traineira Robusta · casco reforçado, rede 60% maior","price":450,"speed":9.6,"protection":.55,"capacity":1.6,"scale":1.18,"handling":{"rudder_rate":1.1,"turn":.8,"accel":1.8,"inertia":1.,"reverse":2.4},"hull":Color("1f4e79"),"top":Color("e8e2d4")},
