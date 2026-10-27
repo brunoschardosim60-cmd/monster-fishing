@@ -54,6 +54,9 @@ const CATALOG: Dictionary={
 	"craft_bait":{"title":"Preparar 6 iscas · 1 material","price":0,"service":"workshop","craft":{"materials":1,"goods":{},"result":{"bait":6}}},
 	"feed":{"title":"Saco de ração · 5 punhados para atrair cardumes (tecla C)","price":15,"service":"gear"},
 	"net":{"title":"Rede de arremesso · tecla N no barco","price":90,"service":"gear"},
+	"gillnet":{"title":"Rede de espera · Shift+N lança da lateral, pesca sozinha, recolha na boia","price":120,"service":"gear"},
+	"pots":{"title":"Gaiola de peixe · B sobre um recife pega peixes de recife","price":45,"service":"gear"},
+	"winch":{"title":"Guincho de convés · covos até 60 m, recolhe mais rápido (traineira, expedição, escuna)","price":220,"service":"shipyard"},
 	"bell":{"title":"Sino de vara · toca quando um peixe pega na vara do suporte","price":20,"service":"gear"},
 	"trap":{"title":"Covo para caranguejo e lagosta · tecla B em água rasa","price":40,"service":"gear"},
 	"flares":{"title":"3 sinalizadores · tecla Y espanta monstros por um tempo","price":25,"service":"gear"},
@@ -133,7 +136,8 @@ static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing:
 		inventory.money-=int(item.price);inventory.equipment[key]=want;inventory.changed.emit()
 		return "Instalado: %s."%str(item.title).get_slice(" ·",0)
 	if id=="harpoons" and inventory.equipment.get("harpoon",0)<1: return "Instale primeiro o arpão de proa."
-	if id in inventory.equipment and inventory.equipment[id]>=1 and id!="trap": return "Você já possui esta melhoria."
+	if id=="winch" and not str(inventory.boat_id) in ["traineira","escuna","expedicao"]:return "Este barco não comporta um guincho (traineira, expedição ou escuna)."
+	if id in inventory.equipment and inventory.equipment[id]>=1 and not id in ["trap","pots"]: return "Você já possui esta melhoria."
 	if id=="repair" and boat.integrity>=.999: return "O casco já está em boas condições."
 	if inventory.money<int(item.price): return "Moedas insuficientes. Venda capturas ou explore os baús da ilha."
 	inventory.money-=int(item.price)
@@ -145,6 +149,7 @@ static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing:
 	elif id=="harpoons": inventory.harpoons+=4
 	elif id=="repair": boat.integrity=1.
 	elif id=="paint": inventory.boat_paint+=1
+	elif id=="pots": inventory.equipment["pots"]=int(inventory.equipment.get("pots",0))+1
 	else: inventory.equipment[id]=1
 	apply(inventory,boat,fishing);inventory.changed.emit()
 	return "Compra concluída: "+str(item.title)
@@ -165,4 +170,5 @@ static func apply(inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> 
 	if boat.has_method("set_hull_model"):boat.set_hull_model(str(hull_data.get("model","tripo")),11+paint)
 	var colors: Array=[hull_data.hull,hull_data.top] if paint==0 else PAINTS[(paint-1)%PAINTS.size()]
 	if boat.has_method("set_livery"):boat.set_livery(colors[0],colors[1],float(hull_data.scale))
+	if boat.has_method("set_winch"):boat.set_winch(int(inventory.equipment.get("winch",0))>0 and str(inventory.boat_id) in ["traineira","escuna","expedicao"])
 	boat.update_lights()

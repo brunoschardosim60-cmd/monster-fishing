@@ -215,7 +215,7 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("sails") and player.in_boat and boat.has_sails():hud.notify(boat.cycle_sails())
 	if event.is_action_pressed("anchor") and player.in_boat:toggle_anchor()
 	if event.is_action_pressed("feed") and not event.is_echo():hud.notify(gear.throw_feed())
-	if event.is_action_pressed("cast_net") and not event.is_echo():hud.notify(gear.cast_net())
+	if event.is_action_pressed("cast_net") and not event.is_echo():hud.notify(gear.gillnet_action() if Input.is_key_pressed(KEY_SHIFT) else gear.cast_net())
 	if event.is_action_pressed("trap") and not event.is_echo():hud.notify(gear.trap_action())
 	if event.is_action_pressed("harpoon") and not event.is_echo():hud.notify(lairs.fire_harpoon())
 	if event.is_action_pressed("flare") and not event.is_echo():

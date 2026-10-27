@@ -705,3 +705,24 @@ func _build_ladder(parent: Node3D,roof: Dictionary) -> void:
 		var t:=float(i)/float(steps+1)
 		var at:=foot.lerp(edge,t)
 		G.beam(parent,at+Vector3(-.2,0,0),at+Vector3(.2,0,0),.02,wood)
+
+## Deck winch (bought at the shipyard for hulls that can carry one): a drum with cable that turns while
+## traps or the set net are hauled.
+var winch: Node3D
+var _winch_drum: Node3D
+var _winch_turning: bool=false
+func set_winch(on: bool) -> void:
+	if is_instance_valid(winch):winch.queue_free();winch=null
+	if not on or not hull_spec.has("winch"):return
+	var steel:=G.material(Color("2f5a6b"),.4);steel.metallic=.5;var cable:=G.material(Color("8a8f8f"),.5)
+	winch=Node3D.new();winch.name="Guincho";winch.position=hull_spec.winch;_hull.add_child(winch)
+	G.box(winch,Vector3(0,.12,0),Vector3(.7,.24,.5),steel)
+	for x: float in [-.32,.32]:G.box(winch,Vector3(x,.42,0),Vector3(.06,.5,.4),steel)
+	_winch_drum=Node3D.new();_winch_drum.position=Vector3(0,.5,0);winch.add_child(_winch_drum)
+	G.cylinder(_winch_drum,Vector3.ZERO,.16,.56,cable,.16,16).rotation.z=PI*.5
+	for x: float in [-.27,.27]:G.cylinder(_winch_drum,Vector3(x,0,0),.24,.04,steel,.24,16).rotation.z=PI*.5
+	G.box(_winch_drum,Vector3(0,.17,0),Vector3(.5,.02,.04),steel)
+func set_winch_turning(value: bool) -> void:
+	_winch_turning=value
+func _process(delta: float) -> void:
+	if _winch_turning and is_instance_valid(_winch_drum):_winch_drum.rotation.x+=delta*6.

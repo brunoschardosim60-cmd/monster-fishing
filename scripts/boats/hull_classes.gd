@@ -15,7 +15,7 @@ const SPECS: Dictionary={
 	"tripo":{"length":8.1,"beam":3.65,"mass":4200.,"draft":.1,"heave":155000.,"angular":3.8,"tilt":.32,
 		"deck":{"y":1.12,"x":1.4,"z0":-3.3,"z1":3.1,"start":Vector3(0,1.12,2.4),"blocks":[Rect2(-1.13,-1.65,2.26,2.55)]},
 		"helm":Vector3(0,1.12,1.25),"wheel":[Vector3(0,1.96,.85),.24,PI*.3,1.5],"bucket":Vector3(1.,1.12,2.55),"sails":0.,
-		"holders":[{"at":Vector3(1.38,1.42,2.95),"yaw":-2.2},{"at":Vector3(-1.38,1.42,2.95),"yaw":2.2}]},
+		"holders":[{"at":Vector3(1.38,1.42,2.95),"yaw":-2.2},{"at":Vector3(-1.38,1.42,2.95),"yaw":2.2}],"winch":Vector3(1.05,1.12,-2.6)},
 	"canoa":{"kind":"canoa","model_length":6.2,"length":6.,"beam":.95,"mass":420.,"draft":-.12,"heave":9000.,"angular":7.,"tilt":.3,
 		"deck":{"y":.1,"x":.24,"z0":-2.,"z1":2.2,"start":Vector3(0,.1,.6),"blocks":[]},
 		"helm":Vector3(0,.1,2.25),"wheel":[Vector3(0,.42,2.95),0.,0.,-.15],"bucket":Vector3(0,.08,-1.1),"sails":0.,
@@ -32,7 +32,7 @@ const SPECS: Dictionary={
 		"helm":Vector3(0,2.2,7.9),"wheel":[Vector3(0,3.15,7.25),.5,PI*.32,2.],"bucket":Vector3(-1.4,2.2,1.),"sails":.72,
 		"crew":[{"role":"deckhand","a":Vector3(-1.7,2.2,-7.),"b":Vector3(-1.7,2.2,2.8)},{"role":"deckhand","a":Vector3(1.7,2.2,-6.),"b":Vector3(1.7,2.2,2.)},
 			{"role":"fisher","at":Vector3(-1.9,2.2,-2.5),"facing":PI*.5}],
-		"holders":[{"at":Vector3(2.1,2.65,7.6),"yaw":-2.2},{"at":Vector3(-2.1,2.65,7.6),"yaw":2.2},{"at":Vector3(2.2,2.65,-1.5),"yaw":-1.6},{"at":Vector3(-2.2,2.65,-1.5),"yaw":1.6}]},
+		"holders":[{"at":Vector3(2.1,2.65,7.6),"yaw":-2.2},{"at":Vector3(-2.1,2.65,7.6),"yaw":2.2},{"at":Vector3(2.2,2.65,-1.5),"yaw":-1.6},{"at":Vector3(-2.2,2.65,-1.5),"yaw":1.6}],"winch":Vector3(1.3,2.2,-6.3)},
 }
 
 static func spec(model: String) -> Dictionary:

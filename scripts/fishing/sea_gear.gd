@@ -37,6 +37,13 @@ const RELEASE_WINDOW: float=6.
 var _released: Array[Dictionary]=[]
 var _clock: float=0.
 var net_catch: Node3D
+## Set (gill) net: a line of floats on the surface with the net hanging below; fish swimming through get
+## entangled while it soaks. {"a","b" (ends), "node", "soak", "caught": Array of species ids, "hauling"}
+var gillnet: Dictionary={}
+const GILLNET_SOAK: float=120.
+const GILLNET_LENGTH: float=24.
+## Fish pots (gaiolas) catch reef fish; placed instead of a crab trap when the boat is over a reef.
+const POT_FISH: Array[String]=["sargo","cirurgiao","donzela","baiacu"]
 
 func _ready() -> void:
 	_rng.randomize()
@@ -188,18 +195,38 @@ func trap_action() -> String:
 	var here: Vector3=game.boat.global_position if game.player.in_boat else game.player.global_position
 	var near:=nearest_trap(here)
 	if not near.is_empty():return _collect(near)
-	if game.inventory.traps<=0:return "Sem armadilhas. A loja de pesca vende covos por 40 moedas."
+	var pot: bool=int(game.inventory.equipment.get("pots",0))>0 and _over_reef(here)
+	if game.inventory.traps<=0 and not pot:return "Sem armadilhas. A loja de pesca vende covos por 40 moedas."
 	if game.player.in_boat and absf(float(game.boat.speed))>1.5:return "Pare o barco para baixar o covo."
 	var side: Vector3=game.boat.global_basis.x if game.player.in_boat else Vector3.ZERO
 	var at: Vector3=here+side*2.6
 	if not game.player.in_boat:at=throw_point(4.)
 	var bottom: float=game.marine._seabed(Vector2(at.x,at.z))
 	if Layout.coast(Vector2(at.x,at.z)).x<1. or bottom>-1.5:return "Raso demais para o covo: procure 2 a 30 m de fundo."
-	if bottom<-30.:return "Fundo demais para o covo (máx. 30 m)."
-	game.inventory.traps-=1;game.inventory.changed.emit()
-	traps.append({"at":Vector3(at.x,0,at.z),"bottom":bottom,"placed":Time.get_ticks_msec()/1000.,"soak":0.,"node":_build_trap(at,bottom)})
+	var max_depth: float=max_trap_depth()
+	if bottom<-max_depth:return "Fundo demais para o covo (máx. %d m%s)."%[int(max_depth),"" if has_winch() else "; com guincho, 60 m"]
+	if pot:game.inventory.equipment["pots"]=int(game.inventory.equipment.pots)-1
+	else:game.inventory.traps-=1
+	# A piece of bait in the trap draws more animals.
+	var baited: bool=game.inventory.bait>0
+	if baited:game.inventory.bait-=1
+	game.inventory.changed.emit()
+	traps.append({"at":Vector3(at.x,0,at.z),"bottom":bottom,"placed":Time.get_ticks_msec()/1000.,"soak":0.,"node":_build_trap(at,bottom,pot),"kind":"gaiola" if pot else "covo","baited":baited})
 	game.audio.cue("splash")
-	return "Covo baixado a %.0f m. Volte em uns minutos e pressione B junto à boia."%-bottom
+	return "%s baixad%s a %.0f m%s. Volte em uns minutos e pressione B junto à boia."%["Gaiola de peixe" if pot else "Covo","a" if pot else "o",-bottom," com isca" if baited else ""]
+
+## Winch fitted and the hull can carry one: traps go deeper and everything comes up faster.
+func has_winch() -> bool:
+	return int(game.inventory.equipment.get("winch",0))>0 and str(game.inventory.boat_id) in WINCH_BOATS
+const WINCH_BOATS: Array[String]=["traineira","escuna","expedicao"]
+func max_trap_depth() -> float:
+	return 60. if has_winch() else 30.
+func _over_reef(at: Vector3) -> bool:
+	var life=game.world.get_node_or_null("VidaNoFundo")
+	if life==null:return false
+	for r: Vector3 in life.reefs:
+		if Vector2(r.x-at.x,r.z-at.z).length()<28.:return true
+	return false
 
 func _collect(t: Dictionary) -> String:
 	if float(t.soak)<TRAP_SOAK:return "O covo ainda está vazio. Espere mais %d s."%int(TRAP_SOAK-float(t.soak))
@@ -211,16 +238,18 @@ func _collect(t: Dictionary) -> String:
 		game.inventory.record(c)
 		if game.inventory.add_catch(c):added+=1
 	traps.erase(t);game.inventory.stats.traps=int(game.inventory.stats.traps)+1
-	hauling.append({"node":t.node,"bottom":t.bottom,"clock":0.})
+	hauling.append({"node":t.node,"bottom":t.bottom,"clock":0.,"speed":2. if has_winch() else 1.})
 	var cage: Node3D=(t.node as Node3D).get_node("Gaiola")
 	fresh_haul={"kind":"trap","first":first,"count":added,"animals":cage.get_children().filter(func(n: Node) -> bool:return n.has_meta("critter")),"clock":0.}
-	game.inventory.traps+=1;game.inventory.changed.emit()
+	if str(t.get("kind","covo"))=="gaiola":game.inventory.equipment["pots"]=int(game.inventory.equipment.get("pots",0))+1
+	else:game.inventory.traps+=1
+	game.inventory.changed.emit()
 	game.audio.cue("chain")
 	var names: Array[String]=[]
 	for c: Dictionary in haul:names.append(str(c.name))
-	return "Covo recolhido: "+", ".join(names)+"    X · Soltar os animais"
+	return ("Gaiola recolhida: " if str(t.get("kind","covo"))=="gaiola" else "Covo recolhido: ")+", ".join(names)+"    X · Soltar os animais"
 
-func _build_trap(at: Vector3,bottom: float) -> Node3D:
+func _build_trap(at: Vector3,bottom: float,pot: bool=false) -> Node3D:
 	var root:=Node3D.new();root.name="Covo_%d"%traps.size();root.position=Vector3(at.x,0,at.z);add_child(root)
 	var buoy:=Node3D.new();buoy.name="Boia";root.add_child(buoy)
 	G.ellipsoid(buoy,Vector3(0,.15,0),Vector3(.42,.42,.42),G.material(Color("ef6c1a"),.5),12)
@@ -228,7 +257,17 @@ func _build_trap(at: Vector3,bottom: float) -> Node3D:
 	var flag:=G.box(buoy,Vector3(.18,1.15,0),Vector3(.34,.22,.02),G.material(Color("d8432f"),.6));flag.name="Bandeira"
 	var rope:=G.beam(root,Vector3(0,0,0),Vector3(0,bottom+.5,0),.012,G.material(Color("c9b48a"),.9));rope.name="Cabo"
 	var cage:=Node3D.new();cage.name="Gaiola";cage.position=Vector3(0,bottom+.25,0);root.add_child(cage)
-	var wire:=G.material(Color("3c4a48"),.5)
+	var wire:=G.material(Color("3c4a48") if not pot else Color("6b4a2a"),.5)
+	if pot:
+		# Fish pot: a round wicker-and-wire cage with a funnel mouth, marked by a yellow buoy.
+		(buoy.get_child(0) as MeshInstance3D).material_override=G.material(Color("f2c230"),.5)
+		for k: int in 10:
+			var a:=float(k)*TAU/10.
+			G.box(cage,Vector3(cos(a)*.42,0,sin(a)*.42),Vector3(.035,.55,.035),wire)
+		for y: float in [-.26,0.,.26]:
+			var ring:=TorusMesh.new();ring.inner_radius=.4;ring.outer_radius=.44;ring.rings=24;ring.ring_segments=4
+			G.mesh_node(cage,ring,wire,Vector3(0,y,0))
+		return root
 	for x: float in [-.45,.45]:
 		for z: float in [-.3,.3]:G.box(cage,Vector3(x,0,z),Vector3(.04,.5,.04),wire)
 	for y: float in [-.25,.25]:
@@ -237,16 +276,30 @@ func _build_trap(at: Vector3,bottom: float) -> Node3D:
 	return root
 
 ## Decides what walked into the trap and puts it in the cage, where it can be seen from the boat or diving.
+## What walked (or swam) into the trap: depends on its kind, the depth, the sea it lies in, the bait and
+## how long it soaked (a longer soak fills it up, to a point).
 func _fill(t: Dictionary) -> void:
 	var ids: Array[String]=[]
-	for i: int in _rng.randi_range(1,3):ids.append("caranguejo")
-	if _rng.randf()<.55:ids.append("lagosta")
-	if _rng.randf()<.15:ids.append("polvo")
+	var depth: float=-float(t.bottom)
+	var at: Vector3=t.at
+	var biome: String=str(Layout.region_at(Vector2(at.x,at.z)).get("biome","harbor"))
+	var soak: float=clampf((float(t.soak)-TRAP_SOAK)/240.,0.,1.)
+	var plenty: float=(.5+.5*soak)*(1.5 if bool(t.get("baited",false)) else 1.)
+	if str(t.get("kind","covo"))=="gaiola":
+		for i: int in int(round(_rng.randf_range(1.,3.)*plenty)):ids.append(POT_FISH[_rng.randi()%POT_FISH.size()])
+	else:
+		var crabs: float=_rng.randf_range(1.,3.5)*plenty*clampf(1.2-depth/30.,.2,1.)
+		for i: int in int(round(crabs)):ids.append("caranguejo")
+		var lobster: float=.2+.35*smoothstep(6.,12.,depth)*(1.-smoothstep(28.,40.,depth))+(.15 if biome=="tropical" else 0.)
+		if _rng.randf()<lobster*plenty:ids.append("lagosta")
+		if _rng.randf()<(.06+.12*smoothstep(10.,20.,depth))*plenty:ids.append("polvo")
+	if ids.is_empty():ids.append("caranguejo" if str(t.get("kind","covo"))!="gaiola" else "donzela")
 	t.haul=ids
 	var cage: Node3D=(t.node as Node3D).get_node("Gaiola")
-	var spots: Array[Vector3]=[Vector3(-.22,-.18,-.1),Vector3(.2,-.18,.12),Vector3(.05,-.18,-.14),Vector3(-.1,-.18,.15),Vector3(.25,-.18,-.12)]
+	var spots: Array[Vector3]=[Vector3(-.22,-.18,-.1),Vector3(.2,-.18,.12),Vector3(.05,-.18,-.14),Vector3(-.1,-.18,.15),Vector3(.25,-.18,-.12),Vector3(-.25,-.1,.05)]
 	for i: int in ids.size():
-		var animal:=_trap_animal(ids[i]);animal.position=spots[i%spots.size()];animal.rotation.y=_rng.randf()*TAU;cage.add_child(animal)
+		var animal:=_net_fish(ids[i]) if ids[i] in POT_FISH else _trap_animal(ids[i])
+		animal.position=spots[i%spots.size()]+(Vector3(0,.12,0) if ids[i] in POT_FISH else Vector3.ZERO);animal.rotation.y=_rng.randf()*TAU;cage.add_child(animal)
 
 static var _painted_mat: ShaderMaterial
 func _trap_animal(id: String) -> Node3D:
@@ -284,7 +337,7 @@ func _trap_animal(id: String) -> Node3D:
 func _update_traps(delta: float) -> void:
 	for h: Dictionary in hauling.duplicate():
 		# Up the line in 3 s, a few seconds dripping at the surface, then aboard.
-		h.clock=float(h.clock)+delta
+		h.clock=float(h.clock)+delta*(float(h.get("speed",1.)) if float(h.clock)<3. else 1.)
 		var root: Node3D=h.node
 		if not is_instance_valid(root):hauling.erase(h);continue
 		var cage: Node3D=root.get_node("Gaiola");var rope: Node3D=root.get_node("Cabo")
@@ -312,6 +365,8 @@ func _process(delta: float) -> void:
 	_update_net(delta)
 	_update_traps(delta)
 	_update_haul_life(delta)
+	_update_gillnet(delta)
+	if game.boat.has_method("set_winch_turning"):game.boat.set_winch_turning(not hauling.is_empty() or bool(gillnet.get("hauling",false)) and not gillnet.has("landed"))
 
 ## Animals in a cage or net are alive: crabs scuttle sideways and raise their claws, the octopus curls
 ## and reaches, a lobster flicks its tail; netted fish flap.
@@ -398,3 +453,129 @@ func release_haul() -> String:
 	fresh_haul={}
 	if kind=="net" and net_state=="pendurada":net_clock=RELEASE_WINDOW-.5
 	return "Você soltou os animais de volta ao mar."
+
+# --- Set net (rede de espera) --------------------------------------------------------------------------
+
+## Shift+N: set the net from the stopped boat, or haul it back when beside one of its end buoys.
+func gillnet_action() -> String:
+	if int(game.inventory.equipment.get("gillnet",0))<1:return "Você não tem rede de espera. A loja de pesca vende por 120 moedas."
+	if not game.player.in_boat:return "A rede de espera é lançada do barco."
+	var boat: CharacterBody3D=game.boat
+	if not gillnet.is_empty():
+		if gillnet.get("hauling",false):return "A rede está subindo."
+		var near:=false
+		for end: Vector3 in [gillnet.a,gillnet.b]:
+			if Vector2(end.x-boat.global_position.x,end.z-boat.global_position.z).length()<12.:near=true
+		if not near:return "Vá até uma das boias da rede (Shift+N para recolher)."
+		if float(gillnet.soak)<GILLNET_SOAK*.5:return "A rede acabou de ser posta. Deixe pescar mais %d s."%int(GILLNET_SOAK*.5-float(gillnet.soak))
+		gillnet.hauling=true;gillnet.haul_clock=0.;gillnet.haul_from=boat.global_position
+		_entangle_visuals()
+		game.audio.cue("chain")
+		return "Recolhendo a rede…"
+	if absf(float(boat.speed))>1.5:return "Pare o barco para lançar a rede."
+	var a: Vector3=boat.global_position+boat.global_basis.x*(float(boat.hull_spec.beam)*.5*boat.size_factor+3.)
+	var b: Vector3=a+boat.global_basis.x*GILLNET_LENGTH
+	for k: int in 7:
+		var q:=a.lerp(b,float(k)/6.)
+		if Layout.coast(Vector2(q.x,q.z)).x<2. or game.marine._seabed(Vector2(q.x,q.z))>-4.:return "Água rasa demais para a rede: procure mais de 4 m de fundo."
+	a.y=0.;b.y=0.
+	gillnet={"a":a,"b":b,"soak":0.,"caught":[],"node":_build_gillnet(a,b),"hauling":false,"sample":0.}
+	game.audio.cue("net")
+	return "Rede de espera lançada. Deixe pescar uns minutos e volte à boia (Shift+N)."
+
+func _build_gillnet(a: Vector3,b: Vector3) -> Node3D:
+	var root:=Node3D.new();root.name="RedeDeEspera";add_child(root)
+	var orange:=G.material(Color("ef6c1a"),.5);var white:=G.material(Color("eeeae0"),.5);var rope:=G.material(Color("c9b48a"),.9)
+	for k: int in 11:
+		var f:=Node3D.new();f.name="Boia_%d"%k;root.add_child(f)
+		if k==0 or k==10:
+			G.ellipsoid(f,Vector3(0,.15,0),Vector3(.45,.45,.45),orange,12);G.cylinder(f,Vector3(0,.75,0),.025,1.1,G.material(Color("2b2f33"),.5))
+			G.box(f,Vector3(.18,1.15,0),Vector3(.34,.22,.02),G.material(Color("d8432f"),.6))
+		else:G.ellipsoid(f,Vector3.ZERO,Vector3(.22,.16,.22),white,8)
+	# The net hangs from the float line: a meshed panel 2.5 m deep with a lead line along the bottom.
+	var img:=Image.create(64,64,false,Image.FORMAT_RGBA8);img.fill(Color(0,0,0,0))
+	for i: int in 64:
+		for k: int in [0,1,32,33]:img.set_pixel(k,i,Color(.8,.84,.78,.85));img.set_pixel(i,k,Color(.8,.84,.78,.85))
+	var mat:=StandardMaterial3D.new();mat.albedo_texture=ImageTexture.create_from_image(img);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	mat.alpha_scissor_threshold=.3;mat.cull_mode=BaseMaterial3D.CULL_DISABLED;mat.uv1_scale=Vector3(GILLNET_LENGTH*1.5,4,1)
+	var panel:=MeshInstance3D.new();panel.name="Pano";var q:=QuadMesh.new();q.size=Vector2(GILLNET_LENGTH,2.5);panel.mesh=q;panel.material_override=mat
+	panel.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;root.add_child(panel)
+	var lead:=G.beam(root,Vector3(-GILLNET_LENGTH*.5,0,0),Vector3(GILLNET_LENGTH*.5,0,0),.025,rope);lead.name="Chumbada"
+	var catch_root:=Node3D.new();catch_root.name="Malhados";root.add_child(catch_root)
+	return root
+
+func _update_gillnet(delta: float) -> void:
+	if gillnet.is_empty():return
+	var root: Node3D=gillnet.node
+	var a: Vector3=gillnet.a;var b: Vector3=gillnet.b
+	var t_haul: float=0.
+	if gillnet.hauling:
+		gillnet.haul_clock=float(gillnet.haul_clock)+delta*(1.9 if has_winch() else 1.)
+		t_haul=clampf(float(gillnet.haul_clock)/3.,0.,1.)
+		# The whole net comes in over the gunwale: ends converge on the boat side as it rises.
+		var side: Vector3=game.boat.global_position+game.boat.global_basis.x*(float(game.boat.hull_spec.beam)*.5*game.boat.size_factor+.6)
+		a=a.lerp(side,t_haul);b=b.lerp(side+game.boat.global_basis.z*.1,t_haul)
+	else:
+		gillnet.soak=float(gillnet.soak)+delta
+		gillnet.sample=float(gillnet.sample)+delta
+		if float(gillnet.sample)>=2.:
+			gillnet.sample=0.;_sample_gillnet()
+	var mid: Vector3=(a+b)*.5
+	var along: Vector3=(b-a);var length: float=maxf(along.length(),.5);along/=length
+	root.global_position=Vector3(mid.x,0,mid.z)
+	root.global_basis=Basis(along,Vector3.UP,along.cross(Vector3.UP))
+	for k: int in 11:
+		var f: Node3D=root.get_node("Boia_%d"%k)
+		var p:=a.lerp(b,float(k)/10.)
+		f.global_position=Vector3(p.x,Waves.height_at(p)+(.6*t_haul if gillnet.hauling else 0.)-.02,p.z)
+	var panel: MeshInstance3D=root.get_node("Pano");var lead: Node3D=root.get_node("Chumbada")
+	var depth: float=lerpf(1.35,-.3,t_haul)
+	panel.scale=Vector3(length/GILLNET_LENGTH,lerpf(1.,.35,t_haul),1.);panel.position=Vector3(0,Waves.height_at(mid)-depth,0)
+	lead.position=Vector3(0,Waves.height_at(mid)-depth*2.+(.3 if gillnet.hauling else 0.),0);lead.scale=Vector3(1.,length/GILLNET_LENGTH,1.)
+	var catch_root: Node3D=root.get_node("Malhados")
+	catch_root.position=panel.position;catch_root.scale=Vector3(length/GILLNET_LENGTH,lerpf(1.,.35,t_haul),1.)
+	for fish: Node in catch_root.get_children():_animate_critter(fish,delta,1.)
+	if gillnet.hauling and t_haul>=1. and not gillnet.has("landed"):
+		gillnet.landed=true;_land_gillnet()
+	if gillnet.has("landed"):
+		gillnet.hang=float(gillnet.get("hang",0.))+delta
+		if float(gillnet.hang)>RELEASE_WINDOW:
+			root.queue_free();gillnet={}
+			if fresh_haul.get("kind","")=="gillnet":fresh_haul={}
+
+## Every couple of seconds: fish from schools passing through the net's line get entangled.
+func _sample_gillnet() -> void:
+	var a: Vector3=gillnet.a;var b: Vector3=gillnet.b
+	var caught: Array=gillnet.caught
+	if caught.size()>=14:return
+	for school: Node3D in game.marine.fish_schools:
+		if school.predator or not school.mmi.visible:continue
+		var hits:=0
+		for p: Vector3 in school.pos:
+			var ab:=Vector2(b.x-a.x,b.z-a.z);var ap:=Vector2(p.x-a.x,p.z-a.z)
+			var t:=clampf(ap.dot(ab)/ab.length_squared(),0.,1.)
+			if (ap-ab*t).length()<2.5 and p.y>-3.:hits+=1
+		for h: int in hits:
+			if _rng.randf()<.05 and caught.size()<14:caught.append(str(school.species))
+	# Open-water passers-by that no school marks on the map.
+	if _rng.randf()<.08 and caught.size()<14:caught.append("sardine" if _rng.randf()<.6 else "mackerel")
+
+## Visible fish tangled along the net as it comes up.
+func _entangle_visuals() -> void:
+	var catch_root: Node3D=(gillnet.node as Node3D).get_node("Malhados")
+	for i: int in (gillnet.caught as Array).size():
+		var fish:=_net_fish(str(gillnet.caught[i]));catch_root.add_child(fish)
+		fish.position=Vector3(_rng.randf_range(-GILLNET_LENGTH*.45,GILLNET_LENGTH*.45),_rng.randf_range(-.9,.9),0.);fish.rotation=Vector3(0,_rng.randf_range(-.4,.4)+(PI if _rng.randf()<.5 else 0.),_rng.randf_range(-.6,.6))
+
+func _land_gillnet() -> void:
+	var first: int=game.inventory.catches.size();var added: int=0
+	var names: Dictionary={}
+	for id: Variant in gillnet.caught:
+		var c: Dictionary=make_catch(str(id))
+		game.inventory.record(c)
+		if game.inventory.add_catch(c):added+=1;names[c.name]=int(names.get(c.name,0))+1
+	var catch_root: Node3D=(gillnet.node as Node3D).get_node("Malhados")
+	fresh_haul={"kind":"gillnet","first":first,"count":added,"animals":catch_root.get_children(),"clock":0.}
+	var parts: Array[String]=[]
+	for n: String in names:parts.append("%d %s"%[names[n],n])
+	game.hud.notify(("Rede recolhida: "+", ".join(parts)+"    X · Soltar") if not parts.is_empty() else "A rede voltou vazia. Ponha-a no caminho de um cardume.")
