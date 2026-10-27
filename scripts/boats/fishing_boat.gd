@@ -235,13 +235,15 @@ func _physics_process(delta: float) -> void:
 
 ## In heavy seas green water breaks over the bow now and then: a small blow to the hull, a lurch and spray.
 var _wave_hit_clock: float=8.
+## Crew lashing the deck in a storm takes the worst out of breaking seas (crew_manager.gd).
+var wave_damage_scale: float=1.
 func _wave_hits(delta: float,here: Vector2) -> void:
 	var rough:=maxf(Waves.storm_factor(here),smoothstep(.68,1.,Waves.energy))*Waves.exposure(here)
 	if rough<.25 or not occupied:return
 	_wave_hit_clock-=delta*(1.+absf(speed)*.08)
 	if _wave_hit_clock>0.:return
 	_wave_hit_clock=randf_range(6.,13.)/rough
-	take_hit((.01+.025*rough)/pow(size_factor,2.),(.22+.25*rough)/size_factor)
+	take_hit((.01+.025*rough)/pow(size_factor,2.)*wave_damage_scale,(.22+.25*rough)/size_factor)
 	if water_effects!=null:water_effects.splash(global_position-global_basis.z*2.+global_basis.x*randf_range(-1.,1.),1.2+rough,true)
 	var game:=get_tree().get_first_node_in_group("game")
 	if game!=null:

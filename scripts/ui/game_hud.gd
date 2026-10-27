@@ -188,6 +188,10 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: 
 			var fish: Dictionary=inventory.catches[index]
 			actions["sell_fish:"+str(index)]="Vender %s · %.1f kg · %d"%[fish.name,fish.weight,fish.value]
 	if id in ["cabin","inn"]:actions={"rest":"Descansar até 08:00"}
+	if id=="inn":
+		var berths: int=int(preload("res://scripts/inventory/harbor_economy.gd").BOATS.get(str(inventory.boat_id),{}).get("berths",0))
+		actions["hire"]="Contratar marinheiro · 60 moedas, 10/dia  (tripulação %d/%d)"%[(inventory.crew as Array).size(),berths]
+		if not (inventory.crew as Array).is_empty():actions["dismiss"]="Dispensar um marinheiro"
 	if id in ["cabin","storage"]:actions.merge({"store":"Guardar capturas no armazém","withdraw":"Retirar capturas do armazém"})
 	for key: String in actions:
 		var button:=_button(box,actions[key]);button.pressed.connect(func() -> void:service_action.emit(key))

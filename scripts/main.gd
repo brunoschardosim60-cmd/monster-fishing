@@ -28,6 +28,8 @@ var surface_fish: Node3D
 var hooked: Node3D
 ## Rod holders on the boat's rail (rod_holders.gd): set a line, do something else, come back for the fish.
 var holders: Node3D
+## Hired sailors aboard (crew_manager.gd).
+var crew: Node
 var pending_catch: Dictionary={}
 var stowing: bool=false
 var stow_tween: Tween
@@ -116,6 +118,8 @@ func _ready() -> void:
 	holders.rebuild.call_deferred()
 	boat.hull_changed.connect(func() -> void:holders.rebuild())
 	holders.strike.connect(_on_holder_strike)
+	crew=preload("res://scripts/boats/crew_manager.gd").new();crew.name="Tripulacao";crew.game=self;crew.boat=boat;_add_system(crew)
+	boat.hull_changed.connect(func() -> void:crew.sync())
 	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
 	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
 	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
@@ -165,6 +169,7 @@ func save_progress() -> bool:
 func begin_play() -> void:
 	if saving_enabled and SaveGame.load_into(self):
 		hud.call_deferred("notify","Progresso carregado. Bem-vindo de volta!")
+	if crew!=null:crew.sync.call_deferred()
 	started = true
 	player.controls_enabled = true
 	boat.controls_enabled = true
@@ -382,7 +387,14 @@ func fish_action() -> void:
 func interact() -> void:
 	aiming=false
 	if diving!=null and diving.try_open():return
-	if player.in_boat and player.on_deck and _holder_action():return
+	if player.in_boat and player.on_deck:
+		# Whoever is closer, a crewmate or a rod holder, is what E talks to.
+		var mate: Node3D=crew.near(player.global_position) if crew!=null else null
+		var holder: int=holders.nearest(player.global_position)
+		var mate_d: float=mate.global_position.distance_to(player.global_position) if mate!=null else 99.
+		var holder_d: float=(holders.holders[holder].node as Node3D).global_position.distance_to(player.global_position) if holder>=0 else 99.
+		if mate!=null and mate_d<holder_d:hud.notify(crew.cycle_task(mate));return
+		if _holder_action():return
 	if fishing.active():
 		fishing.cancel()
 	if player.in_boat:
@@ -488,6 +500,8 @@ func _interaction_hint() -> String:
 					if fishing.state==Fishing.State.WAITING:return "E · Pôr a vara no suporte"
 				"biting":return "E · Pegar a vara · PEIXE!"
 				_:return "E · Recolher a vara do suporte"
+		var mate: Node3D=crew.near(player.global_position) if crew!=null else null
+		if mate!=null:return "E · %s (tarefa: %s)"%[mate.sailor_name,str(mate.get_meta("task","convés"))]
 	if fishing.active():return ""
 	if player.in_boat:
 		if lairs!=null and lairs.encounter():return "SHIFT · Turbo    Y · Sinalizador (%d)    H · Arpão (%d)"%[inventory.flares,inventory.harpoons if inventory.equipment.get("harpoon",0)>0 else 0]
@@ -578,6 +592,8 @@ func _service_action(action: String) -> void:
 	elif action=="withdraw":
 		inventory.catches.append_array(inventory.stored_catches);inventory.stored_catches.clear();inventory.changed.emit();message="Capturas retiradas do armazém."
 	elif action=="rest":world.ocean.hour=8.;message="Você descansou até a manhã."
+	elif action=="hire":message=crew.hire()
+	elif action=="dismiss":message=crew.dismiss()
 	hud.open_service(service_id,inventory,boat,world.village.bridge_district.stock);hud.service_message.text=message
 
 func _on_fishing_message(_message: String) -> void:
@@ -728,6 +744,7 @@ func _holder_action() -> bool:
 			return true
 
 func _on_holder_strike(i: int) -> void:
+	if crew!=null:crew.alert_holder(i)
 	if int(inventory.equipment.get("bell",0))>0:
 		audio.cue_at("bell",(holders.holders[i].node as Node3D).global_position,4.)
 		hud.notify("O sino tocou · peixe na vara do suporte!")

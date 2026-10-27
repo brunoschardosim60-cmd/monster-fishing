@@ -89,13 +89,13 @@ const MAX_LEVEL: int=3
 ## Paint schemes sold at the shipyard: hull, superstructure.
 const PAINTS: Array=[[Color("2b4c7e"),Color("f2efe6")],[Color("b8433a"),Color("f4f1e8")],[Color("e9c46a"),Color("264653")],[Color("2a9d8f"),Color("f1faee")],[Color("1d1d1d"),Color("c9a227")],[Color("f4f4f0"),Color("7a1f2b")]]
 const BOATS: Dictionary={
-	"aurora":{"title":"Lancha Aurora · equilibrada","price":0,"speed":11.,"protection":1.,"capacity":1.,"scale":1.,"handling":{"rudder_rate":2.2,"turn":1.,"accel":2.7,"inertia":.2,"reverse":3.2},"hull":Color("e2d2ad"),"top":Color("364c50")},
-	"veloz":{"title":"Lancha Veloz · +35% velocidade, casco leve","price":300,"speed":14.8,"protection":1.25,"capacity":.8,"scale":.94,"handling":{"rudder_rate":2.2,"turn":1.15,"accel":3.6,"inertia":.4,"reverse":3.6},"hull":Color("c0392b"),"top":Color("f2f2ee")},
-	"expedicao":{"title":"Barco de Expedição · farol de proa incluso, mais alcance","price":380,"speed":12.6,"protection":.8,"capacity":1.2,"scale":1.08,"handling":{"rudder_rate":1.5,"turn":.95,"accel":2.5,"inertia":.65,"reverse":3.},"hull":Color("2e6b4f"),"top":Color("efe6d2"),"searchlight":true},
-	"traineira":{"title":"Traineira Robusta · casco reforçado, rede 60% maior","price":450,"speed":9.6,"protection":.55,"capacity":1.6,"scale":1.18,"handling":{"rudder_rate":1.1,"turn":.8,"accel":1.8,"inertia":1.,"reverse":2.4},"hull":Color("1f4e79"),"top":Color("e8e2d4")},
-	"canoa":{"title":"Canoa com Rabeta · leve e barata, leva pouco, sofre no mar aberto","price":120,"speed":8.5,"protection":1.6,"capacity":.45,"scale":1.,"model":"canoa","handling":{"rudder_rate":2.6,"turn":1.35,"accel":3.4,"inertia":.25,"reverse":2.2},"hull":Color("8a5a2b"),"top":Color("c9a46a")},
-	"veleiro":{"title":"Veleiro de Pesca · velas usam o vento (P), motor auxiliar","price":650,"speed":7.,"protection":.9,"capacity":1.15,"scale":1.,"model":"veleiro","handling":{"rudder_rate":1.4,"turn":.9,"accel":1.7,"inertia":.8,"reverse":2.},"hull":Color("f4f4f0"),"top":Color("23395d")},
-	"escuna":{"title":"Escuna de Expedição · dois mastros, porão enorme, lenta para manobrar","price":1400,"speed":6.,"protection":.45,"capacity":2.4,"scale":1.,"model":"escuna","handling":{"rudder_rate":.9,"turn":.62,"accel":1.,"inertia":1.6,"reverse":1.4},"hull":Color("1d1d1d"),"top":Color("c9a227")}}
+	"aurora":{"title":"Lancha Aurora · equilibrada","price":0,"berths":1,"speed":11.,"protection":1.,"capacity":1.,"scale":1.,"handling":{"rudder_rate":2.2,"turn":1.,"accel":2.7,"inertia":.2,"reverse":3.2},"hull":Color("e2d2ad"),"top":Color("364c50")},
+	"veloz":{"title":"Lancha Veloz · +35% velocidade, casco leve","price":300,"berths":1,"speed":14.8,"protection":1.25,"capacity":.8,"scale":.94,"handling":{"rudder_rate":2.2,"turn":1.15,"accel":3.6,"inertia":.4,"reverse":3.6},"hull":Color("c0392b"),"top":Color("f2f2ee")},
+	"expedicao":{"title":"Barco de Expedição · farol de proa incluso, mais alcance","price":380,"berths":2,"speed":12.6,"protection":.8,"capacity":1.2,"scale":1.08,"handling":{"rudder_rate":1.5,"turn":.95,"accel":2.5,"inertia":.65,"reverse":3.},"hull":Color("2e6b4f"),"top":Color("efe6d2"),"searchlight":true},
+	"traineira":{"title":"Traineira Robusta · casco reforçado, rede 60% maior","price":450,"berths":2,"speed":9.6,"protection":.55,"capacity":1.6,"scale":1.18,"handling":{"rudder_rate":1.1,"turn":.8,"accel":1.8,"inertia":1.,"reverse":2.4},"hull":Color("1f4e79"),"top":Color("e8e2d4")},
+	"canoa":{"title":"Canoa com Rabeta · leve e barata, leva pouco, sofre no mar aberto","price":120,"berths":0,"speed":8.5,"protection":1.6,"capacity":.45,"scale":1.,"model":"canoa","handling":{"rudder_rate":2.6,"turn":1.35,"accel":3.4,"inertia":.25,"reverse":2.2},"hull":Color("8a5a2b"),"top":Color("c9a46a")},
+	"veleiro":{"title":"Veleiro de Pesca · velas usam o vento (P), motor auxiliar","price":650,"berths":1,"speed":7.,"protection":.9,"capacity":1.15,"scale":1.,"model":"veleiro","handling":{"rudder_rate":1.4,"turn":.9,"accel":1.7,"inertia":.8,"reverse":2.},"hull":Color("f4f4f0"),"top":Color("23395d")},
+	"escuna":{"title":"Escuna de Expedição · dois mastros, porão enorme, lenta para manobrar","price":1400,"berths":3,"speed":6.,"protection":.45,"capacity":2.4,"scale":1.,"model":"escuna","handling":{"rudder_rate":.9,"turn":.62,"accel":1.,"inertia":1.6,"reverse":1.4},"hull":Color("1d1d1d"),"top":Color("c9a227")}}
 
 static func buy_boat(id: String,inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> String:
 	if not BOATS.has(id):return "Barco indisponível."
@@ -158,6 +158,9 @@ static func apply(inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> 
 	boat.max_speed=float(hull_data.speed)*(1.+float(inventory.equipment.engine)*.15)
 	# The hold: how many catches the boat carries before you must sell (bigger hulls carry more).
 	inventory.hold_limit=int(round(14.*float(hull_data.capacity)))
+	# Hired crew keep the catch in order: two more places per sailor aboard.
+	var crew_size: int=(inventory.get("crew") as Array).size() if inventory.get("crew")!=null else 0
+	inventory.hold_limit+=2*mini(crew_size,int(hull_data.get("berths",0)))
 	fishing.rod_bonus=float(inventory.equipment.rod)*.15
 	fishing.line_bonus=float(inventory.equipment.line)*.15
 	fishing.hook_bonus=float(inventory.equipment.hook)*.08

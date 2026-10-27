@@ -13,6 +13,8 @@ var owned_boats: Array[String]=["aurora"]
 var boat_id: String="aurora"
 ## Paint scheme bought at the shipyard (0 = the boat's factory colours).
 var boat_paint: int=0
+## Sailors hired at the inn: {"name", "look", "task"} (crew_manager.gd).
+var crew: Array=[]
 ## Fish feed handfuls, crab traps carried aboard.
 var feed: int=3
 var traps: int=0

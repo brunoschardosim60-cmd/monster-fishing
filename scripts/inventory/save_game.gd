@@ -22,6 +22,7 @@ static func save(game: Node,path: String=PATH) -> bool:
 	for key: String in INVENTORY_DICTS:data[key]=(inv.get(key) as Dictionary).duplicate(true)
 	data["catches"]=inv.catches.duplicate(true);data["stored_catches"]=inv.stored_catches.duplicate(true)
 	data["owned_boats"]=Array(inv.owned_boats)
+	data["crew"]=(inv.crew as Array).duplicate(true)
 	data["integrity"]=float(game.boat.integrity)
 	data["discovered"]=(game.world.village.discovered as Dictionary).duplicate(true)
 	data["flags"]={"boarded":game.boarded_once,"sailed":game.sailed_once,"caught":game.caught_once,"sold":game.sold_once}
@@ -58,6 +59,7 @@ static func load_into(game: Node,path: String=PATH) -> bool:
 			merged.merge(data[key],true);inv.set(key,merged)
 	inv.catches.assign(data.get("catches",[]));inv.stored_catches.assign(data.get("stored_catches",[]))
 	inv.owned_boats.assign(data.get("owned_boats",["aurora"]))
+	inv.crew=(data.get("crew",[]) as Array).duplicate(true)
 	preload("res://scripts/inventory/harbor_economy.gd").apply(inv,game.boat,game.fishing)
 	game.boat.integrity=clampf(float(data.get("integrity",1.)),.05,1.)
 	var discovered: Dictionary=data.get("discovered",{})

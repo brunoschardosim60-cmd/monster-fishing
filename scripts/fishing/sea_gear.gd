@@ -194,7 +194,12 @@ func nearest_trap(at: Vector3) -> Dictionary:
 func trap_action() -> String:
 	var here: Vector3=game.boat.global_position if game.player.in_boat else game.player.global_position
 	var near:=nearest_trap(here)
-	if not near.is_empty():return _collect(near)
+	if not near.is_empty():
+		# With a deckhand aboard, they walk to the rail on that side and haul it once they get there.
+		if float(near.soak)>=TRAP_SOAK and game.player.in_boat and game.crew!=null and game.crew.can_haul() and not near.get("crew_called",false):
+			near.crew_called=true
+			return game.crew.request_haul(near.at,func() -> void:game.hud.notify(_collect(near)))
+		return _collect(near)
 	var pot: bool=int(game.inventory.equipment.get("pots",0))>0 and _over_reef(here)
 	if game.inventory.traps<=0 and not pot:return "Sem armadilhas. A loja de pesca vende covos por 40 moedas."
 	if game.player.in_boat and absf(float(game.boat.speed))>1.5:return "Pare o barco para baixar o covo."
@@ -468,6 +473,9 @@ func gillnet_action() -> String:
 			if Vector2(end.x-boat.global_position.x,end.z-boat.global_position.z).length()<12.:near=true
 		if not near:return "Vá até uma das boias da rede (Shift+N para recolher)."
 		if float(gillnet.soak)<GILLNET_SOAK*.5:return "A rede acabou de ser posta. Deixe pescar mais %d s."%int(GILLNET_SOAK*.5-float(gillnet.soak))
+		if game.crew!=null and game.crew.can_haul() and not gillnet.get("crew_called",false):
+			gillnet.crew_called=true
+			return game.crew.request_haul(gillnet.a,func() -> void:game.hud.notify(gillnet_action()))
 		gillnet.hauling=true;gillnet.haul_clock=0.;gillnet.haul_from=boat.global_position
 		_entangle_visuals()
 		game.audio.cue("chain")
