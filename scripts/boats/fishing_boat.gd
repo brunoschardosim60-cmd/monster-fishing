@@ -23,6 +23,12 @@ signal sank
 var kick_roll: float=0.
 var trail: MeshInstance3D
 var heave_velocity: float=0.
+## Hull motion state (visual hull in boat space): pitch and roll rates, and how fast the bow is being
+## driven into the water (for spray when it slams into a sea).
+var pitch_rate: float=0.
+var roll_rate: float=0.
+var _bow_slam: float=0.
+var _bow_prev: float=0.
 var impact_cooldown: float=0.
 var lights_enabled: bool=true
 var searchlight_upgraded: bool=false
@@ -196,25 +202,9 @@ func _physics_process(delta: float) -> void:
 	trail.advance(global_position,global_basis,speed,delta)
 	impact_cooldown=maxf(0.,impact_cooldown-delta)
 	if is_instance_valid(_hull):
-		var half_beam: float=hydrodynamics.beam*.5
-		var half_length: float=hydrodynamics.waterline_length*.5
-		var right:=Waves.height_at(global_position+global_basis.x*half_beam)
-		var left:=Waves.height_at(global_position-global_basis.x*half_beam)
-		var front:=Waves.height_at(global_position-global_basis.z*half_length)
-		var back:=Waves.height_at(global_position+global_basis.z*half_length)
-		var target: float=(right+left+front+back)*.125+Waves.height_at(global_position)*.5-hydrodynamics.draft_offset
-		var omega:=sqrt(float(hydrodynamics.heave_stiffness)/float(hydrodynamics.mass_kg))
-		heave_velocity+=((target-_hull.position.y)*omega*omega-2.*hydrodynamics.damping_ratio*omega*heave_velocity)*delta
-		_hull.position.y+=heave_velocity*delta
-		_hull.position.y=clampf(_hull.position.y,target-.2,target+.2)
-		var blend: float=1.-exp(-delta*hydrodynamics.angular_response/size_factor)
-		kick_roll=move_toward(kick_roll,0.,delta*.35)
-		var roll: float=atan((right-left)/hydrodynamics.beam)-yaw_rate*wake_strength*.11+sail_heel+kick_roll*sin(Time.get_ticks_msec()*.004)
-		var pitch: float=atan((front-back)/hydrodynamics.waterline_length)+wake_strength*.025
-		_hull.rotation.z=lerpf(_hull.rotation.z,clampf(roll,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
-		_hull.rotation.x=lerpf(_hull.rotation.x,clampf(pitch,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
-		if water_effects!=null and impact_cooldown<=0. and wake_strength>.18 and front-_hull.position.y>.17:
-			water_effects.splash(global_position-global_basis.z*2.1,.4+wake_strength*Waves.energy,true)
+		_simulate_hull(delta)
+		if water_effects!=null and impact_cooldown<=0. and _bow_slam>1.1 and absf(speed)>1.5:
+			water_effects.splash(global_position-global_basis.z*float(hull_spec.length)*.45*size_factor,.4+minf(_bow_slam*.3,1.2)+wake_strength*Waves.energy,true)
 			var spray:=get_tree().get_first_node_in_group("wind_spray")
 			if spray!=null:
 				var bow:=_hull.to_global(Vector3(0,float(hull_spec.deck.y)*.6,-float(hull_spec.length)*.46))
@@ -255,7 +245,9 @@ func take_hit(damage: float,kick: float) -> void:
 	if sinking:return
 	integrity=maxf(0.,integrity-damage*hull_protection)
 	kick_roll=clampf(kick_roll+absf(kick),0.,.55)
+	# The blow is felt as a jolt: the hull is thrown up and rolled, then the water settles it.
 	heave_velocity+=absf(kick)*2.5
+	roll_rate+=absf(kick)*(1.6 if randf()<.5 else -1.6);pitch_rate+=absf(kick)*.8
 	if integrity<=.001:
 		sinking=true;sink_clock=0.;speed=0.
 		var audio:=get_tree().get_first_node_in_group("audio")
@@ -728,3 +720,78 @@ func set_winch_turning(value: bool) -> void:
 	_winch_turning=value
 func _process(delta: float) -> void:
 	if _winch_turning and is_instance_valid(_winch_drum):_winch_drum.rotation.x+=delta*6.
+
+## Hull in the waves: the hull floats on buoyancy sampled at nine points over its waterline (bow, middle and
+## stern; port, centreline and starboard), each pushing up in proportion to how deep that part of the hull is in the water,
+## with nothing where it is clear of the water (so a hull can briefly leave a steep crest). The forces and
+## their moments drive heave, pitch and roll with the hull's mass and inertia, plus damping and quadratic
+## resistance. Wind on sails and turning add heeling moments. Small light hulls answer short waves sharply;
+## long heavy ones average them out and move slowly. Several sub-steps per frame keep it stable.
+func _simulate_hull(delta: float) -> void:
+	var L: float=float(hydrodynamics.waterline_length)*size_factor
+	var B: float=float(hydrodynamics.beam)*size_factor
+	var m: float=float(hydrodynamics.mass_kg)*pow(size_factor,3.)
+	var immersion: float=float(hull_spec.get("immersion",.35))*size_factor
+	var draft: float=float(hydrodynamics.draft_offset)
+	var g: float=9.8
+	var k_total: float=m*g/immersion
+	var k: float=k_total/9.
+	var xs: Array[float]=[-B*.42,0.,B*.42];var zs: Array[float]=[-L*.45,0.,L*.45]
+	var right: Vector3=global_basis.x;var back: Vector3=global_basis.z
+	var heights: Array[float]=[]
+	for z: float in zs:
+		for x: float in xs:heights.append(Waves.height_at(global_position+right*x+back*z))
+	var kp: float=k*6.*pow(L*.45,2.);var kr: float=k*6.*pow(B*.42,2.)
+	# Natural periods grow with size (topsides, rig and cargo add inertia): a canoe snaps back in about a
+	# second and a half, a schooner rolls over three and a half.
+	var t_pitch: float=.9+L*.06;var t_roll: float=1.2+B*.45
+	var ip: float=kp/pow(TAU/t_pitch,2.);var ir: float=kr/pow(TAU/t_roll,2.)
+	var cp: float=2.*.5*sqrt(kp*ip);var cr: float=2.*.6*sqrt(kr*ir);var ch: float=2.*.42*sqrt(k_total*m)
+	# Heeling moments: sail pressure, leaning out of a turn, trim by the stern at speed, the last blow.
+	kick_roll=move_toward(kick_roll,0.,delta*.35)
+	var heel: float=sail_heel-yaw_rate*wake_strength*.11
+	var trim: float=wake_strength*.03
+	# Chop: the local slope of the short waves right under the hull. A narrow light hull sits on it and is
+	# knocked about by every wavelet; a broad heavy one spans it and hardly notices.
+	var chop_gain: float=clampf(1.25-B*.32,.04,1.)
+	var here: Vector3=global_position
+	heel+=(Waves.height_at(here+right*.5)-Waves.height_at(here-right*.5))*chop_gain
+	trim+=(Waves.height_at(here-back*.5)-Waves.height_at(here+back*.5))*chop_gain*.5
+	var max_tilt: float=float(hydrodynamics.maximum_tilt)*1.5
+	var steps:=4;var dt: float=delta/float(steps)
+	var bow_depth:=0.
+	for step: int in steps:
+		var y: float=_hull.position.y;var pitch: float=_hull.rotation.x;var roll: float=_hull.rotation.z
+		var force:=0.;var tp:=0.;var tr:=0.
+		var n:=0
+		for z: float in zs:
+			for x: float in xs:
+				var hull_y: float=y+(-z)*sin(pitch)+x*sin(roll)
+				var depth: float=heights[n]-hull_y-draft+immersion
+				# Below the waterline buoyancy grows with depth; a part lifted clear still feels the water's
+				# pull (added mass and the falling wave) for a little, then nothing: the hull can leave a crest.
+				var f: float=k*clampf(depth,-immersion*.6,immersion*2.6)
+				force+=f;tp+=f*(-z)*cos(pitch);tr+=f*x*cos(roll)
+				if z<0. and x==0.:bow_depth=depth
+				n+=1
+		var drag: float=heave_velocity*absf(heave_velocity)*m*.35
+		heave_velocity+=(force-m*g-ch*heave_velocity-drag)/m*dt
+		pitch_rate+=(tp+kp*trim-cp*pitch_rate)/ip*dt
+		roll_rate+=(tr+kr*heel-cr*roll_rate)/ir*dt
+		_hull.position.y+=heave_velocity*dt
+		_hull.rotation.x+=pitch_rate*dt
+		_hull.rotation.z+=roll_rate*dt
+		# Hard limits for play: past them the motion is stopped, never flipped.
+		if absf(_hull.rotation.x)>max_tilt:_hull.rotation.x=signf(_hull.rotation.x)*max_tilt;pitch_rate*=-.2
+		if absf(_hull.rotation.z)>max_tilt:_hull.rotation.z=signf(_hull.rotation.z)*max_tilt;roll_rate*=-.2
+	var mean: float=0.
+	for h: float in heights:mean+=h
+	mean/=9.
+	_hull.position.y=clampf(_hull.position.y,mean-draft-2.5*immersion-1.,mean-draft+1.5)
+	_bow_slam=maxf(0.,(bow_depth-_bow_prev)/maxf(delta,.001));_bow_prev=bow_depth
+	# A beam sea and wind push the bow off: the helmsman has to keep correcting in rough weather.
+	if occupied and not (anchor!=null and anchor.deployed()):
+		var yaw_push: float=((heights[2]-heights[0])-(heights[8]-heights[6]))*.06/sqrt(maxf(m/4200.,.1))
+		var local_wind: Vector3=global_basis.inverse()*Vector3(Waves.direction.x,0.,Waves.direction.y)
+		yaw_push-=local_wind.x*pow(Waves.wind,2.)*.05/sqrt(maxf(m/4200.,.1))*Waves.exposure(Vector2(global_position.x,global_position.z))
+		rotation.y+=yaw_push*delta

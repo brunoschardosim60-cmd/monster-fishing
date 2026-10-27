@@ -44,8 +44,9 @@ func run() -> void:
 	game.fishing.set_process(false);game.fishing.rng.seed=89
 	var caught_abyss:=false
 	for i: int in 30:
+		# The species is chosen when a fish bites (fishing_system._pick_species), from the cast's region.
 		game.fishing.state=0;game.fishing.start_cast("abyss")
-		if game.fishing.species_current.id=="lanternfish":caught_abyss=true
+		if game.fishing._pick_species().id=="lanternfish":caught_abyss=true
 	check(caught_abyss,"Lanternfish is selectable by the real fishing state machine")
 	game.fishing.cancel();game.fishing.state=0;game.fishing.start_cast("coast")
 	# The lure must sit within casting reach of the angler, closer to the school than the angler is.
