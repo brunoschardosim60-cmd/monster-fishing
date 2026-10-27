@@ -118,16 +118,11 @@ func _build(kind: String) -> Node3D:
 			body.extra_cull_margin=12.;root.add_child(body)
 			root.set_meta("body",body)
 		_:
-			var hide:=_wet(Color("3a4a5c"),.4);var pale:=_wet(Color("c9d6dc"),.5);var glow:=_glow(Color("7fe6ff"),1.8)
-			var body:=_ball(root,Vector3(0,0,0),Vector3(9.,8.,34.),hide,24)
-			_ball(root,Vector3(0,-2.2,-2.),Vector3(8.,3.,28.),pale,18)
-			for k: int in 9:_ball(root,Vector3(0,3.7,-12.+float(k)*3.),Vector3(.6,1.2+float(k%3)*.4,1.6),hide,8)
-			for k: int in 14:_ball(root,Vector3((1. if k%2==0 else -1.)*3.6,.5,-14.+float(k)*2.1),Vector3(.35,.35,.35),glow,6)
-			var tail:=Node3D.new();tail.position=Vector3(0,0,16.);tail.name="Cauda";root.add_child(tail)
-			var fluke:=_ball(tail,Vector3(0,0,3.),Vector3(14.,.8,4.),hide,14);fluke.name="Barbatana"
-			for s: float in [-1.,1.]:
-				var flip:=_ball(root,Vector3(s*5.,-1.,-6.),Vector3(6.,.6,2.4),hide,10);flip.rotation.z=s*.4
-			body.name="Corpo"
+			# The leviathan: a colossal dark whale with a spined back and rows of glowing photophores.
+			var levi:=preload("res://scripts/creatures/big_animals.gd").whale(36.,true)
+			for child: Node in levi.get_children():levi.remove_child(child);root.add_child(child)
+			for key: String in levi.get_meta_list():root.set_meta(key,levi.get_meta(key))
+			levi.free()
 	return root
 
 func _bubbles() -> CPUParticles3D:
@@ -255,8 +250,7 @@ func _animate(lair: Dictionary,t: float) -> void:
 			body.set_instance_shader_parameter("lunge",sin(strike*PI))
 			body.set_instance_shader_parameter("sway",lerpf(.6,1.4,.5+.5*sin(t*.37)))
 		_:
-			var tail: Node3D=node.get_node("Cauda")
-			tail.rotation.x=sin(t*.8)*.25
+			preload("res://scripts/creatures/big_animals.gd").beat_fluke(node)
 			if slam>0.:node.position.y+=sin(slam/1.2*PI)*.12
 
 

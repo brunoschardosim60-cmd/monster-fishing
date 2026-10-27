@@ -31,6 +31,14 @@ func _process(delta: float) -> void:
 	if current!=null:
 		lived+=delta
 		current.position+=-current.basis.z*WHALE_SPEED*delta
+		# Breathing cycle: ~25 s near the surface (back awash, spouting), then a dive.
+		var cycle:=fmod(lived+float(current.get_meta("dive",0.))*6.,40.)
+		var depth:=-.6 if cycle<25. else -.6-sin((cycle-25.)/15.*PI)*7.
+		current.position.y=lerpf(current.position.y,depth,1.-exp(-delta*.6))
+		current.rotation.x=lerpf(current.rotation.x,(-.12 if cycle>25. and cycle<32. else (.1 if cycle>33. else 0.)),1.-exp(-delta))
+		var spout: CPUParticles3D=current.get_meta("spout") if current.has_meta("spout") else null
+		if spout!=null and cycle<25. and fmod(cycle,8.)<delta:spout.restart();spout.emitting=true
+		preload("res://scripts/creatures/big_animals.gd").beat_fluke(current)
 		if lived>WHALE_LIFE: _retire()
 		return
 	if clock>=next_at:
@@ -63,15 +71,10 @@ func _spawn() -> void:
 	add_child(current)
 
 func _build_whale() -> Node3D:
-	var holder:=Node3D.new();holder.name="Baleia"
-	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var dark:=Color("2b3a4a");var belly:=Color("c9d6dc")
-	Flora._blob(st,Vector3(0,0,0),Vector3(1.8,1.6,6.2),belly,dark)
-	Flora._frustum(st,Vector3(0,0,-6.0),Vector3(0,.4,-8.4),1.0,.25,dark,dark,6)
-	Flora._frustum(st,Vector3(0,.2,-8.4),Vector3(0,.25,-9.2),.6,.1,dark,dark,5)
-	st.generate_normals()
-	var node:=MeshInstance3D.new();node.mesh=st.commit();node.material_override=Flora.mat();holder.add_child(node)
-	return holder
+	# Sculpted humpback (big_animals.gd): it cruises, blows at the surface and dives for a while.
+	var whale:=preload("res://scripts/creatures/big_animals.gd").whale(rng.randf_range(12.,16.))
+	whale.set_meta("dive",rng.randf()*TAU)
+	return whale
 
 # ---------------------------------------------------------------- ambient life
 # Small, harmless moments that keep long trips interesting: jellyfish swarms, rays, squid, shooting stars,
@@ -145,23 +148,21 @@ func _build_ambient(kind: String) -> Node3D:
 	var holder:=Node3D.new();holder.name=kind
 	match kind:
 		"agua_viva":
+			# Jellyfish from Bruno's marine pack, translucent and glowing.
+			var jelly_mat:=ShaderMaterial.new();jelly_mat.shader=preload("res://assets/shaders/jelly.gdshader")
+			jelly_mat.set_shader_parameter("tint",Color("b8f0ff") if rng.randf()<.5 else Color("ffc4ec"));jelly_mat.set_shader_parameter("glow",1.2)
 			for i: int in 9:
-				var disc:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.9;sphere.height=.5;disc.mesh=sphere
-				var mat:=StandardMaterial3D.new();var c:=Color("9be8ff") if i%2==0 else Color("ff9ee0")
-				mat.albedo_color=Color(c.r,c.g,c.b,.75);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.emission_enabled=true;mat.emission=c;mat.emission_energy_multiplier=1.6
-				disc.material_override=mat;disc.position=Vector3(rng.randf_range(-4.,4.),-.2,rng.randf_range(-4.,4.));holder.add_child(disc)
+				var jelly:=MeshInstance3D.new();jelly.mesh=load("res://assets/models/imported/jelly_%s.res"%"abcd"[i%4]);jelly.material_override=jelly_mat
+				jelly.scale=Vector3.ONE*rng.randf_range(1.,1.7);jelly.set_instance_shader_parameter("phase",rng.randf()*TAU)
+				jelly.position=Vector3(rng.randf_range(-4.,4.),-.6,rng.randf_range(-4.,4.));holder.add_child(jelly)
 		"arraia":
-			var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
-			Flora._blob(st,Vector3.ZERO,Vector3(2.4,.28,1.5),Color("5a6470"),Color("3a4350"))
-			st.generate_normals()
-			var wing:=MeshInstance3D.new();wing.mesh=st.commit();wing.material_override=Flora.mat();wing.name="Asas";holder.add_child(wing)
+			# A manta cruising just under the surface (same disc and skin as the shallow-water rays).
+			var Meshes:=preload("res://scripts/creatures/creature_meshes.gd")
+			var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/ray_skin.gdshader")
+			mat.set_shader_parameter("manta",true);mat.set_shader_parameter("span",4.6);mat.set_shader_parameter("beat",1.);mat.set_shader_parameter("top_color",Color("1d1f22"))
+			var disc:=MeshInstance3D.new();disc.mesh=Meshes.ray_disc("manta",4.2,4.2*.62,4.2*.1);disc.material_override=mat;disc.name="Asas";holder.add_child(disc)
 		"lula":
-			var st2:=SurfaceTool.new();st2.begin(Mesh.PRIMITIVE_TRIANGLES)
-			Flora._blob(st2,Vector3(0,0,0),Vector3(.8,.8,2.6),Color("e9b4a0"),Color("c46f5c"))
-			for i: int in 4:
-				var a:=float(i)*PI*.5+.4;Flora._frustum(st2,Vector3(cos(a)*.2,0,-2.4),Vector3(cos(a)*.5,0,-4.2),.12,.02,Color("c46f5c"),Color("e9b4a0"),4)
-			st2.generate_normals()
-			var squid:=MeshInstance3D.new();squid.mesh=st2.commit();squid.material_override=Flora.mat();holder.add_child(squid)
+			var squid:=preload("res://scripts/creatures/big_animals.gd").squid(2.6);holder.add_child(squid)
 	return holder
 
 func _animate_ambient(record: Dictionary) -> void:
@@ -169,12 +170,11 @@ func _animate_ambient(record: Dictionary) -> void:
 	match str(record.kind):
 		"agua_viva":
 			node.position=origin+Vector3(sin(t*.25+seed_value)*6.,sin(t*1.3)*.5,cos(t*.2+seed_value)*6.)
-			for i: int in node.get_child_count():
-				(node.get_child(i) as Node3D).scale=Vector3.ONE*(1.+sin(t*2.2+float(i))*.18)
+			pass
 		"arraia":
 			var r:=18.;node.position=origin+Vector3(cos(t*.09+seed_value)*r,-.1,sin(t*.09+seed_value)*r)
 			node.rotation.y=-(t*.09+seed_value)+PI*.5
-			var wing: Node3D=node.get_child(0);wing.scale.y=1.+sin(t*3.)*.35
+			pass
 		"lula":
 			var r2:=10.;node.position=origin+Vector3(cos(t*.5+seed_value)*r2,sin(t*2.)*.4,sin(t*.5+seed_value)*r2)
 			node.rotation.y=-(t*.5+seed_value)+PI*.5

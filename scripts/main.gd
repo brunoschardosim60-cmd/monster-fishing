@@ -47,6 +47,10 @@ var lairs: Node3D
 ## Story objectives and the market's order board.
 var missions: Node
 const Economy=preload("res://scripts/inventory/harbor_economy.gd")
+const SaveGame=preload("res://scripts/inventory/save_game.gd")
+## Progress is saved to user:// in normal play; tests and tools (run with --script) never touch it.
+var saving_enabled: bool=not ("--script" in OS.get_cmdline_args())
+var autosave_clock: float=0.
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -99,7 +103,9 @@ func _ready() -> void:
 	hud.start_requested.connect(begin_play)
 	hud.resume_requested.connect(resume_play)
 	hud.return_requested.connect(return_to_harbor)
-	hud.quit_requested.connect(func() -> void: get_tree().quit())
+	hud.quit_requested.connect(func() -> void: save_progress();get_tree().quit())
+	hud.new_game_requested.connect(func() -> void: SaveGame.erase();hud.set_has_save(false))
+	hud.set_has_save(saving_enabled and SaveGame.exists())
 	hud.weather_selected.connect(func(index: int) -> void: world.ocean.weather.choose(index))
 	hud.service_action.connect(_service_action)
 	hud.service_closed.connect(func() -> void: service_id="";Input.mouse_mode=Input.MOUSE_MODE_CAPTURED)
@@ -122,7 +128,14 @@ func _add_system(node: Node) -> void:
 	node.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(node)
 
+## Writes the save file (no-op in tests). Returns true when written.
+func save_progress() -> bool:
+	if not saving_enabled or not started:return false
+	return SaveGame.save(self)
+
 func begin_play() -> void:
+	if saving_enabled and SaveGame.load_into(self):
+		hud.call_deferred("notify","Progresso carregado. Bem-vindo de volta!")
 	started = true
 	player.controls_enabled = true
 	boat.controls_enabled = true
@@ -145,7 +158,7 @@ func _input(event: InputEvent) -> void:
 		else:
 			aiming=false
 			get_tree().paused = true
-			hud.show_pause()
+			hud.show_pause();save_progress()
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		get_viewport().set_input_as_handled()
 		return
@@ -219,6 +232,9 @@ func _physics_process(_delta: float) -> void:
 		player.global_position=preload("res://scripts/world/archipelago_layout.gd").wrapped(player.global_position)
 
 func _process(delta: float) -> void:
+	if started and not get_tree().paused:
+		autosave_clock+=delta
+		if autosave_clock>60. and not boat.sinking:autosave_clock=0.;save_progress()
 	if not started or get_tree().paused:
 		return
 	player.movement_locked = hud.service_open
@@ -470,7 +486,7 @@ func _service_action(action: String) -> void:
 	elif action.contains(":") or action in ["use_kit","use_tackle","craft_kit","sell_bait","sell_material"]:message=Economy.trade(action,inventory,boat)
 	elif action=="sell":
 		var amount: int=inventory.sell_all();sold_once=sold_once or amount>0;message="Venda: +%d moedas."%amount
-		if amount>0:audio.cue("coins")
+		if amount>0:audio.cue("coins");save_progress()
 	elif action=="store":
 		inventory.stored_catches.append_array(inventory.catches);inventory.catches.clear();inventory.changed.emit();message="Capturas guardadas no armazém."
 	elif action=="withdraw":

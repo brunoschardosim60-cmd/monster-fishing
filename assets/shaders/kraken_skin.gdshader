@@ -9,9 +9,9 @@ uniform float curl=.16;        // base curvature (rad per metre)
 uniform float wave=.08;        // travelling curvature wave
 uniform float phase=0.;
 uniform float slam=0.;         // 0..1
-uniform vec3 hide_color:source_color=vec3(.28,.035,.06);
-uniform vec3 mottle_color:source_color=vec3(.44,.09,.1);
-uniform vec3 belly_color:source_color=vec3(.66,.32,.3);
+uniform vec3 hide_color:source_color=vec3(.14,.045,.05);
+uniform vec3 mottle_color:source_color=vec3(.27,.075,.075);
+uniform vec3 belly_color:source_color=vec3(.46,.25,.22);
 uniform vec3 sucker_color:source_color=vec3(.86,.66,.58);
 varying vec3 local_pos;
 varying float inner;
@@ -61,5 +61,5 @@ void fragment(){
 	if(!FRONT_FACING)NORMAL=-NORMAL;
 	NORMAL=normalize(NORMAL+vec3(noise(p*9.)-.5,noise(p*9.+3.)-.5,0.)*.25*(1.-warts*.5));
 	ALBEDO=col;ROUGHNESS=mix(.32,.55,m);SPECULAR=.55;
-	RIM=.25;RIM_TINT=.6;
+	RIM=.1;RIM_TINT=.2;
 }

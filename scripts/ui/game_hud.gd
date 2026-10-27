@@ -3,6 +3,7 @@ signal start_requested
 signal resume_requested
 signal return_requested
 signal quit_requested
+signal new_game_requested
 signal weather_selected(index: int)
 signal time_selected(hour: float)
 signal service_action(id: String)
@@ -44,6 +45,7 @@ var overlay_body: Label
 var play_button: Button
 var return_button: Button
 var quit_button: Button
+var new_game_button: Button
 var ledger: PanelContainer
 var ledger_text: Label
 var started: bool = false
@@ -227,6 +229,9 @@ func _make_overlay() -> void:
 	return_button = _button(content, "Voltar em segurança ao cais")
 	return_button.pressed.connect(func() -> void: return_requested.emit())
 	return_button.hide()
+	new_game_button = _button(content, "Começar um jogo novo (apaga o progresso salvo)")
+	new_game_button.pressed.connect(func() -> void: new_game_requested.emit())
+	new_game_button.hide()
 	quit_button = _button(content, "Sair do jogo")
 	quit_button.pressed.connect(func() -> void: quit_requested.emit())
 	var build_label := _label(overlay, "ARQUIPÉLAGO DA AURORA  /  EXPLORAÇÃO, PESCA E VIDA NO PORTO", 13, SEA)
@@ -268,7 +273,14 @@ func configure_graphics(settings: RefCounted) -> void:
 	quality_picker.select(settings.quality);resolution_slider.set_value_no_signal(settings.render_scale*100.);vsync_button.set_pressed_no_signal(settings.vsync)
 	resolution_label.text="Resolução 3D: %d%%"%int(resolution_slider.value)
 
+## Start screen: offer to continue the saved voyage, or wipe it and start over.
+func set_has_save(value: bool) -> void:
+	if started:return
+	play_button.text="CONTINUAR A VIAGEM  →" if value else "COMEÇAR A EXPLORAR  →"
+	new_game_button.visible=value
+
 func begin_play() -> void:
+	new_game_button.hide()
 	started = true
 	overlay.hide()
 	_set_hud(true)

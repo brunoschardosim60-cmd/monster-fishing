@@ -104,6 +104,7 @@ func _process(delta: float) -> void:
 	if measure(str(s[2]))>=int(s[3]):
 		game.inventory.money+=int(s[4]);game.inventory.changed.emit()
 		game.hud.notify("Missão concluída: %s · +%d moedas"%[s[0],int(s[4])])
+		if game.has_method("save_progress"):game.call_deferred("save_progress")
 		game.audio.cue("mission")
 		step+=1
 

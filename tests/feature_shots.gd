@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -123,10 +123,27 @@ func _trap() -> void:
 	await shot("trap_hauled",cage.global_position+Vector3(2.,1.,2.),cage.global_position,2)
 
 func _whale() -> void:
-	pass
+	var p:=_sea_point()
+	var w: Node3D=game.world.sea_events._build_whale();game.world.add_child(w);w.global_position=p+Vector3(0,-.6,-30);w.rotation.y=.9
+	for i: int in 30:await process_frame
+	await shot("whale",w.global_position+Vector3(12,4,8),w.global_position,2)
+	await shot("whale_under",w.global_position+Vector3(14,-4,6),w.global_position,2)
+	w.queue_free()
+	for lair: Dictionary in game.lairs.lairs:
+		if lair.kind!="leviata":continue
+		var node: Node3D=lair.node;node.visible=true;node.global_position=p+Vector3(0,-4,-90);node.rotation.y=.6
+		for i: int in 10:await process_frame
+		await shot("leviathan",node.global_position+Vector3(40,14,30),node.global_position,2)
+		await shot("leviathan_under",p+Vector3(30,-6,-70),node.global_position,2)
+		node.visible=false
 
 func _squid() -> void:
-	pass
+	var p:=_sea_point()
+	var sq: Node3D=preload("res://scripts/creatures/big_animals.gd").squid(2.6);game.world.add_child(sq);sq.global_position=p+Vector3(0,-2,-8);sq.rotation.y=1.2
+	for i: int in 20:await process_frame
+	await shot("squid",p+Vector3(3,-1.5,-4),sq.global_position,2)
+	var am: Node3D=game.world.sea_events._build_ambient("agua_viva");game.world.add_child(am);am.global_position=p+Vector3(10,-.5,-6)
+	await shot("ambient_jelly",p+Vector3(14,-1,0),am.global_position,2)
 
 func _night() -> void:
 	game.world.ocean.hour=21.
@@ -139,3 +156,12 @@ func _clouds() -> void:
 	for i: int in 30:await process_frame
 	await shot("clouds_village",Vector3(-160,27,-76),Vector3(-110,5,-17),4)
 	await shot("clouds_town",Vector3(0,14,-30),Vector3(30,2,40),4)
+
+func _kraken() -> void:
+	var p:=_sea_point()
+	for lair: Dictionary in game.lairs.lairs:
+		if lair.kind!="kraken":continue
+		var node: Node3D=lair.node;node.visible=true;node.global_position=p+Vector3(0,-1.5,-60)
+		for i: int in 10:await process_frame
+		await shot("kraken_near",node.global_position+Vector3(18,6,22),node.global_position+Vector3(0,3,0),2)
+		await shot("kraken_far",node.global_position+Vector3(80,15,110),node.global_position+Vector3(0,3,0),2)
