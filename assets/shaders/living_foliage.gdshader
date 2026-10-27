@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode cull_disabled;
+#include "res://assets/shaders/cloud_shadow_global.gdshaderinc"
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec4 tint : source_color = vec4(1.0);
@@ -22,7 +23,7 @@ void vertex() {
 }
 void fragment() {
     vec4 tex=texture(albedo_tex,UV);
-    ALBEDO=tex.rgb*tint.rgb*COLOR.rgb;
+    ALBEDO=tex.rgb*tint.rgb*COLOR.rgb*mix(1.,.58,cloud_shadow_g(world_p.xz));
     ALPHA=tex.a;ALPHA_SCISSOR_THRESHOLD=.42;
     if(!FRONT_FACING)NORMAL=-NORMAL;
     if(has_normal){NORMAL_MAP=texture(normal_tex,UV).rgb;NORMAL_MAP_DEPTH=.45;}

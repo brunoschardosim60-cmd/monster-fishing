@@ -62,7 +62,7 @@ func cast_net() -> String:
 	if Layout.coast(Vector2(at.x,at.z)).x<1.:return "Lance a tarrafa na água."
 	net_point=at;net_state="abrindo";net_clock=0.
 	_build_net()
-	game.audio.cue("splash")
+	game.audio.cue("net")
 	return "Tarrafa lançada!"
 
 func _build_net() -> void:

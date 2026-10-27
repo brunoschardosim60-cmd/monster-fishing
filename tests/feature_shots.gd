@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -133,3 +133,9 @@ func _night() -> void:
 	for i: int in 20:await process_frame
 	var p:=_sea_point()
 	await shot("night_fleet",p+Vector3(150,30,-120),p+Vector3(0,15,-260))
+
+func _clouds() -> void:
+	game.world.ocean.weather.cloud=.42
+	for i: int in 30:await process_frame
+	await shot("clouds_village",Vector3(-160,27,-76),Vector3(-110,5,-17),4)
+	await shot("clouds_town",Vector3(0,14,-30),Vector3(30,2,40),4)

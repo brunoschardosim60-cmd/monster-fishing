@@ -470,6 +470,7 @@ func _service_action(action: String) -> void:
 	elif action.contains(":") or action in ["use_kit","use_tackle","craft_kit","sell_bait","sell_material"]:message=Economy.trade(action,inventory,boat)
 	elif action=="sell":
 		var amount: int=inventory.sell_all();sold_once=sold_once or amount>0;message="Venda: +%d moedas."%amount
+		if amount>0:audio.cue("coins")
 	elif action=="store":
 		inventory.stored_catches.append_array(inventory.catches);inventory.catches.clear();inventory.changed.emit();message="Capturas guardadas no armazém."
 	elif action=="withdraw":

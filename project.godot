@@ -23,3 +23,22 @@ environment/defaults/default_clear_color=Color(0.15,0.32,0.39,1)
 
 [physics]
 common/physics_ticks_per_second=60
+
+[shader_globals]
+
+cloud_g_strength={
+"type": "float",
+"value": 0.0
+}
+cloud_g_cover={
+"type": "float",
+"value": 0.32
+}
+cloud_g_velocity={
+"type": "vec2",
+"value": Vector2(0.006, 0.0025)
+}
+cloud_g_noise={
+"type": "sampler2D",
+"value": "res://assets/textures/cloud_noise.png"
+}

@@ -26,8 +26,11 @@ var day_length_seconds: float=1800.
 var daylight: float=1.
 var cycle_enabled: bool=true
 var moon: DirectionalLight3D
+## Cloud shadows on houses, boats and props (Forward+ only).
+var cloud_decal: Node3D
 
 func _ready() -> void:
+	cloud_decal=preload("res://scripts/visuals/cloud_shadow_decal.gd").new();cloud_decal.name="SombraDasNuvens";add_child(cloud_decal)
 	process_physics_priority=-30
 	Waves.reset()
 	moon=DirectionalLight3D.new();moon.light_color=Color("7ca5d2");moon.light_energy=.14;add_child(moon)
@@ -200,6 +203,10 @@ func _update_lighting(delta: float) -> void:
 		var drift:=Vector2(Waves.direction.x,Waves.direction.y).normalized()*(.004+Waves.wind*.006) if Vector2(Waves.direction.x,Waves.direction.y).length()>.01 else Vector2(.006,.0025)
 		var shaded: Array[ShaderMaterial]=[];shaded.append_array(world.terrain_materials)
 		if world.ocean_material!=null:shaded.append(world.ocean_material)
+		RenderingServer.global_shader_parameter_set("cloud_g_strength",shadow)
+		RenderingServer.global_shader_parameter_set("cloud_g_cover",weather.cloud)
+		RenderingServer.global_shader_parameter_set("cloud_g_velocity",drift)
+		if cloud_decal!=null:cloud_decal.set_params(shadow,weather.cloud,drift)
 		for mat: ShaderMaterial in shaded:
 			mat.set_shader_parameter("cloud_shadow_strength",shadow)
 			mat.set_shader_parameter("cloud_shadow_cover",weather.cloud)

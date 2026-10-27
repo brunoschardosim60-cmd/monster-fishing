@@ -104,7 +104,7 @@ func _process(delta: float) -> void:
 	if measure(str(s[2]))>=int(s[3]):
 		game.inventory.money+=int(s[4]);game.inventory.changed.emit()
 		game.hud.notify("Missão concluída: %s · +%d moedas"%[s[0],int(s[4])])
-		game.audio.cue("catch")
+		game.audio.cue("mission")
 		step+=1
 
 # --- Market contracts ----------------------------------------------------------------------------------
@@ -132,7 +132,7 @@ func deliver(i: int) -> String:
 	var left:=int(c.count)
 	for k: int in range(game.inventory.catches.size()-1,-1,-1):
 		if left>0 and _matches(c,game.inventory.catches[k]):game.inventory.catches.remove_at(k);left-=1
-	game.inventory.money+=int(c.reward);completed_contracts+=1
+	game.inventory.money+=int(c.reward);completed_contracts+=1;game.audio.cue("coins")
 	contracts[i]=_new_contract()
 	game.inventory.changed.emit()
 	return "Pedido entregue: +%d moedas. Um novo pedido foi pregado no quadro."%int(c.reward)

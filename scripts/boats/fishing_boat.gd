@@ -89,6 +89,8 @@ func _physics_process(delta: float) -> void:
 	boost=maxf(0.,boost-delta);boost_cooldown=maxf(0.,boost_cooldown-delta)
 	if occupied and controls_enabled and throttle>0. and boost_cooldown<=0. and Input.is_action_pressed("sprint") and not sinking:
 		boost=BOOST_TIME;boost_cooldown=BOOST_COOLDOWN+BOOST_TIME
+		var audio:=get_tree().get_first_node_in_group("audio")
+		if audio!=null:audio.cue("boost")
 	if sinking:
 		_sink(delta);return
 	var anchored: bool=anchor!=null and anchor.deployed()
@@ -157,6 +159,8 @@ func take_hit(damage: float,kick: float) -> void:
 	heave_velocity+=absf(kick)*2.5
 	if integrity<=.001:
 		sinking=true;sink_clock=0.;speed=0.
+		var audio:=get_tree().get_first_node_in_group("audio")
+		if audio!=null:audio.cue("sink")
 
 ## Going down: the stern floods first, the hull lists and slips under in about seven seconds.
 func _sink(delta: float) -> void:

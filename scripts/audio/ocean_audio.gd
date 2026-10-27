@@ -10,8 +10,15 @@ var shore_layer: AudioStreamPlayer3D
 var hull_layer: AudioStreamPlayer3D
 var splash_layer: AudioStreamPlayer3D
 var thunder_layer: AudioStreamPlayer3D
+## Synthesized one-shots by name, built once. Positional ones play from a small pool of 3D players.
+var _cues: Dictionary={}
+var _pool: Array[AudioStreamPlayer3D]=[]
+var _pool_next: int=0
 
 func _ready() -> void:
+	add_to_group("audio")
+	for i: int in 6:
+		var p:=AudioStreamPlayer3D.new();p.unit_size=6.;p.max_distance=70.;p.volume_db=-12.;add_child(p);_pool.append(p)
 	ambient = AudioStreamPlayer.new()
 	ambient.stream = _wave_sound()
 	ambient.volume_db = -24.0
@@ -84,40 +91,123 @@ func _noise_sound(seed_value: int, filter: float, duration: float, loop: bool) -
 	return stream
 
 func cue(kind: String) -> void:
+	fx.stream=_stream(kind)
+	fx.volume_db=-15.+float(LOUD.get(kind,0.))
+	fx.play()
+
+## A one-shot heard from a place in the world (axe blows, hammering, a monster's roar, a harpoon hit).
+func cue_at(kind: String,at: Vector3,volume_db: float=0.) -> void:
+	var p:=_pool[_pool_next];_pool_next=(_pool_next+1)%_pool.size()
+	p.stream=_stream(kind);p.global_position=at;p.volume_db=-12.+float(LOUD.get(kind,0.))+volume_db
+	p.max_distance=600. if kind in ["roar","slam","breach"] else 70.
+	p.unit_size=40. if kind in ["roar","slam","breach"] else 6.
+	p.pitch_scale=randf_range(.93,1.07)
+	p.play()
+
+const LOUD: Dictionary={"roar":6.,"slam":5.,"breach":6.,"axe":-2.,"hammer":-4.,"knock":-6.,"net":-3.,"harpoon":0.,"flare":-2.,"boost":-4.,"sink":0.,"mission":-6.,"coins":-8.}
+
+func _stream(kind: String) -> AudioStreamWAV:
+	if _cues.has(kind):return _cues[kind]
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = 22050
+	var seconds: Dictionary={"catch":.41,"chain":1.36,"splash":.64,"horn":1.36,"bite":.18,"roar":2.6,"slam":1.6,"breach":2.4,"axe":.5,"hammer":.25,
+		"knock":.3,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5}
+	var length: int=int(22050.*float(seconds.get(kind,.2)))
 	var samples := PackedByteArray()
-	var length: int = 9000 if kind == "catch" else (30000 if kind == "chain" else (14000 if kind == "splash" else (30000 if kind == "horn" else 4000)))
 	samples.resize(length * 2)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 77
+	rng.seed = 77+kind.hash()%1000
 	var low := 0.0
+	var low2 := 0.0
+	var phase := 0.0
 	for i in length:
 		var t := float(i) / 22050.0
 		var value: float
-		if kind == "chain":
-			# Metal links running over the bow roller: a burst of short, bright, slightly detuned clicks.
-			var link := fposmod(t, 0.055)
-			var ring := sin(t * (2300.0 + sin(t * 3.0) * 400.0) * TAU) * 0.6 + sin(t * 3400.0 * TAU) * 0.4
-			value = ring * exp(-link * 120.0) * 0.28 * (1.0 - smoothstep(1.1, 1.36, t))
-		elif kind == "horn":
-			# A ship's horn: two detuned low saw-ish tones with a soft attack and release.
-			var env := smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(1.05, 1.35, t))
-			var a := fposmod(t * 98.0, 1.0) * 2.0 - 1.0
-			var b := fposmod(t * 147.5, 1.0) * 2.0 - 1.0
-			low = lerpf(low, (a * 0.6 + b * 0.4), 0.2)
-			value = low * env * 0.45
-		elif kind == "splash":
-			low = lerpf(low, rng.randf_range(-1.0, 1.0), 0.25)
-			value = low * exp(-t * 4.5) * 0.55
-		else:
-			var freq: float = 660.0 if kind == "bite" else (440.0 + floorf(t * 8.0) * 110.0)
-			value = sin(t * freq * TAU) * exp(-t * 6.0) * 0.3
-		samples.encode_s16(i * 2, int(value * 32767))
+		match kind:
+			"chain":
+				# Metal links running over the bow roller: a burst of short, bright, slightly detuned clicks.
+				var link := fposmod(t, 0.055)
+				var ring := sin(t * (2300.0 + sin(t * 3.0) * 400.0) * TAU) * 0.6 + sin(t * 3400.0 * TAU) * 0.4
+				value = ring * exp(-link * 120.0) * 0.28 * (1.0 - smoothstep(1.1, 1.36, t))
+			"horn":
+				# A ship's horn: two detuned low saw-ish tones with a soft attack and release.
+				var env := smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(1.05, 1.35, t))
+				var a := fposmod(t * 98.0, 1.0) * 2.0 - 1.0
+				var b := fposmod(t * 147.5, 1.0) * 2.0 - 1.0
+				low = lerpf(low, (a * 0.6 + b * 0.4), 0.2)
+				value = low * env * 0.45
+			"splash":
+				low = lerpf(low, rng.randf_range(-1.0, 1.0), 0.25)
+				value = low * exp(-t * 4.5) * 0.55
+			"roar":
+				# A sea monster: a falling, gravelly growl (low saw through noise modulation) with a wet tail.
+				var f := lerpf(70.,38.,t/2.6)+sin(t*9.)*6.
+				phase+=f/22050.
+				var saw:=fposmod(phase,1.)*2.-1.
+				low=lerpf(low,rng.randf_range(-1.,1.),.08)
+				var grit:=.6+.4*sin(t*31.+sin(t*7.)*3.)
+				var env:=smoothstep(0.,.35,t)*(1.-smoothstep(1.9,2.6,t))
+				low2=lerpf(low2,saw*grit+low*.7,.18)
+				value=low2*env*.75
+			"slam","breach":
+				# A huge body hitting the water: a deep thump, then rushing spray.
+				var thump:=sin(t*TAU*(48.-t*12.))*exp(-t*5.)
+				low=lerpf(low,rng.randf_range(-1.,1.),.35 if kind=="slam" else .2)
+				var spray:=low*smoothstep(0.,.08,t)*exp(-t*(1.8 if kind=="slam" else 1.2))
+				value=(thump*.7+spray*.6)*.8
+			"axe":
+				# Steel into wood: a sharp crack and a short hollow body resonance.
+				low=lerpf(low,rng.randf_range(-1.,1.),.6)
+				value=(low*exp(-t*90.)*.9+sin(t*TAU*180.)*exp(-t*22.)*.5+sin(t*TAU*410.)*exp(-t*30.)*.2)*.7
+			"hammer","knock":
+				var f2:=1250. if kind=="hammer" else 520.
+				low=lerpf(low,rng.randf_range(-1.,1.),.5)
+				value=(sin(t*TAU*f2)*exp(-t*38.)*.6+low*exp(-t*120.)*.6+sin(t*TAU*f2*1.52)*exp(-t*50.)*.2)*.7
+			"net":
+				# The cast net: a swoosh through the air, then the lead line patters onto the water.
+				low=lerpf(low,rng.randf_range(-1.,1.),.12+.5*smoothstep(0.,.5,t))
+				var swoosh:=sin(PI*clampf(t/.55,0.,1.))
+				var patter:=float(rng.randf()<.04)*smoothstep(.6,.7,t)*(1.-smoothstep(1.,1.5,t))
+				low2=lerpf(low2,rng.randf_range(-1.,1.)*patter,.5)
+				value=low*swoosh*.45+low2*.9
+			"harpoon":
+				# Gas-spring launcher: a thunk, the line paying out with a whir.
+				var thunk:=sin(t*TAU*95.)*exp(-t*18.)
+				low=lerpf(low,rng.randf_range(-1.,1.),.3)
+				var whir:=sin(t*TAU*(600.-t*300.))*.25*smoothstep(.05,.15,t)*(1.-smoothstep(.5,.9,t))
+				value=thunk*.8+low*exp(-t*14.)*.4+whir*low*.8
+			"flare":
+				# Pop, then the hiss of the burning flare fading out.
+				low=lerpf(low,rng.randf_range(-1.,1.),.85)
+				value=sin(t*TAU*140.)*exp(-t*40.)*.8+low*.35*smoothstep(.03,.15,t)*(1.-smoothstep(1.4,2.2,t))
+			"boost":
+				# Engine pushed hard: rising pulses.
+				var rate:=lerpf(18.,46.,smoothstep(0.,1.,t))
+				phase+=rate/22050.
+				var pulse:=pow(.5+.5*sin(phase*TAU),3.)
+				low=lerpf(low,rng.randf_range(-1.,1.),.25)
+				value=(pulse*.6+low*.25)*sin(t*TAU*(70.+rate))*smoothstep(0.,.1,t)*(1.-smoothstep(1.,1.4,t))
+			"sink":
+				# Water pouring in and big bubbles gurgling up.
+				low=lerpf(low,rng.randf_range(-1.,1.),.1)
+				var bubble:=sin(t*TAU*(180.+90.*sin(t*13.)))*pow(maxf(0.,sin(t*TAU*3.3)),8.)
+				value=(low*.6+bubble*.5)*smoothstep(0.,.3,t)*(1.-smoothstep(2.4,3.,t))
+			"mission":
+				# Objective done: three rising bell notes.
+				var n:=floorf(t/.22);var tt:=t-n*.22
+				var fq: float=[523.25,659.25,783.99,1046.5][int(minf(n,3.))]
+				value=(sin(tt*TAU*fq)+.3*sin(tt*TAU*fq*2.))*exp(-tt*5.)*.3*(1.-smoothstep(.95,1.1,t))
+			"coins":
+				var n2:=floorf(t/.07);var tt2:=t-n2*.07
+				value=sin(tt2*TAU*(2600.+n2*180.))*exp(-tt2*60.)*.25
+			_:
+				var freq: float = 660.0 if kind == "bite" else (440.0 + floorf(t * 8.0) * 110.0)
+				value = sin(t * freq * TAU) * exp(-t * 6.0) * 0.3
+		samples.encode_s16(i * 2, int(clampf(value,-1.,1.) * 32767))
 	stream.data = samples
-	fx.stream = stream
-	fx.play()
+	_cues[kind]=stream
+	return stream
 
 func _wave_sound() -> AudioStreamWAV:
 	var stream := AudioStreamWAV.new()

@@ -184,7 +184,7 @@ func _emerge(lair: Dictionary,b: Vector3) -> void:
 	(lair.node as Node3D).visible=true;(lair.node as Node3D).position=lair.pos
 	var text: Dictionary={"kraken":"O KRAKEN emerge ao lado do barco! Apague as luzes e vá devagar…","serpente":"Uma SERPENTE MARINHA rodeia o barco!","leviata":"Uma sombra colossal passa sob o casco… o LEVIATÃ!"}
 	game.hud.notify(text.get(lair.kind,"Algo enorme emerge!"))
-	game.audio.cue("horn")
+	game.audio.cue_at("roar",(lair.pos as Vector3)+Vector3(0,14,0))
 
 func _hunt(lair: Dictionary,delta: float,b: Vector3,boat: Node3D,stealthy: bool) -> void:
 	var node: Node3D=lair.node
@@ -236,7 +236,7 @@ func _strike(lair: Dictionary,b: Vector3,boat: Node3D) -> void:
 		fx.splash(side,2.2,true);fx.splash(b,1.4,true)
 	var text: Dictionary={"kraken":"Um tentáculo golpeia o casco! (%d%%)","serpente":"A serpente investe contra o barco! (%d%%)","leviata":"O leviatã salta: a onda joga o barco! (%d%%)"}
 	game.hud.notify(str(text.get(kind,"Impacto! (%d%%)"))%int(boat.integrity*100.))
-	game.audio.cue("splash")
+	game.audio.cue_at("slam",b+boat.global_basis.x*(3. if kick>0. else -3.))
 	lair["slam"]=1.2
 
 func _animate(lair: Dictionary,t: float) -> void:
@@ -284,7 +284,7 @@ func fire_flare() -> String:
 		if str(lair.state) in ["alerta","caca","atacando","observando"] and Vector2(b.x-c.x,b.z-c.z).length()<float(lair.radius)*1.2:
 			lair.state="recuando";lair.clock=0.;lair.calm=90.;scared=true
 			(lair.bubbles as CPUParticles3D).emitting=false
-	game.audio.cue("horn")
+	game.audio.cue("flare")
 	return "O clarão vermelho espanta a criatura! Ela mergulha… você tem 90 s." if scared else "O sinalizador sobe e se apaga. Nada por perto."
 
 ## H: the bow harpoon, aimed where the camera looks. Hits wear the guardian down; at zero it flees and pays.
@@ -307,12 +307,13 @@ func fire_harpoon() -> String:
 		if t<0. or t>130.:continue
 		if (eye+dir*t).distance_to(target)<float(TARGET_RADIUS.get(lair.kind,7.)):hit_lair=lair;hit_point=eye+dir*t;break
 	_harpoon_fx(from,hit_point)
-	game.audio.cue("chain")
+	game.audio.cue("harpoon")
 	if hit_lair.is_empty():return "O arpão cai na água. (%d restantes)"%game.inventory.harpoons
 	hit_lair.hp=int(hit_lair.hp)-1
 	hit_lair.strike=float(hit_lair.strike)+3.;hit_lair["slam"]=.6
 	var fx=game.world.ocean.effects
 	if fx!=null:fx.splash(Vector3(hit_point.x,0,hit_point.z),1.8,true)
+	game.audio.cue_at("roar",hit_point,-6. if int(hit_lair.hp)>0 else 2.)
 	if int(hit_lair.hp)>0:
 		return "Arpão cravado no %s! (%d/%d)"%[hit_lair.name,int(HEALTH.get(hit_lair.kind,5))-int(hit_lair.hp),int(HEALTH.get(hit_lair.kind,5))]
 	# Driven off: it dives, stays calm for ten minutes and the harbour pays the bounty.

@@ -57,6 +57,7 @@ func _process(delta: float) -> void:
 		_settle(delta,0.,near_camera)
 		return
 	visual.work_clip=work_pose
+	if near_camera:_work_sound()
 	if route.size()<2:
 		# A resident with no route simply stands (lighthouse keeper), still breathing in the idle clip.
 		if visual.visible:visual.update_animation(0.,false,delta)
@@ -89,6 +90,20 @@ func _process(delta: float) -> void:
 	visual._rod.visible=false
 	_settle(delta,velocity.length(),near_camera)
 ## Ground height, and the speech bubble while talking (only when the camera is close enough to read it).
+## Axe blows, hammering and tapping in time with the work clip, heard only nearby.
+const WORK_SOUNDS: Dictionary={"ual/Chop":["axe",[.42]],"ual/Hammer":["hammer",[.45]],"ual/Fix":["knock",[.3,.62]]}
+var _work_phase: float=0.
+func _work_sound() -> void:
+	if not WORK_SOUNDS.has(work_pose) or visual.animation==null or visual.animation.current_animation!=work_pose:return
+	var length: float=visual.animation.current_animation_length
+	if length<=0.:return
+	var phase: float=visual.animation.current_animation_position/length
+	for hit: float in WORK_SOUNDS[work_pose][1]:
+		if (_work_phase<hit and phase>=hit) or (phase<_work_phase and hit>_work_phase):
+			var audio:=get_tree().get_first_node_in_group("audio")
+			if audio!=null:audio.cue_at(WORK_SOUNDS[work_pose][0],global_position+Vector3(0,1,0))
+	_work_phase=phase
+
 func _settle(_delta: float,_moving: float,near_camera: bool) -> void:
 	position.y=Layout.height(Vector2(position.x,position.z))+.08 if follow_terrain else route[0].y if route.size()>0 else position.y
 	if ground_sampler.is_valid():position.y=ground_sampler.call(position)
