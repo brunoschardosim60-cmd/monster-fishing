@@ -156,6 +156,12 @@ static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,pli
 
 static func _plinth(root: Node3D,w: float,d: float,depth: float,stone: Material) -> void:
 	G.box(root,Vector3(0,-depth*.5+.05,0),Vector3(w+.35,depth+.1,d+.35),stone)
+	# A dressed capstone course along the top, so a tall footing on a slope reads as built masonry.
+	G.box(root,Vector3(0,-.06,0),Vector3(w+.5,.16,d+.5),flat(Color("cfcabb"),.85))
+	if depth>1.6:
+		# Courses of stone every 60 cm on the exposed downhill face.
+		for k: int in int(depth/.6):
+			G.box(root,Vector3(0,-.6*float(k+1),0),Vector3(w+.39,.05,d+.39),flat(Color("8f9186"),.9))
 
 static func _box_walls(root: Node3D,w: float,d: float,h: float,wall: Material,trim: Material) -> void:
 	G.box(root,Vector3(0,h*.5,0),Vector3(w,h,d),wall)

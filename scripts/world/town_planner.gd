@@ -115,6 +115,7 @@ func _dress(record: Dictionary,water: bool,radius: float) -> void:
 		var size: Vector2=building.get_meta("size",Vector2(7,6))
 		var basis:=building.basis
 		if water:
+			if style!="palafita":continue   # only the stilt houses have a front deck to keep barrels on
 			for i: int in 2:
 				var local:=Vector3(_rng.randf_range(-size.x*.4,size.x*.4),0.,-size.y*.5-1.)
 				Props.spawn(self,"SmallBarrel_Art",building.position+basis*local,.8,_rng.randf()*TAU,false,110.)
@@ -230,6 +231,8 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 	# through another house.
 	for st: Array in _streets:
 		if _rect_meets_segment(at,half,yaw,st[0],st[1],float(st[2])*.5+.6):return false
+	for tree: Vector2 in _plaza_trees:
+		if _rect_meets_segment(at,half+Vector2(0.,3.5),yaw,tree,tree,2.5):return false
 	if not water:
 		var door_at:=at+to_face*(half.y+(3.42 if style=="capela" else 0.)+1.6)
 		var square_at:=Vector2(record.centre)+(door_at-Vector2(record.centre)).normalized()*PLAZA_R*.9
@@ -277,8 +280,10 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 	if not water:_entrance_steps(building,size,floor_y)
 	var front_dist: float=-float(building.get_meta("front",-half.y))
 	# The street (and whoever lives there) starts at the foot of the front steps.
-	var door:=Vector2(at.x,at.y)+to_face*(front_dist+float(building.get_meta("steps",0))*STEP_RUN+1.6)
-	_rects.append([at,half,yaw])
+	var steps_len: float=float(building.get_meta("steps",0))*STEP_RUN+(front_dist-half.y)
+	var door:=Vector2(at.x,at.y)+to_face*(half.y+steps_len+1.6)
+	# The rectangle others keep clear of includes the front steps (or the capela's tower).
+	_rects.append([at+to_face*steps_len*.5,half+Vector2(0.,steps_len*.5),yaw])
 	(record.doors as Array).append(door)
 	# A building site has no front door yet, so no street of its own.
 	if not water and style!="obra":_street_line(door,Vector2(record.centre)+(door-Vector2(record.centre)).normalized()*PLAZA_R*.9,1.8)
@@ -308,6 +313,8 @@ func on_paving(p: Vector2) -> bool:
 
 ## Placed buildings as rectangles: [centre, half size, yaw].
 var _rects: Array=[]
+## Trees planted round the squares: houses, doors and their streets keep clear of them.
+var _plaza_trees: Array[Vector2]=[]
 ## Whether a street (a→b) passes within `margin` of a building's rectangle.
 static func _rect_meets_segment(c: Vector2,half: Vector2,yaw: float,a: Vector2,b: Vector2,margin: float) -> bool:
 	var n: int=maxi(2,int(a.distance_to(b)/.5))
@@ -382,6 +389,7 @@ func _plaza(centre: Vector2,y: float) -> void:
 		var a:=float(i)*TAU/3.+.4
 		var p:=centre+Vector2(cos(a),sin(a))*(PLAZA_R+3.)
 		var tree_at:=Vector3(p.x,Layout.ground(p),p.y)
+		_plaza_trees.append(p)
 		if Props.exists("nature:CherryBlossom_1"):Props.spawn(self,"nature:CherryBlossom_1" if i==0 else "nature:CommonTree_%d"%(i+1),tree_at,_rng.randf_range(6.,8.),_rng.randf()*TAU,false,600.)
 		else:village.world._make_tree(tree_at,1.2)
 
@@ -407,11 +415,16 @@ func _entrance_steps(building: Node3D,size: Vector2,floor_y: float) -> void:
 		var g: float=Layout.ground(Vector2(p.x,p.z))
 		var height: float=maxf(.12,floor_y+top-g+.25)
 		G.box(building,Vector3(0.,top-height*.5,z),Vector3(width,height,STEP_RUN+.02),stone,true).name="Degrau_%d"%i
+	# A tall flight gets a low cheek wall on each side that steps down with the treads.
 	if drop>.9:
-		for side: float in [-1.,1.]:
-			var length: float=float(count)*STEP_RUN
-			var mid_z: float=front-.18-length*.5+STEP_RUN*.5
-			G.box(building,Vector3(side*(width*.5+.15),-drop*.5+.15,mid_z),Vector3(.3,drop+.3,length+.02),stone,true).name="Mureta"
+		for i: int in count:
+			var top: float=-float(i)*rise
+			var z: float=front-.18-float(i)*STEP_RUN
+			var p: Vector3=building.global_transform*Vector3(0.,0.,z)
+			var g: float=Layout.ground(Vector2(p.x,p.z))
+			var height: float=maxf(.4,floor_y+top-g+.6)
+			for side: float in [-1.,1.]:
+				G.box(building,Vector3(side*(width*.5+.14),top+.35-height*.5,z),Vector3(.28,height,STEP_RUN+.02),stone,true).name="Mureta"
 	building.set_meta("steps",count)
 
 ## Stilt houses get a boardwalk from their porch to dry land.
