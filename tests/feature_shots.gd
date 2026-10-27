@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -168,6 +168,7 @@ func _kraken() -> void:
 
 func _storm() -> void:
 	var p:=_sea_point()
+	await shot("storm_anchored",Vector3(60,22,-80),Vector3(14,300,2340),3)
 	var st: Node3D=game.world.storms
 	st.spawn_at(p+Vector3(900,0,-900))
 	for i: int in 120:await process_frame
@@ -188,3 +189,18 @@ func _whirl() -> void:
 	for i: int in 30:await physics_frame
 	await shot("whirl_top",p+Vector3(0,90,70),p,2)
 	await shot("whirl_side",p+Vector3(120,14,40),p,2)
+
+func _home() -> void:
+	game.world.ocean.weather.settle(1)
+	for c in game.world.storms.cells.duplicate():
+		if not c.anchored:(c.node as Node3D).queue_free();game.world.storms.cells.erase(c)
+	for i: int in 20:await process_frame
+	await shot("home_port",Vector3(60,22,-80),Vector3(0,4,10),3)
+	await shot("home_hill",Vector3(-60,30,110),Vector3(20,15,250),3)
+	await shot("home_forest",Vector3(-120,40,300),Vector3(-40,50,450),3)
+	await shot("home_aerial",Vector3(300,260,-200),Vector3(0,30,300),3)
+	await shot("home_walk",Vector3(5,3,40),Vector3(-20,6,90),3)
+	await shot("home_meadow",Vector3(-30,22,180),Vector3(-60,18,230),3)
+	var nf: Node3D=game.world.get_node("PescadoresDeTarrafa").get_child(0)
+	nf.clock=1.8
+	await shot("home_netfisher",nf.global_position+nf.global_basis.x*6.+Vector3(0,2.,3.),nf.global_position+(-nf.global_basis.z)*3.+Vector3(0,1,0),2)

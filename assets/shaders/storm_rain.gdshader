@@ -13,5 +13,8 @@ void fragment(){
 	ALBEDO=vec3(.55,.6,.66);
 	// From outside the curtain reads as a grey veil hanging under the cloud.
 	float far=smoothstep(150.,900.,length(VERTEX));
-	ALPHA=clamp(intensity*fade*(veil*(.55+far*.6)+streak*.35*(1.-far)),0.,.8);
+	// Soft silhouette: the curtain thins where it turns away from the eye, so it never shows a hard edge.
+	float facing=pow(abs(dot(normalize(NORMAL),normalize(VIEW))),.9);
+	float ragged=.6+.4*hash(vec2(floor(UV.x*24.),3.));
+	ALPHA=clamp(intensity*fade*facing*ragged*(veil*(.55+far*.6)+streak*.35*(1.-far)),0.,.8);
 }

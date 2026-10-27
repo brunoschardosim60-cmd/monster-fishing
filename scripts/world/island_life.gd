@@ -99,6 +99,7 @@ static func creature_mesh(kind: String) -> ArrayMesh:
 		"cervo_mistico":_quadruped(st,Color("5ec9c0"),Color("e6fffb"),1.3,1.1,.5,2,.14)
 		"lagarto":_quadruped(st,Color("8a8a4a"),Color("b8b268"),.9,.22,.0,0,0.)
 		"caranguejo":_quadruped(st,Color("d9482f"),Color("f2a07c"),.34,.16,.0,0,0.)
+		"coelho":_quadruped(st,Color("9a8670"),Color("efe6d6"),.42,.26,.12,0,.2)
 		"pinguim":_penguin(st)
 	st.generate_normals();meshes[kind]=st.commit();return meshes[kind]
 

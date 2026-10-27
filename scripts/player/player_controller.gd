@@ -49,7 +49,7 @@ var dive_time: float=0.
 var diving: bool=false
 ## Seconds of air (set by diving.gd from the diving gear).
 var breath: float=30.
-const WALK_SPEED: float=1.9
+const WALK_SPEED: float=1.5
 const STEP_HEIGHT: float=.42
 const CLIMB_TIME: float=.55
 const JUMP_SPEED: float=7.2
@@ -129,7 +129,7 @@ func _physics_process(delta: float) -> void:
 		var axis:=Input.get_vector("move_left","move_right","move_forward","move_back") if controls_enabled and not movement_locked else Vector2.ZERO
 		var direction:=Basis(Vector3.UP,yaw-deck_boat.rotation.y)*Vector3(axis.x,0,axis.y)
 		is_sprinting=Input.is_action_pressed("sprint") and axis.length()>.1 and not fishing_active
-		var deck_speed:=2.3*(1.7 if is_sprinting else 1.)
+		var deck_speed:=1.6*(1.8 if is_sprinting else 1.)
 		deck_velocity=deck_velocity.lerp(direction*deck_speed,1.-exp(-delta*8.))
 		deck_local+=deck_velocity*delta
 		deck_local.x=clampf(deck_local.x,-1.4,1.4);deck_local.z=clampf(deck_local.z,-3.3,3.1);deck_local.y=1.12

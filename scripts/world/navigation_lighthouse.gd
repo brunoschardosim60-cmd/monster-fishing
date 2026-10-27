@@ -25,6 +25,8 @@ const BEAM_HALF_ANGLE: float=3.4
 var tower_height: float=30.
 var style: String="faixas"
 var keeper_house: bool=true
+## Abandoned towers keep their dark lantern: no light, no beams.
+var abandoned: bool=false
 func _ready() -> void:
 	var top:=_build_tower()
 	rotor=Node3D.new();rotor.position.y=top+1.25;add_child(rotor)
@@ -48,6 +50,8 @@ func _ready() -> void:
 	glow=G.mesh_node(self,QuadMesh.new(),glow_material,Vector3(0,rotor.position.y,0));glow.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	glow.custom_aabb=AABB(Vector3(-300,-300,-300),Vector3(600,600,600));glow.visibility_range_end=7000.
 func _process(delta: float) -> void:
+	if abandoned:
+		rotor.visible=false;glow.visible=false;set_process(false);return
 	elapsed+=delta;rotor.rotation.y=fposmod(elapsed*TAU/period,TAU)
 	var darkness: float=1. if world.ocean==null else 1.-world.ocean.daylight
 	var night:=smoothstep(.08,.55,darkness)

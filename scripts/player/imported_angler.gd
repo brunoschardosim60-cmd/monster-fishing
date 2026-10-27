@@ -113,7 +113,7 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 		var phase: float=animation.current_animation_position/maxf(animation.current_animation_length,.001) if keep_phase else 0.
 		animation.play(next,.3 if next in cycles or next==still else .2);current=next
 		if keep_phase:animation.seek(phase*animation.current_animation_length,false)
-	if UAL_SPEED.has(next):animation.speed_scale=clampf(gait_speed/float(UAL_SPEED[next]),.6,1.5)
+	if UAL_SPEED.has(next):animation.speed_scale=clampf(gait_speed/float(UAL_SPEED[next]),.6,1.9 if next.begins_with("ual/Walk") else 1.5)
 	else:animation.speed_scale=1.
 	animation.advance(delta)
 	headwear.global_transform=skeleton.global_transform*_bone_global(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()*Transform3D(Basis.IDENTITY,Vector3(0,0,-.11))

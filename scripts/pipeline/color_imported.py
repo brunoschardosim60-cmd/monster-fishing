@@ -214,7 +214,7 @@ def creature(name, colors_fn, pattern, forward_deg, ao_strength=.45):
 
 def shark_colors(m):
     c = m.triangles_center; nr = m.face_normals
-    top = srgb("#4c5d6b"); belly = srgb("#e8e6df")
+    top = srgb("#62788a"); belly = srgb("#eeece6")
     t = np.clip((nr[:, 1] + .15) * 1.6 + (c[:, 1] - .0) * 3., 0, 1)[:, None]
     return belly * (1 - t) + top * t
 

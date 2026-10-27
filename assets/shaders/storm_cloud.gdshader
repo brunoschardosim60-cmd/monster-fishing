@@ -4,11 +4,12 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabl
 // thinning out at the rim. `intensity` fades the whole cell in and out.
 instance uniform float intensity = 0.;
 varying vec3 lp;
+varying vec3 mn;
 float hash(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float noise(vec3 x){vec3 i=floor(x);vec3 f=fract(x);f=f*f*(3.-2.*f);
 	return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
 		mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
-void vertex(){ lp=VERTEX; }
+void vertex(){ lp=VERTEX; mn=NORMAL; }
 void fragment(){
 	vec3 q=lp*vec3(5.,2.4,5.)+vec3(TIME*.02,0.,TIME*.013);
 	float n=noise(q)*.55+noise(q*2.3)*.3+noise(q*5.1)*.15;
@@ -21,5 +22,7 @@ void fragment(){
 	vec3 col=mix(vec3(.11,.12,.14),vec3(.42,.45,.5),smoothstep(.1,1.,h)*(.6+.4*n));
 	col=mix(col,vec3(.05,.055,.065),under);
 	ALBEDO=col;
-	ALPHA=clamp(intensity*(.7+.3*n)*mix(1.,rim,top*.6),0.,.97);
+	float facing=pow(abs(dot(normalize(NORMAL),normalize(VIEW))),.7);
+	float side=1.-smoothstep(.85,.98,abs(normalize(mn).y));
+	ALPHA=clamp(intensity*(.7+.3*n)*mix(1.,rim,top*.6)*mix(1.,facing,side)*smoothstep(.2,.55,n+.25),0.,.97);
 }

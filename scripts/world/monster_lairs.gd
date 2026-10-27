@@ -42,6 +42,7 @@ func _ready() -> void:
 		var node:=_build(str(data[1]));node.name=str(data[0]).replace(" ","");node.visible=false;add_child(node)
 		lair["node"]=node
 		var bubbles:=_bubbles();bubbles.emitting=false;add_child(bubbles);lair["bubbles"]=bubbles
+		_nest(lair)
 		lairs.append(lair)
 
 func _deep_water(near: Vector2) -> Vector2:
@@ -203,6 +204,12 @@ func _hunt(lair: Dictionary,delta: float,b: Vector3,boat: Node3D,stealthy: bool)
 	var look:=b-p;look.y=0.
 	if look.length()>.1:node.rotation.y=lerp_angle(node.rotation.y,atan2(-look.x,-look.z),1.-exp(-delta*1.5))
 	_animate(lair,t)
+	# Over the nest it defends: no patience at all, it strikes twice as often.
+	var c: Vector3=lair.center
+	var over_nest:=Vector2(b.x-c.x,b.z-c.z).length()<float(lair.radius)*.22
+	if over_nest and not bool(lair.get("nest_warned",false)):
+		lair["nest_warned"]=true;game.hud.notify("Ovos brilham no fundo: você está sobre o ninho do guardião! Ele defende sem trégua.")
+	if over_nest:stealthy=false
 	# Calm, dark and slow: it only watches. Otherwise it attacks every few seconds.
 	if stealthy:
 		lair.state="observando";lair.watched=float(lair.watched)+delta
@@ -213,7 +220,7 @@ func _hunt(lair: Dictionary,delta: float,b: Vector3,boat: Node3D,stealthy: bool)
 			game.hud.notify("Você observou o guardião do %s em silêncio · +%d moedas"%[lair.name,int(lair.reward)])
 		return
 	lair.state="atacando"
-	lair.strike=float(lair.strike)-delta
+	lair.strike=float(lair.strike)-delta*(2. if over_nest else 1.)
 	var reach:=Vector2(p.x-b.x,p.z-b.z).length()<r+18.
 	if float(lair.strike)<=0. and t>4. and reach:
 		lair.strike=_rng.randf_range(5.,8.)
@@ -253,6 +260,18 @@ func _animate(lair: Dictionary,t: float) -> void:
 			preload("res://scripts/creatures/big_animals.gd").beat_fluke(node)
 			if slam>0.:node.position.y+=sin(slam/1.2*PI)*.12
 
+
+## Glowing eggs on the bottom at the heart of the territory.
+func _nest(lair: Dictionary) -> void:
+	var c: Vector3=lair.center
+	var floor_y:=-Waves.depth_at(Vector2(c.x,c.z))
+	var nest:=Node3D.new();nest.name="Ninho";nest.position=Vector3(c.x,floor_y,c.z);add_child(nest)
+	var color: Color={"kraken":Color("ff7a5a"),"serpente":Color("8aff7a"),"leviata":Color("7fe6ff")}.get(lair.kind,Color("ffd27d"))
+	var egg:=_glow(color,2.2)
+	for k: int in 7:
+		var a:=float(k)*TAU/7.
+		_ball(nest,Vector3(cos(a)*2.2,1.,sin(a)*2.2),Vector3(1.6,2.2,1.6),egg,12)
+	var light:=OmniLight3D.new();light.light_color=color;light.omni_range=22.;light.light_energy=2.;light.position.y=3.;nest.add_child(light)
 
 # --- Player actions: flare and harpoon ------------------------------------------------------------------
 

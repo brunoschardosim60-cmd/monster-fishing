@@ -129,6 +129,27 @@ func _draw() -> void:
 				draw_circle(lc,rr,Color(.85,.18,.15,.16));draw_arc(lc,rr,0.,TAU,40,Color("e8584a"),2.)
 				draw_string(font,lc+Vector2(-40,-rr-6),str(lair.name),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("ffb3a8"))
 				if (lair.node as Node3D).visible:draw_circle(point(Vector2(lair.pos.x,lair.pos.z)),5.,Color("ffd34e"))
+		# Storm cells (grey discs, darker when strong) and whirlpools you have seen.
+		var storms=game.world.get("storms")
+		if storms!=null:
+			for c: Dictionary in storms.cells:
+				if float(c.intensity)<.1:continue
+				var sc:=point(c.pos as Vector2);var se:=point((c.pos as Vector2)+Vector2(float(c.radius),0))
+				var sr:=maxf(5.,sc.distance_to(se))
+				draw_circle(sc,sr,Color(.35,.4,.48,.25+float(c.intensity)*.25));draw_arc(sc,sr,0.,TAU,32,Color(.75,.82,.9,.6),1.5)
+				if zoom_mode!=MODE_ISLAND or sr<60.:draw_string(font,sc+Vector2(-28,4),"tempestade",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(.85,.9,.95))
+		var whirls=game.world.get("whirlpools")
+		if whirls!=null:
+			for w: Array in whirls.seen_sites():
+				var wc:=point(w[0] as Vector2)
+				draw_arc(wc,6.,0.,TAU*.85,16,Color("7dd8ff") if bool(w[2]) else Color(.5,.7,.8,.5),2.)
+				draw_string(font,wc+Vector2(8,4),"redemoinho",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("a8e6ff"))
+		var marks=game.world.get_node_or_null("Marcos")
+		if marks!=null:
+			for m: Dictionary in marks.marks:
+				if not game.world.village.discovered.has(m.id):continue
+				var mc:=point(Vector2((m.pos as Vector3).x,(m.pos as Vector3).z))
+				draw_rect(Rect2(mc-Vector2(3,3),Vector2(6,6)),Color("f0d28a"))
 		var events: Node3D=game.world.sea_events
 		if events.current!=null:
 			var ev: Vector3=events.current.global_position
@@ -137,7 +158,7 @@ func _draw() -> void:
 			draw_string(font,ev_at+Vector2(8,-6),"Baleia",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("ffd34e"))
 	_legend(font)
 	draw_string(font,Vector2(25,617),"Branco: você · Azul: barco · Laranja: tráfego · Vermelho: predadores",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
-	draw_string(font,Vector2(25,634),"Roxo: peixes raros · Dourado: monstro ativo · Círculo vermelho: território de monstro",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
+	draw_string(font,Vector2(25,634),"Roxo: peixes raros · Dourado: monstro ativo · Vermelho: território · Cinza: tempestade · Azul-claro: redemoinho",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("c8d9d8"))
 	draw_string(font,Vector2(25,648),"M fechar   ·   Z mudar escala   ·   Mundo navegável: 10 × 10 km, com travessia contínua",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("8cb4bd"))
 
 func _screen(polygon: PackedVector2Array) -> PackedVector2Array:
