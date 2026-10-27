@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -364,10 +364,11 @@ func _kit2() -> void:
 	for i: int in 50:await process_frame
 	var p: Vector3=game.player.global_position
 	await shot("kit_windup",p+b.global_basis*Vector3(2.5,1.4,-3.),p+Vector3(0,1.4,0),1)
-	game.player.first_person=true
-	for i: int in 5:await process_frame
-	camera.global_transform=game.player.camera.global_transform
-	await shot("kit_windup_fp",camera.global_position,camera.global_position-camera.global_basis.z*5.,1)
+	# First person: let the spring arm close in fully, look a little down toward the water off the side.
+	game.player.first_person=true;game.player.pitch=-.12
+	for i: int in 60:await process_frame
+	var eye: Transform3D=game.player.camera.global_transform
+	await shot("kit_windup_fp",eye.origin,eye.origin-eye.basis.z*5.,1)
 	game.player.first_person=false;game.aiming=false;game.fish_action()
 	for i: int in 18:await process_frame
 	await shot("kit_cast_flight",p+b.global_basis*Vector3(-4.,3.,-6.),p+b.global_basis*Vector3(6.,2.,0.),1)
@@ -407,3 +408,49 @@ func _kit2() -> void:
 	for k: int in 3:
 		for i: int in 25:await process_frame
 		await shot("kit_storm_%d"%k,b.global_position+b.global_basis*Vector3(14.,3.,4.),b.global_position+Vector3(0,1.,0),1)
+
+func _kit3() -> void:
+	# Gulls over a sardine shoal at dawn, a crewman fishing at the rail, the helmsman at the wheel.
+	var w=game.world;var b: CharacterBody3D=game.boat
+	w.ocean.hour=6.8
+	var prey: Node3D=null
+	for sc: Node3D in game.marine.fish_schools:
+		if str(sc.species)=="sardine":prey=sc;break
+	b.global_position=prey.center+Vector3(40,0,10);b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for i: int in 10:await process_frame
+	# First person with a line out: the rod in front, the line running to the float.
+	game.toggle_deck();game.player.deck_local=Vector3(.9,1.12,2.6);game.player.yaw=b.rotation.y-PI*.5
+	game.player.first_person=true;game.player.pitch=-.18
+	game.aiming=true;game.cast_charge=.6
+	for i: int in 20:await process_frame
+	game.aiming=false;game.fish_action()
+	for i: int in 90:await process_frame
+	var eye: Transform3D=game.player.camera.global_transform
+	await shot("kit_fp_linha",eye.origin,eye.origin-eye.basis.z*5.,1)
+	game.player.first_person=false;game.fishing.cancel();game.toggle_deck()
+	prey.mmi.visible=true;game.marine.gulls._pick_clock=0.
+	for i: int in 240:await process_frame
+	var c: Vector3=prey.center
+	await shot("kit_gaivotas",c+Vector3(28,9,22),c+Vector3(0,6,0),1)
+	for bd: Dictionary in game.marine.gulls.birds:bd.timer=0.
+	for i: int in 50:await process_frame
+	await shot("kit_gaivotas_mergulho",c+Vector3(24,5,18),c+Vector3(0,2,0),1)
+	w.ocean.hour=15.
+	game.inventory.money=5000;game.crew.hire()
+	for i: int in 10:await process_frame
+	var s: Node3D=game.crew.sailors[0]
+	s.set_meta("task","convés");game.crew.cycle_task(s)
+	game.toggle_deck()
+	for i: int in 300:await process_frame
+	var st: Dictionary=s.get_meta("fishing",{})
+	if not st.is_empty():game.crew._crew_bite(s,st,s.bob_point);st.length=30.
+	for i: int in 40:await process_frame
+	await shot("kit_marujo_pescando",s.global_position+b.global_basis*Vector3(3.,1.8,3.5),s.global_position+b.global_basis*Vector3(2.5,.6,0.),1)
+	game.crew.cycle_task(s);game.toggle_deck();b.engine_rpm=.5;game.toggle_deck()
+	for i: int in 200:await process_frame
+	await shot("kit_timoneiro",s.global_position+b.global_basis*Vector3(2.5,1.5,-2.5),s.global_position+Vector3(0,1.,0),1)
+	# Hand-over-hand haul close-up.
+	game.crew.cycle_task(s);s.assign("haul",Vector3(-float(b.deck_layout().x)+.1,0.,0.),PI*.5)
+	for i: int in 200:await process_frame
+	await shot("kit_marujo_puxando",s.global_position+b.global_basis*Vector3(1.,1.6,2.6),s.global_position+Vector3(0,1.,0),1)

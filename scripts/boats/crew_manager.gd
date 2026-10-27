@@ -6,6 +6,11 @@ extends Node
 ##              reefs an over-pressed sail)
 ##   holofote — at night stands by the searchlight and keeps it on whatever matters nearby: buoys of your
 ##              gear, other vessels, rocks and shore ahead (needs the searchlight upgrade)
+##   pesca    — fishes with a hand line at the rail while the boat lies still: same bite odds as yours at
+##              that spot (a little lower), fights what bites with your tackle, and loses what is too big
+##              for it; what comes up goes to the hold
+##   leme     — takes the wheel when you leave it: keeps the course and speed you had, and stops the
+##              engine if land comes up ahead
 ## Crew also keep the catch in order: two more places in the hold per sailor aboard.
 const Sailor=preload("res://scripts/boats/hired_sailor.gd")
 const Waves=preload("res://scripts/world/wave_field.gd")
@@ -13,7 +18,10 @@ const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const HIRE_PRICE: int=60
 const DAILY_WAGE: int=10
 const NAMES: Array[String]=["Zé Maré","Tonho","Dalva","Bento","Iara","Quim","Lia","Severino"]
-const TASKS: Array[String]=["convés","holofote"]
+const TASKS: Array[String]=["convés","holofote","pesca","leme"]
+const Fishing=preload("res://scripts/fishing/fishing_system.gd")
+## A crewman's bite rate against yours at the same spot.
+const CREW_BITE: float=.7
 var game: Node3D
 var boat: CharacterBody3D
 var sailors: Array[Node3D]=[]
@@ -21,6 +29,9 @@ var sailors: Array[Node3D]=[]
 var _pending: Array[Dictionary]=[]
 var _last_hour: float=-1.
 var _storm: bool=false
+## Course the helmsman holds: captured when the skipper lets go of the wheel.
+var _course: Dictionary={}
+var _land_warned: bool=false
 
 func berths() -> int:
 	return int(preload("res://scripts/inventory/harbor_economy.gd").BOATS.get(str(game.inventory.boat_id),{}).get("berths",0))
@@ -32,6 +43,8 @@ func aboard() -> int:
 func sync() -> void:
 	for s: Node3D in sailors:s.queue_free()
 	sailors.clear();_pending.clear()
+	if boat!=null:boat.autopilot={}
+	_course={}
 	var crew: Array=game.inventory.crew
 	for i: int in mini(crew.size(),berths()):
 		var s:=Sailor.new();s.sailor_name=str(crew[i].name);s.look_id=int(crew[i].look);s.boat=boat;s.name="Marujo_%d"%i
@@ -80,10 +93,18 @@ func cycle_task(s: Node3D) -> String:
 	var i: int=sailors.find(s)
 	var task: String=str(s.get_meta("task","convés"))
 	task=TASKS[(TASKS.find(task)+1)%TASKS.size()]
-	if task=="holofote" and not boat.searchlight_upgraded:task="convés"
+	if task=="holofote" and not boat.searchlight_upgraded:task="pesca"
+	# One helmsman is enough.
+	if task=="leme":
+		for o: Node3D in sailors:
+			if o!=s and str(o.get_meta("task",""))=="leme":task="convés";break
+	var was: String=str(s.get_meta("task","convés"))
+	if was=="leme":boat.autopilot={};_course={}
+	s.rod_out=false;s.pull=0.;s.set_meta("fishing",{})
 	s.set_meta("task",task);game.inventory.crew[i].task=task
-	if task=="convés":s.assign("idle",_station(i),0.)
-	return "%s: %s"%[s.sailor_name,{"convés":"cuido do convés: covos, redes, varas e tempestade.","holofote":"fico no holofote."}[task]]
+	s.assign("idle",_station(i),0.)
+	return "%s: %s"%[s.sailor_name,{"convés":"cuido do convés: covos, redes, varas e tempestade.","holofote":"fico no holofote.",
+		"pesca":"vou pescar na amurada quando o barco estiver parado.","leme":"fico no leme: quando você soltar o timão, mantenho o rumo e a velocidade."}[task]]
 
 func _free_deckhand() -> Node3D:
 	for s: Node3D in sailors:
@@ -139,6 +160,8 @@ func _process(delta: float) -> void:
 				if i>=0 and (p.sailor as Node3D).job in ["haul","alert"]:(p.sailor as Node3D).assign("idle",_station(i),0.)
 	_storm_duty()
 	_searchlight(delta)
+	_crew_fishing(delta)
+	_helm()
 	_wages()
 
 func _storm_duty() -> void:
@@ -191,6 +214,103 @@ func _searchlight(delta: float) -> void:
 	var yaw: float=atan2(-local.x,-local.z);var pitch: float=atan2(local.y,Vector2(local.x,local.z).length())+.16
 	boat.light_yaw=lerp_angle(boat.light_yaw,clampf(yaw,-1.2,1.2),1.-exp(-delta*2.))
 	boat.light_pitch=lerpf(boat.light_pitch,clampf(pitch,-.9,.25),1.-exp(-delta*2.))
+
+## Sailors set to fish: each takes a spot at the rail (starboard, port...), puts a float out and waits.
+func _crew_fishing(delta: float) -> void:
+	var deck: Dictionary=boat.deck_layout()
+	var n:=0
+	for i: int in sailors.size():
+		var s: Node3D=sailors[i]
+		if str(s.get_meta("task",""))!="pesca":continue
+		var side: float=1. if n%2==0 else -1.
+		var z: float=lerpf(float(deck.z0),float(deck.z1),.62-.2*float(n/2))
+		n+=1
+		if s.job!="fish":s.assign("fish",Vector3(side*(float(deck.x)-.15),0.,z),-PI*.5*side);s.set_meta("fishing",{});continue
+		var st: Dictionary=s.get_meta("fishing",{})
+		if st.is_empty():st={"state":"wait","clock":0.};s.set_meta("fishing",st)
+		# Fishing wants a boat lying still and a sea that lets you stand at the rail.
+		if not s.at_target() or absf(boat.speed)>1.2 or _storm or not game.player.in_boat:
+			s.rod_out=false;s.pull=0.;st.state="wait";st.clock=0.;continue
+		s.rod_out=true
+		var bob: Vector3=boat._hull.to_global(Vector3(side*(float(deck.x)+6.),0.,z))
+		bob.y=Waves.height_at(bob);s.bob_point=bob
+		st.clock=float(st.clock)+delta
+		match str(st.state):
+			"wait":
+				s.pull=0.
+				var rate: float=float(game._fishing_conditions(bob).rate)*Fishing.BASE_BITE_RATE*CREW_BITE
+				if st.clock>2. and randf()<1.-exp(-rate*delta):_crew_bite(s,st,bob)
+			"fight":
+				s.pull=clampf(.45+.3*sin(float(st.clock)*6.)+.2*float(st.overload),.2,1.)
+				s.bob_point.y-=.35
+				if randf()<delta*1.2 and game.world.ocean.effects!=null:game.world.ocean.effects.splash(bob,.2+minf(float(st.weight)*.02,.6),false)
+				if float(st.clock)>=float(st.length):_crew_fight_end(s,st,bob)
+			"rest":
+				s.pull=0.
+				if float(st.clock)>3.:st.state="wait";st.clock=0.
+
+## A fish takes a crewman's bait: same species choice as a line of yours at that spot.
+func _crew_bite(s: Node3D,st: Dictionary,bob: Vector3) -> void:
+	var fishing: Node=game.fishing
+	var region: String=game.marine.region_at(bob)
+	if fishing._available(region).is_empty():return
+	var keep_region: String=fishing.region_current;var keep_school: String=fishing._school
+	fishing.region_current=region;fishing._school=game.marine.school_at(bob)
+	var sp: Resource=fishing._pick_species()
+	fishing.region_current=keep_region;fishing._school=keep_school
+	var w: float=snappedf(randf_range(float(sp.min_weight),float(sp.max_weight)),.01)
+	var over: float=w/fishing.tackle_capacity()
+	st.species=sp;st.weight=w;st.overload=over;st.region=region
+	# Longer fights for heavier fish; the odds of landing fall as the fish outweighs the tackle.
+	st.length=(4.+sqrt(w)*3.5)*(1.+minf(over,2.)*.5)*(1.+float(sp.difficulty)*.4)
+	st.land_odds=clampf(1.05-.55*over-.12*float(sp.difficulty),0.,.96)
+	st.state="fight";st.clock=0.
+
+func _crew_fight_end(s: Node3D,st: Dictionary,bob: Vector3) -> void:
+	var sp: Resource=st.species;var w: float=st.weight
+	st.state="rest";st.clock=0.;s.pull=0.
+	if randf()>=float(st.land_odds):
+		if w>=2.:game.hud.notify("%s perdeu um %s grande."%[s.sailor_name,str(sp.display_name).to_lower()])
+		return
+	var data:={"id":str(sp.id),"species_id":str(sp.id),"name":str(sp.display_name),"species_name":str(sp.display_name),"weight":w,
+		"value":maxi(1,int(round(w*float(sp.value_per_kg)))),"rarity":str(sp.rarity),"region":str(st.region),
+		"caught_at":Time.get_datetime_string_from_system(true),"timestamp":int(Time.get_unix_time_from_system()),"color":sp.color.to_html(),"crew":s.sailor_name}
+	if game.world.ocean.effects!=null:game.world.ocean.effects.splash(boat._hull.to_global(Vector3(signf(s.deck_local.x)*(absf(s.deck_local.x)+.6),0,s.deck_local.z)),.3,false)
+	s.visual.play_action("ual/PickUp",1.)
+	if game.inventory.add_catch(data):
+		game.inventory.record(data)
+		game.hud.notify("%s pescou: %s · %.2f kg (porão %d/%d)."%[s.sailor_name,data.name,w,game.inventory.catches.size(),game.inventory.hold_limit])
+	else:
+		game.inventory.record(data,true)
+		game.hud.notify("%s pescou um %s, mas o porão está cheio: devolveu."%[s.sailor_name,str(data.name).to_lower()])
+
+## The helmsman: beside the wheel while you steer; at the wheel holding your course when you leave it.
+func _helm() -> void:
+	var s: Node3D=null
+	for o: Node3D in sailors:
+		if str(o.get_meta("task",""))=="leme":s=o;break
+	if s==null:
+		if not boat.autopilot.is_empty():boat.autopilot={}
+		return
+	var helm: Vector3=boat.hull_spec.helm
+	if not game.player.in_boat or boat.occupied:
+		boat.autopilot={};_course={};_land_warned=false
+		if s.job!="helm_wait":s.assign("helm_wait",helm+Vector3(.75,0,.35),0.)
+		return
+	if _course.is_empty():
+		# You just let go of the wheel: remember the course and the engine order you left.
+		_course={"heading":boat.rotation.y,"throttle":snappedf(clampf(boat.engine_rpm,-.5,1.),.05)}
+	if s.job!="helm":s.assign("helm",helm,0.)
+	if not s.at_target():return
+	if absf(float(_course.throttle))>.01:
+		var dir: float=signf(float(_course.throttle))
+		for d: float in [18.,40.,70.]:
+			var p: Vector3=boat.global_position-boat.global_basis.z*d*dir
+			if Layout.coast(Vector2(p.x,p.z)).x<8.:
+				_course.throttle=0.
+				if not _land_warned:_land_warned=true;game.hud.notify("%s: Terra à frente! Parei as máquinas."%s.sailor_name)
+				break
+	boat.autopilot=_course
 
 ## Every morning the crew is paid; whoever cannot be paid goes ashore.
 func _wages() -> void:

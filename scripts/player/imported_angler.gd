@@ -55,6 +55,14 @@ var backpack: Node3D
 var head_bone: int=-1
 var _props: Array=[]
 var chest_bone: int=-1
+## Hand-over-hand hauling (a net, a trap line, the anchor rode): 0 off .. 1 full. Laid over the idle clip
+## after it is sampled: the body leans out over the rail, the arms take turns reaching down and pulling in.
+var haul: float=0.
+var _haul_blend: float=0.
+var _haul_t: float=0.
+## Signs found against the rig (skeleton space, the body faces -Z): + pitch about X swings an arm forward,
+## - pitch bends the spine forward.
+const HAUL_REACH: float=1.
 func _ready() -> void:
 	model=preload("res://assets/characters/survivalist_rigged.glb").instantiate();add_child(model)
 	# Body without the backpack modelled into it; the backpack is a separate accessory (see apply_look).
@@ -150,6 +158,8 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 	elif UAL_SPEED.has(next):animation.speed_scale=clampf(gait_speed/float(UAL_SPEED[next]),.6,1.9 if next.begins_with("ual/Walk") else 1.5)
 	else:animation.speed_scale=1.
 	animation.advance(delta)
+	_haul_blend=move_toward(_haul_blend,haul,delta*3.)
+	if _haul_blend>.01:_apply_haul(delta)
 	headwear.global_transform=skeleton.global_transform*_bone_global(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()*Transform3D(Basis.IDENTITY,Vector3(0,0,-.11))
 	backpack.global_transform=skeleton.global_transform*_bone_global(chest_bone)*skeleton.get_bone_global_rest(chest_bone).affine_inverse()
 	# Fishing keeps its upper-body pose while the player can reposition on shore.
@@ -171,6 +181,22 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 		_bend_now=lerpf(_bend_now,rod_bend,1.-exp(-delta*9.))
 		for i: int in _rod_joints.size():
 			_rod_joints[i].rotation.x=-_bend_now*.32*pow(float(i+1)/float(ROD_JOINTS),1.6) if i>0 else _rod_joints[i].rotation.x
+func _apply_haul(delta: float) -> void:
+	_haul_t+=delta*TAU*.75
+	var k: float=_haul_blend
+	_turn_bone(skeleton.find_bone("Spine"),Vector3.RIGHT,-k*(.3+.06*sin(_haul_t*2.)))
+	_turn_bone(chest_bone,Vector3.RIGHT,-k*.12)
+	for side: Array in [["Left",0.],["Right",PI]]:
+		var s: float=sin(_haul_t+float(side[1]))          # +1 reaching out and down to the line, -1 pulled in to the chest
+		_turn_bone(skeleton.find_bone(str(side[0])+"UpperArm"),Vector3.RIGHT,k*HAUL_REACH*(.4+.8*s))
+		_turn_bone(skeleton.find_bone(str(side[0])+"ForeArm"),Vector3.RIGHT,k*HAUL_REACH*(.75-.75*s))
+## Turns a bone about a skeleton-space axis through its own joint (children follow).
+func _turn_bone(i: int,axis: Vector3,angle: float) -> void:
+	if i<0:return
+	var g:=_bone_global(i);var p: int=skeleton.get_bone_parent(i)
+	var turned:=Transform3D(Basis(axis,angle)*g.basis,g.origin)
+	var local:=(_bone_global(p).affine_inverse() if p>=0 else Transform3D.IDENTITY)*turned
+	skeleton.set_bone_pose_rotation(i,local.basis.get_rotation_quaternion())
 ## Bone pose in skeleton space, composed from the local poses so it is always current after a manual advance.
 func _bone_global(i: int) -> Transform3D:
 	var t:=skeleton.get_bone_pose(i);var p:=skeleton.get_bone_parent(i)

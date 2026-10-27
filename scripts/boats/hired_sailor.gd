@@ -3,10 +3,12 @@ extends Node3D
 ## hull) and walks the real deck: the same walkable box and cabin blocks the player uses, going round a
 ## cabin by the side deck. Jobs are given by crew_manager.gd; each job is "walk to the spot, then work":
 ## a sailor never hauls a trap or aims the light from the other end of the boat.
-##   haul    — at the rail nearest the gear, pulls the line (hands-over-hand) until the manager says done
+##   haul    — at the rail nearest the gear, pulls the line hand over hand until the manager says done
 ##   alert   — goes to a rod holder with a fish on and calls out (waves)
 ##   light   — stands by the searchlight and aims it (the manager drives the aim)
 ##   secure  — storm duty: works along the side deck lashing gear (reduces wave damage)
+##   fish    — at the rail with a rod: waits on the float, fights and lands what bites (crew_manager runs the odds)
+##   helm    — at the wheel, holding the course and speed the skipper left (the boat's autopilot)
 ##   idle    — rests at its station, looks out to sea
 const HullClasses=preload("res://scripts/boats/hull_classes.gd")
 const WALK_SPEED: float=1.35
@@ -24,11 +26,23 @@ var facing: float=0.
 var _waypoints: Array[Vector3]=[]
 var _arrived_sent: bool=true
 var _secure_clock: float=0.
+## Fishing at the rail: the rod is out, where the float lies (world space) and how hard a fish pulls (0..1).
+var rod_out: bool=false
+var bob_point:=Vector3.ZERO
+var pull: float=0.
+var _bob: MeshInstance3D
+var _line: MeshInstance3D
+var _line_mesh: ImmediateMesh
 
 func _ready() -> void:
 	visual=preload("res://scripts/player/imported_angler.gd").new();add_child(visual)
 	visual.apply_look(preload("res://scripts/world/npc_look.gd").for_id(look_id))
 	if visual.backpack!=null:visual.backpack.visible=false
+	_bob=MeshInstance3D.new();var ball:=SphereMesh.new();ball.radius=.07;ball.height=.14;_bob.mesh=ball
+	var red:=StandardMaterial3D.new();red.albedo_color=Color("e0603a");_bob.material_override=red;_bob.top_level=true;_bob.visible=false;add_child(_bob)
+	_line_mesh=ImmediateMesh.new();_line=MeshInstance3D.new();_line.mesh=_line_mesh;_line.top_level=true
+	var lm:=StandardMaterial3D.new();lm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;lm.albedo_color=Color(.92,.95,.9,.8);lm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+	_line.material_override=lm;_line.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;add_child(_line)
 
 func at_target() -> bool:
 	return _waypoints.is_empty() and Vector2(deck_local.x-target.x,deck_local.z-target.z).length()<.15
@@ -93,6 +107,26 @@ func _process(delta: float) -> void:
 	deck_local.y=float(deck.y)
 	position=deck_local
 	var working: bool=at_target() and moving==0.
-	visual.work_clip={"haul":"ual/FishReel","alert":"ual/Wave","light":"ual/IdleLook","secure":"ual/Fix"}.get(job,"") if working else ""
-	if job=="idle":visual.idle_clip="ual/Rail"
-	visual.update_animation(moving,false,delta)
+	# Hauling is hand over hand at the rail (procedural, see imported_angler.haul); the rest are clips.
+	visual.haul=1. if working and job=="haul" else 0.
+	visual.work_clip={"alert":"ual/Wave","light":"ual/IdleLook","secure":"ual/Fix","helm":"ual/Rail","helm_wait":"ual/FoldArms"}.get(job,"") if working else ""
+	visual.idle_clip="ual/Rail" if job=="idle" else "ual/Idle"
+	var fishing: bool=rod_out and working and job=="fish"
+	visual.fishing_state=4 if pull>0. else 0
+	visual.rod_bend=pull
+	visual.update_animation(moving,fishing,delta)
+	_draw_line(fishing)
+
+## Line from the rod tip to the float, sagging when slack, straight and under water when a fish pulls.
+func _draw_line(on: bool) -> void:
+	_line_mesh.clear_surfaces();_bob.visible=on
+	if not on:return
+	var tip: Vector3=visual.rod_tip()
+	var end: Vector3=bob_point
+	_bob.global_position=end+Vector3(0,.04,0)
+	_line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	var sag: float=lerpf(.6,.05,clampf(pull*1.4,0.,1.))
+	for i: int in 13:
+		var t: float=float(i)/12.
+		_line_mesh.surface_add_vertex(tip.lerp(end,t)-Vector3(0,sin(t*PI)*sag,0))
+	_line_mesh.surface_end()

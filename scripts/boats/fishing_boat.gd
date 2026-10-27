@@ -56,6 +56,9 @@ var _clock: float = 0.0
 ## keep turning after the wheel is centred. The engine spools up and down instead of jumping to power.
 var rudder: float=0.
 var yaw_rate: float=0.
+## A hired helmsman at the wheel while the skipper is elsewhere: {"throttle": -1..1, "heading": yaw in radians}.
+## Holds that course and speed (crew_manager.gd sets it, and cuts the engine near land).
+var autopilot: Dictionary={}
 var engine_rpm: float=0.
 ## Per-class handling (set by harbor_economy.apply): wheel speed, turning power, acceleration,
 ## yaw inertia (seconds to answer the rudder) and astern speed.
@@ -127,6 +130,11 @@ func _physics_process(delta: float) -> void:
 	if occupied and controls_enabled:
 		throttle = Input.get_axis("move_back", "move_forward")
 		steering = Input.get_axis("move_left", "move_right")
+	elif not autopilot.is_empty() and controls_enabled:
+		throttle=float(autopilot.throttle)
+		# Wheel against the heading error, eased off by the swing already under way.
+		var err: float=angle_difference(rotation.y,float(autopilot.heading))
+		steering=clampf(-err*2.4+yaw_rate*1.6,-1.,1.)
 	if occupied and controls_enabled and searchlight_upgraded:
 		var aim_step:=1.1*delta
 		if Input.is_physical_key_pressed(KEY_U): light_yaw=clampf(light_yaw+aim_step,-1.2,1.2)

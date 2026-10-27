@@ -65,5 +65,24 @@ func run() -> void:
 	check(game.get_world_3d().direct_space_state.intersect_ray(query).is_empty(),"Sea arch has a physically open navigable passage")
 	game.graphics.apply(0,.75,false,false);check(is_equal_approx(game.get_viewport().scaling_3d_scale,.75) and not game.world.sun.shadow_enabled,"Low preset and render scaling apply immediately")
 	game.graphics.apply(3,1.,true,false);check(game.world.sun.directional_shadow_max_distance==300. and game.get_tree().get_nodes_in_group("nature_near")[0].visibility_range_end==400.,"Ultra enables longer shadows and detailed vegetation distance")
+	# Gulls over a shoal of small fish: they come at dawn, wheel above it and plunge onto fish; none at night.
+	var gulls: Node3D=game.marine.gulls
+	var prey: Node3D=null
+	for sc: Node3D in game.marine.fish_schools:
+		if str(sc.species)=="sardine":prey=sc;break
+	game.player.global_position=prey.center+Vector3(30,2,0);game.world.ocean.hour=7.;prey.mmi.visible=true
+	gulls._pick_clock=0.;await frames(150)
+	var f: int=gulls.flock_school.find(prey)
+	var over:=0
+	if f>=0:
+		for k: int in gulls.PER_FLOCK:
+			var b: Dictionary=gulls.birds[f*gulls.PER_FLOCK+k]
+			if b.state!="away" and Vector2(b.pos.x-prey.center.x,b.pos.z-prey.center.z).length()<45. and b.pos.y>-1.:over+=1
+	check(f>=0 and over>=5,"at dawn a flock of gulls wheels over the sardine shoal (%d birds)"%over)
+	for b: Dictionary in gulls.birds:b.timer=0.
+	var d0: int=gulls.dives;await frames(200)
+	check(gulls.dives>d0,"gulls plunge onto the fish and sit on the water (%d dives)"%(gulls.dives-d0))
+	game.world.ocean.hour=23.;await frames(10);gulls._pick_clock=0.;await frames(5)
+	check(gulls.flock_school.count(null)==gulls.FLOCKS,"no gulls work the shoals in the dark")
 	game.audio.stop_all();game.world.life.birdsong.stop();game.queue_free();await process_frame
 	print("MARINE WORLD ",checks," checks / ",failures," failures");quit(1 if failures else 0)

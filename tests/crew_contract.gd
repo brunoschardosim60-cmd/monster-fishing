@@ -5,6 +5,9 @@ extends "res://tests/archipelago_contract.gd"
 ## --headless --fixed-fps 60 --script res://tests/crew_contract.gd
 const Waves=preload("res://scripts/world/wave_field.gd")
 
+func _course_reset() -> void:
+	game.crew._course={};game.crew._land_warned=false
+
 func run() -> void:
 	game=load("res://scenes/main/main.tscn").instantiate();root.add_child(game);game.begin_play();game.audio.stop_all()
 	for action: StringName in InputMap.get_actions():InputMap.action_erase_events(action)
@@ -36,7 +39,8 @@ func run() -> void:
 		await physics_frame
 		if not game.gear.hauling.is_empty():started_at=s.deck_local;break
 	check(started_at!=Vector3.INF and started_at.x<-float(deck.x)+.4,"the deckhand crosses to the port rail, then the trap comes up (x %.2f)"%started_at.x)
-	check(s.job=="haul" and s.visual.work_clip=="ual/FishReel","…hauling hand over hand")
+	await frames(10)
+	check(s.job=="haul" and s.visual.haul==1. and s.visual._haul_blend>.3,"…hauling hand over hand")
 	await frames(500)
 	# A rod in a holder bends: the deckhand goes to it and calls the skipper.
 	game.toggle_deck();await frames(3)
@@ -73,6 +77,59 @@ func run() -> void:
 	var money: int=inv.money
 	game.world.ocean.hour=5.9;await frames(3);game.world.ocean.hour=6.2;await frames(3)
 	check(inv.money==money-crew.DAILY_WAGE,"the crew is paid every morning (%d)"%(money-inv.money))
+	# Fishing at the rail: E again sets the sailor to fish; with the boat still he puts a float out.
+	game.player.deck_local=s.deck_local;await frames(3)
+	game.interact();await frames(3)
+	check(str(s.get_meta("task"))=="pesca","talking again sets the sailor to fish")
+	for k: int in 600:
+		await physics_frame
+		if s.rod_out:break
+	var side_ok: bool=absf(boat._hull.to_local(s.bob_point).x)>float(deck.x)+3.
+	check(s.rod_out and s.job=="fish" and side_ok and absf(s.bob_point.y-Waves.height_at(s.bob_point))<.2,"he takes a spot at the rail and his float lies off the side")
+	var st: Dictionary=s.get_meta("fishing")
+	crew._crew_bite(s,st,s.bob_point);st.length=2.;st.land_odds=1.
+	var before: int=inv.count();await frames(40)
+	check(s.pull>.15 and s.visual.fishing_state==4,"a fish on: he reels, the rod bends (pull %.2f)"%s.pull)
+	await frames(120)
+	check(inv.count()==before+1 and str(inv.catches.back().get("crew",""))==s.sailor_name,"he lands it and it goes to the hold (%s)"%game.hud.toast.text)
+	boat.speed=3.;await frames(5)
+	check(not s.rod_out,"under way he keeps the line in")
+	boat.speed=0.
+	# The helm: he stands by while you steer and holds your course when you leave the wheel.
+	game.player.deck_local=s.deck_local;await frames(3)
+	game.interact();await frames(3)
+	check(str(s.get_meta("task"))=="leme","…and once more puts him on the helm")
+	var spot:=Vector3.INF;var heading:=0.
+	for p: Vector3 in [Vector3(250,0,-300),Vector3(600,0,-700),Vector3(-600,0,-900),Vector3(900,0,400)]:
+		for k: int in 8:
+			var h: float=float(k)*TAU/8.;var fwd:=Vector3(-sin(h),0,-cos(h));var clear:=true
+			for d: float in [0.,50.,100.,200.,300.,400.]:
+				if preload("res://scripts/world/archipelago_layout.gd").coast(Vector2(p.x+fwd.x*d,p.z+fwd.z*d)).x<60.:clear=false;break
+			if clear:spot=p;heading=h;break
+		if spot!=Vector3.INF:break
+	boat.global_position=spot;boat.rotation=Vector3(0,heading,0);boat.speed=0.;boat.yaw_rate=0.
+	game.toggle_deck();await frames(30)
+	check(boat.occupied and s.job=="helm_wait","at the wheel yourself, the helmsman waits beside you")
+	boat.engine_rpm=.6
+	game.toggle_deck()
+	for k: int in 400:
+		await physics_frame
+		if not boat.autopilot.is_empty():break
+	check(not boat.autopilot.is_empty() and s.job=="helm" and s.at_target() and absf(float(boat.autopilot.throttle)-.6)<.06,"leave the wheel: he walks to it and keeps your engine order (%s)"%str(boat.autopilot))
+	boat.rotation.y+=.45;await frames(420)
+	var err: float=absf(angle_difference(boat.rotation.y,heading))
+	check(err<.12 and boat.speed>2.,"he brings her back on course and keeps her going (error %.2f rad, %.1f m/s)"%[err,boat.speed])
+	# Land dead ahead: he stops the engine.
+	# Put the boat 30 m off a coast, pointing at it.
+	var probe:=Vector2(0,775)
+	for k: int in 400:
+		probe+=Vector2(0,-2.)
+		if preload("res://scripts/world/archipelago_layout.gd").coast(probe).x>30.:break
+	boat.global_position=Vector3(probe.x,0,probe.y);boat.rotation=Vector3(0,PI,0);boat.speed=1.;_course_reset()
+	await frames(5)
+	check(absf(float(boat.autopilot.get("throttle",1.)))<.01 and game.hud.toast.text.contains("Terra à frente"),"land ahead: he stops the engine (%s)"%game.hud.toast.text)
+	game.toggle_deck();await frames(3)
+	check(boat.autopilot.is_empty(),"take the wheel back and the helmsman lets go")
 	# A canoe has no berth.
 	inv.owned_boats.append("canoa");inv.boat_id="canoa";Economy.apply(inv,boat,game.fishing);await frames(5)
 	check(crew.aboard()==0 and crew.hire().contains("não tem lugar"),"a canoe carries no crew")

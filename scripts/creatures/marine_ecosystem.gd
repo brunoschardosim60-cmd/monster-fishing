@@ -37,7 +37,10 @@ var shallow_spots: Array[Vector3]=[]
 var shallow_schools: Array[Node3D]=[]
 var creatures: Node3D
 var _frame: int=0
+## Gulls wheeling and diving over the nearest shoals of small fish (a sign of fish from afar).
+var gulls: Node3D
 func _ready() -> void:
+	gulls=preload("res://scripts/creatures/school_gulls.gd").new();gulls.name="Gaivotas";gulls.marine=self;add_child(gulls)
 	for data: Array in [[Vector3(-28,-3,-66),"mackerel"],[Vector3(250,-4,-170),"tuna"],[Vector3(480,-4,100),"tuna"]]:
 		var school:={"origin":data[0],"center":data[0],"species":data[1],"members":[],"velocities":[],"mode":"cardume"}
 		for i: int in 8:

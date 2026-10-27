@@ -335,9 +335,9 @@ func set_boating(value: bool) -> void:
 	visual.set("seated",value)
 
 func rod_tip() -> Vector3:
-	if first_person:
-		return camera.global_position + camera.global_basis * Vector3(0.35, -0.25, -1.0)
-	return visual.rod_tip()
+	# The rod stays visible in first person too, so the line always leaves its real tip.
+	if visual.has_method("rod_tip"):return visual.rod_tip()
+	return camera.global_position + camera.global_basis * Vector3(0.35, -0.25, -1.0)
 
 func keep_camera_above_water() -> void:
 	if not in_boat: return

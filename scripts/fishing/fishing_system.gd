@@ -227,11 +227,14 @@ func _update_fight(delta: float) -> void:
 			_escape("O peixe saltou e soltou o anzol. Mantenha a linha esticada no salto.");return
 		_slack_jump=0.;_next_phase()
 	surging=fight_phase in ["run","dive"]
-	var load: float=maxf(overload,.35)
+	# Even well inside the tackle's limit, a hard-fighting species keeps some weight on the line.
+	var load: float=maxf(overload,.35+.6*maxf(0.,difficulty-.5))
 	# The fish's pull: species temper, how fresh it still is, and its weight against the tackle.
 	var pull: float=(.25+difficulty*.5)*(.35+.65*stamina)*(.6+.4*minf(load,2.5))
 	# Line gained per second of reeling: better rod and hook help, a tired fish comes easier, a heavy one slower.
 	var gain: float=(.17-difficulty*.05)*(1.+rod_bonus+hook_bonus)*(1.25-.55*stamina)/(1.+log(1.+fish_weight)/log(2.)*.32)
+	# Small fry come in quickly: a sardine is a few seconds of reeling, not a fight.
+	gain*=1.+1.3/(1.+fish_weight*2.)
 	var ease: float=1.-line_bonus
 	tension+=delta*line_stretch*.12
 	match fight_phase:
