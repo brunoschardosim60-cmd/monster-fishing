@@ -263,7 +263,9 @@ func _update_camera(delta: float) -> void:
 	arm.spring_length = lerpf(arm.spring_length, 0.0 if first_person else (10.5 if in_boat else 6.8), minf(delta * 10.0, 1.0))
 	# Over-the-shoulder framing on foot keeps the path ahead visible; centred in the boat and in first person.
 	arm.position.x=lerpf(arm.position.x,.55 if not first_person and not in_boat and not flying else 0.,minf(delta*4.,1.))
-	visual.visible = not first_person
+	# First person keeps the rod and the hands' catch in view; only the body, hat and pack are hidden.
+	if visual.has_method("set_body_visible"):visual.visible=true;visual.set_body_visible(not first_person)
+	else:visual.visible = not first_person
 
 ## Small ledges (steps, curbs, a plank on the pier) are walked over instead of stopping the player.
 func _step_up(before: Vector3,motion: Vector3) -> void:

@@ -33,6 +33,11 @@ var hold_clip: String="ual/FishHold"
 ## A short one-shot action (kneel to release a fish, reach to stow it) that overrides the pose until done.
 var action_clip: String=""
 var action_time: float=0.
+## Wind-up before a cast: -1 when not casting, else 0..1 charge. The rod is drawn back along the start of
+## the cast clip (more charge, further back) and held there; releasing lets the clip run on into the throw.
+var cast_hold: float=-1.
+const CAST_BACK_FROM: float=.12
+const CAST_BACK_TO: float=.5
 const ROD_JOINTS: int=7
 var _rod_joints: Array[Node3D]=[]
 var _bend_now: float=0.
@@ -129,6 +134,7 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 	var next: String=held if holding_fish else (swim_clip if swimming else (fish_clip if fishing else (seated_clip if seated else locomotion)))
 	if airborne and not swimming:next="ual/JumpStart" if vertical_speed>0. else "ual/JumpLoop"
 	if action_time>0. and animation.has_animation(action_clip):next=action_clip
+	if cast_hold>=0. and not holding_fish and not swimming:next="ual/FishCast"
 	if next!=current:
 		# Locomotion clips share a phase convention (left foot first), so keep the cycle position and the feet do not pop.
 		var cycles: Array[String]=["ual/Walk","ual/WalkCarry","ual/Jog","ual/Sprint"]
@@ -136,7 +142,12 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 		var phase: float=animation.current_animation_position/maxf(animation.current_animation_length,.001) if keep_phase else 0.
 		animation.play(next,.3 if next in cycles or next==still else .2);current=next
 		if keep_phase:animation.seek(phase*animation.current_animation_length,false)
-	if UAL_SPEED.has(next):animation.speed_scale=clampf(gait_speed/float(UAL_SPEED[next]),.6,1.9 if next.begins_with("ual/Walk") else 1.5)
+	if cast_hold>=0. and next=="ual/FishCast":
+		# Hold the wind-up: ease the clip toward the pose for this much charge and freeze it there.
+		var want: float=lerpf(CAST_BACK_FROM,CAST_BACK_TO,clampf(cast_hold,0.,1.))
+		var at: float=move_toward(animation.current_animation_position,want,delta*1.2)
+		animation.seek(at,true);animation.speed_scale=0.
+	elif UAL_SPEED.has(next):animation.speed_scale=clampf(gait_speed/float(UAL_SPEED[next]),.6,1.9 if next.begins_with("ual/Walk") else 1.5)
 	else:animation.speed_scale=1.
 	animation.advance(delta)
 	headwear.global_transform=skeleton.global_transform*_bone_global(head_bone)*skeleton.get_bone_global_rest(head_bone).affine_inverse()*Transform3D(Basis.IDENTITY,Vector3(0,0,-.11))
@@ -152,7 +163,7 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 			index=skeleton.find_bone(side+"LowerLeg");rest=skeleton.get_bone_rest(index).basis.get_rotation_quaternion()
 			skeleton.set_bone_pose_rotation(index,rest.inverse()*Quaternion(Vector3.RIGHT,-maxf(0.,-sin(locomotion_phase)*sign_value)*.5)*rest)
 	_place_props()
-	_rod.visible=fishing and not holding_fish and not swimming
+	_rod.visible=(fishing or cast_hold>=0.) and not holding_fish and not swimming
 	if _rod.visible:
 		var hand: Transform3D=skeleton.global_transform*_bone_global(rod_hand)
 		_rod.global_transform=Transform3D(hand.basis*rod_grip_basis,hand.origin)
@@ -185,3 +196,12 @@ func catch_hand_transform() -> Transform3D:return skeleton.global_transform*_bon
 ## Plays a one-shot clip (e.g. "ual/PickUp" to kneel and put a fish back) for `seconds`.
 func play_action(clip: String,seconds: float) -> void:
 	action_clip=clip;action_time=seconds
+
+## First person: hide the body, hat and backpack but keep the rod (and what the hands hold) in view.
+func set_body_visible(value: bool) -> void:
+	if model.visible==value:return
+	model.visible=value
+	if headwear!=null:headwear.visible=value
+	if backpack!=null:
+		if not value:backpack.set_meta("shown",backpack.visible);backpack.visible=false
+		else:backpack.visible=bool(backpack.get_meta("shown",true))

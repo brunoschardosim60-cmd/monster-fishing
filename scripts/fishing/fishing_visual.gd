@@ -10,6 +10,9 @@ var cast_elapsed: float=0.
 ## The fish on the line (hooked_fish.gd) and the line's tension (0 slack … 1 about to break), set by main.
 var hooked: Node3D
 var tension: float=0.
+## Cast timing: the float stays at the rod tip while the rod comes forward, then flies for the rest.
+const RELEASE_AT: float=.22
+var cast_time: float=.85
 
 func _ready() -> void:
 	line_mesh = ImmediateMesh.new()
@@ -51,9 +54,13 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 	var end := target + Vector3(sin(elapsed * 1.8) * 0.15, 0.16 + sin(elapsed * 2.0) * 0.06, 0)
 	end.y = Waves.height_at(end) + .13
 	if state==1:
+		# The float leaves the tip as the rod comes over, then flies a real arc (rising fast, dropping
+		# slower) to the water; the line pays out behind it from the tip.
 		cast_elapsed+=delta
-		var t:=clampf(cast_elapsed/.85,0.,1.)
-		end=cast_start.lerp(end,t)+Vector3.UP*sin(t*PI)*maxf(2.,cast_start.distance_to(target)*.2)
+		var t:=clampf((cast_elapsed-RELEASE_AT)/maxf(cast_time-RELEASE_AT,.1),0.,1.)
+		var apex: float=clampf(cast_start.distance_to(target)*.22,1.5,9.)
+		var landing:=end
+		end=origin.lerp(landing,t)+Vector3.UP*(4.*t*(1.-t))*apex if cast_elapsed>=RELEASE_AT else origin
 	if state == 3:
 		end.y += sin(elapsed * 24.0) * 0.18
 	var fighting: bool=state==4 and hooked!=null and hooked.visible and hooked.mode=="fight"

@@ -49,6 +49,8 @@ var cast_range_bonus: float=0.
 var surging: bool=false
 ## Set by the game when the line lands where feed was thrown: fish bite sooner.
 var feed_bonus: float=0.
+## How long the cast lasts, rod throw plus the flight of the float (set by the game from the distance).
+var cast_duration: float=CAST_DURATION
 
 var _wait_duration: float = 4.0
 var _reeling: bool = false
@@ -123,7 +125,7 @@ func advance(delta: float) -> void:
 	state_time += delta
 	match state:
 		State.CASTING:
-			if state_time >= CAST_DURATION:
+			if state_time >= cast_duration:
 				_change_state(State.WAITING)
 				_message("Observe a boia. Algo pode estar se aproximando…")
 		State.WAITING:

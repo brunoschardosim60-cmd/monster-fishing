@@ -94,8 +94,11 @@ func _ready() -> void:
 	fishing_visual = FishingVisual.new()
 	_add_system(fishing_visual)
 	cast_marker=MeshInstance3D.new()
-	var ring:=TorusMesh.new();ring.inner_radius=.42;ring.outer_radius=.5;ring.rings=24;ring.ring_segments=6;cast_marker.mesh=ring
-	var aim_material:=StandardMaterial3D.new();aim_material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;aim_material.albedo_color=Color("8de8dd");cast_marker.material_override=aim_material;cast_marker.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;add_child(cast_marker);cast_marker.hide()
+	# Discreet aim: a thin, faint ring lying on the water where the float will land (no floating ball).
+	var ring:=TorusMesh.new();ring.inner_radius=.34;ring.outer_radius=.37;ring.rings=40;ring.ring_segments=4;cast_marker.mesh=ring
+	var aim_material:=StandardMaterial3D.new();aim_material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;aim_material.albedo_color=Color(.9,.97,.95,.38)
+	aim_material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;aim_material.no_depth_test=false
+	cast_marker.material_override=aim_material;cast_marker.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;cast_marker.scale=Vector3(1,.15,1);add_child(cast_marker);cast_marker.hide()
 	audio = OceanAudio.new()
 	_add_system(audio)
 	audio.configure(world.ocean,boat)
@@ -273,12 +276,15 @@ func _process(delta: float) -> void:
 	boat.controls_enabled = not hud.service_open
 	if aiming and not aim_manual:
 		cast_charge=minf(1.,cast_charge+delta*.65)
-		cast_distance=lerpf(5.,42.+fishing.cast_range_bonus,cast_charge)
+		cast_distance=lerpf(5.,42.+fishing.cast_range_bonus,cast_charge)*_wind_factor()
+	if "cast_hold" in player.visual:player.visual.cast_hold=cast_charge if aiming else -1.
 	var aim_target:=_cast_target() if aiming else {}
 	cast_marker.visible=not aim_target.is_empty()
 	if cast_marker.visible:
 		cast_marker.global_position=aim_target.position
-		cast_marker.position.y=preload("res://scripts/world/wave_field.gd").height_at(cast_marker.position)+.22
+		cast_marker.position.y=preload("res://scripts/world/wave_field.gd").height_at(cast_marker.position)+.05
+		var pulse: float=1.+.12*sin(Time.get_ticks_msec()*.006)
+		cast_marker.scale=Vector3(pulse,.15,pulse)*(.8+cast_charge*.6)
 	if fishing.active():
 		var line_distance: float=player.global_position.distance_to(fishing_visual.target)
 		fishing.line_stretch=clampf((line_distance-42.-fishing.cast_range_bonus)/14.,0.,1.)
@@ -339,6 +345,9 @@ func fish_action() -> void:
 		var target: Vector3=_cast_target().position
 		fishing_visual.target = target
 		fishing_visual.cast_start=player.rod_tip();fishing_visual.cast_elapsed=0.
+		# Longer casts fly longer: rod throw plus the float's flight time.
+		var flight: float=.35+player.global_position.distance_to(target)*.016
+		fishing.cast_duration=fishing_visual.RELEASE_AT+flight;fishing_visual.cast_time=fishing.cast_duration
 		fishing.bait_bonus=.25 if inventory.bait>0 else 0.
 		if inventory.bait>0:inventory.bait-=1
 		var fed:=false
@@ -629,3 +638,9 @@ func _rod_load() -> float:
 		Fishing.State.REELING:return clampf(.15+fishing.tension*.95+(.15 if fishing.surging else 0.),0.,1.)
 		Fishing.State.WAITING:return .04
 	return 0.
+
+## A following wind carries the cast further, a headwind shortens it (up to about a fifth in a gale).
+func _wind_factor() -> float:
+	var Waves=preload("res://scripts/world/wave_field.gd")
+	var forward:=Vector2(-sin(player.yaw),-cos(player.yaw))
+	return 1.+forward.dot(Waves.direction)*Waves.wind*.22
