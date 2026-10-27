@@ -9,6 +9,7 @@ uniform vec2 ocean_center=vec2(0);
 // whirlpools sink a funnel into the surface with a spiral ripple. x, z, radius, strength (0 = off).
 uniform vec4 storm_cell[4];
 uniform vec4 whirl[4];
+uniform float tide=0.;
 float storm_factor(vec2 p){
 	float s=0.;
 	for(int i=0;i<4;i++){vec4 c=storm_cell[i];if(c.w<=0.)continue;s=max(s,c.w*(1.-smoothstep(c.z*.55,c.z*1.25,length(p-c.xy))));}
@@ -52,6 +53,7 @@ vec3 sea_surface(vec2 p) {
 		result.y+=-depth*pow(t,2.5)+ripple;
 		result.xz+=-dir*(depth*2.5*pow(t,1.5)/wh.z);
 	}
+	result.y+=tide;
 	result.y+=(sin(c.x*.85-sea_time*1.15)*.12*(.3+swell_energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x))*lod;
 	result.y+=sin(p.y*1.8-sea_time*1.5)*.08*channel*shore*lod;
 	result.z-=cos(p.y*1.8-sea_time*1.5)*.144*channel*shore*lod;

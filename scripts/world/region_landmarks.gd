@@ -121,9 +121,9 @@ func _build(lobe: int,id: String,kind: String) -> void:
 			var fire:=OmniLight3D.new();fire.light_color=Color("ffae5a");fire.omni_range=30.;fire.light_energy=2.;fire.position.y=21.;root.add_child(fire)
 		"frost":
 			at=_shore_point(lobe,facing,2.)
-			var ice:=G.material(Color("bfe9ff"),.15);ice.metallic_specular=.9;ice.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;ice.albedo_color.a=.85
-			var arch:=MeshInstance3D.new();var tm:=TorusMesh.new();tm.inner_radius=10.;tm.outer_radius=15.;tm.rings=32;tm.ring_segments=10;arch.mesh=tm;arch.material_override=ice
-			arch.rotation.x=PI*.5;arch.position.y=-2.;root.add_child(arch)
+			var ice:=G.material(Color("bfe9ff"),.15);ice.metallic_specular=.9;ice.albedo_color=Color("cdeeff")
+			var arch:=MeshInstance3D.new();var tm:=TorusMesh.new();tm.inner_radius=8.;tm.outer_radius=11.5;tm.rings=32;tm.ring_segments=10;arch.mesh=tm;arch.material_override=ice
+			arch.rotation.x=PI*.5;arch.position=Vector3(0,-1.,-6.);root.add_child(arch)
 			for k: int in 5:G.sphere(root,Vector3(float(k)*14.-28.,1.,22.+float(k%2)*8.),Vector3(8.,6.+float(k%3)*3.,7.),ice,10)
 		"reef":
 			at=_shore_point(lobe,facing,-30.);at.y=0.
@@ -132,7 +132,8 @@ func _build(lobe: int,id: String,kind: String) -> void:
 			G.sphere(root,Vector3(3.2,8.,0),Vector3(4.,1.2,4.),G.material(Color("3f8a3a"),.8),8)
 			for k: int in 14:
 				var a3:=float(k)*.45;var col:Color=[Color("ff7a8a"),Color("ffb04a"),Color("b07aff"),Color("6ad6c4")][k%4]
-				G.sphere(root,Vector3(cos(a3)*(20.+float(k%3)*6.),-1.6,sin(a3)*(12.+float(k%3)*5.)),Vector3(2.,1.6,2.),G.material(col,.7),8)
+				var coral:=G.sphere(root,Vector3(cos(a3)*(20.+float(k%3)*6.),-2.6,sin(a3)*(12.+float(k%3)*5.)),Vector3(2.4,.9,1.8),G.material(col,.85),7)
+				coral.rotation=Vector3(_rng.randf_range(-.4,.4),_rng.randf()*TAU,_rng.randf_range(-.4,.4))
 	root.position=at
 	root.rotation.y=-facing+PI*.5 if kind!="tropical" else 0.
 	marks.append({"id":"marco_"+id,"kind":kind,"pos":at,"lobe":lobe,"name":str(Layout.region_for_lobe(lobe).get("name",id))})

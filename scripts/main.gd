@@ -106,6 +106,8 @@ func _ready() -> void:
 	diving=preload("res://scripts/fishing/diving.gd").new();diving.game=self;diving.name="Mergulho";_add_system(diving)
 	hud = HUD.new()
 	world.sea_events.event_started.connect(func(text: String) -> void: hud.notify(text))
+	world.ocean.season_changed.connect(func(season_name: String) -> void:
+		hud.notify({"Estação Calma":"Começa a Estação Calma: mar manso e poucas tempestades.","Estação da Migração":"Começa a Estação da Migração: cardumes viajam longe e as baleias passam mais.","Estação das Tempestades":"Começa a Estação das Tempestades: frentes escuras se formam com frequência."}.get(season_name,season_name)))
 	add_child(hud)
 	hud.start_requested.connect(begin_play)
 	hud.resume_requested.connect(resume_play)
@@ -469,8 +471,9 @@ func finish_catch(release: bool) -> void:
 		surface_fish.breach(fishing_visual.target,fishing.species_current)
 		hud.notify("Peixe devolvido.")
 	else:
-		inventory.add_catch(pending_catch)
-		hud.notify("Captura guardada %s."%["no balde do barco" if player.in_boat else "na mochila"])
+		if inventory.add_catch(pending_catch):
+			hud.notify("Captura guardada %s · porão %d/%d."%["no balde do barco" if player.in_boat else "na mochila",inventory.catches.size(),inventory.hold_limit])
+		else:hud.notify("Porão cheio (%d)! Venda no mercado ou devolva o peixe (X)."%inventory.hold_limit)
 	pending_catch.clear();player.holding_fish=false
 	if release:
 		catch_display.held=false;catch_display.remaining=0.;catch_display.hide()

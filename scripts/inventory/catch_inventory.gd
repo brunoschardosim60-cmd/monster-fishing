@@ -22,6 +22,8 @@ var goods: Dictionary={"repair_kit":0,"tackle":0,"canvas":0}
 var stored_catches: Array[Dictionary]=[]
 var encyclopedia: Dictionary={}
 ## Running totals used by missions: fish recorded, fish sold, feed thrown, traps hauled.
+## Catches the boat's hold can carry (set from the hull by harbor_economy.apply).
+var hold_limit: int=14
 var stats: Dictionary={"caught":0,"sold":0,"fed":0,"traps":0}
 
 func record(data: Dictionary,released: bool=false) -> void:
@@ -36,6 +38,8 @@ func add_catch(catch_data: Dictionary) -> bool:
 	if not catch_data.has("id") or not catch_data.has("weight") or not catch_data.has("value"):
 		return false
 	if str(catch_data["id"]).is_empty() or float(catch_data["weight"]) <= 0.0 or int(catch_data["value"]) < 1:
+		return false
+	if catches.size()>=hold_limit:
 		return false
 	catches.append(catch_data.duplicate(true))
 	changed.emit()

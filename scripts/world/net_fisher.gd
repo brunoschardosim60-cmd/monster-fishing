@@ -77,6 +77,8 @@ static func place_all(parent: Node3D,count: int) -> Array[Node3D]:
 		if too_close:continue
 		var depth:=Waves.depth_at(p)
 		if depth>1.3:continue
+		# Only on a gently shelving sand beach: low land behind, no cliff.
+		if Layout.height(p-dir*8.)>2.2 or Layout.height(p-dir*20.)>5.:continue
 		var f: Node3D=load("res://scripts/world/net_fisher.gd").new()
 		f.set("look_id",40+out.size()*3);f.name="PescadorDeTarrafa_%d"%out.size()
 		f.position=Vector3(p.x,-depth+.05,p.y);f.rotation.y=atan2(-dir.x,-dir.y)

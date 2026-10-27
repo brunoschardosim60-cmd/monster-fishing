@@ -73,5 +73,25 @@ func run() -> void:
 		await frames(1)
 		for cone: MeshInstance3D in lh.cones:shortest=minf(shortest,cone.scale.y)
 	check(shortest<.99,"the lighthouse beam is cut short where something blocks it (%.2f)"%shortest)
+	# --- A world that changes: tide, seasons, migration, the hold
+	var probe2:=Vector3(140,0,-330)
+	Waves.tide=0.;var h0:=Waves.height_at(probe2);Waves.tide=.35;var h1:=Waves.height_at(probe2)
+	check(absf(h1-h0-.35)<.01,"the tide lifts the whole sea surface")
+	var ocean=world.ocean;var announced:=[]
+	ocean.season_changed.connect(func(n: String) -> void:announced.append(n))
+	ocean.cycle_enabled=true;ocean.day=2;ocean.hour=23.9995
+	await frames(30)
+	check(ocean.day==3 and ocean.season()==1 and announced.size()==1,"a new day can bring a new season (%s)"%str(announced))
+	var tuna: Node3D=null
+	for sc in game.marine.fish_schools:
+		if str(sc.species)=="atum_rei":tuna=sc;break
+	if tuna!=null:
+		ocean.hour=6.;game.marine._migrate();var home_a: Vector3=tuna.home
+		ocean.hour=18.;game.marine._migrate();var home_b: Vector3=tuna.home
+		check(home_a.distance_to(home_b)>200.,"tuna migrate through the day (%.0f m)"%home_a.distance_to(home_b))
+	game.inventory.catches.clear();game.inventory.hold_limit=2
+	var f1: Dictionary=game.gear.make_catch("caranguejo")
+	game.inventory.add_catch(f1);game.inventory.add_catch(f1)
+	check(not game.inventory.add_catch(f1) and game.inventory.catches.size()==2,"a full hold takes no more fish")
 	print("SEA_HAZARDS %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

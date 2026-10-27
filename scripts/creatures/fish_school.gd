@@ -14,6 +14,8 @@ var home: Vector3=Vector3.ZERO
 var center: Vector3=Vector3.ZERO
 var radius: float=40.
 var depth_range: Vector2=Vector2(2.,10.)
+## 0 by day … 1 at night: open-water fish rise towards the surface after dark (set by marine_ecosystem).
+var night_rise: float=0.
 var predator: bool=false          # scatters other schools within `scare_radius`
 var scare_radius: float=34.
 var mode: String="cardume"
@@ -136,6 +138,7 @@ func step(delta: float,ctx: Dictionary) -> void:
 		if shore.x<shore_margin:steer+=Vector3(shore.y,0,shore.z)*cruise*(shore_margin-shore.x)*.35
 		# Depth layer: each fish has a preferred level that slowly breathes.
 		var want:=-lerpf(depth_range.x,depth_range.y,.5+.5*sin(elapsed*.22+phase[i]*1.3)*(.4+layer[i]*.6))
+		want=lerpf(want,want*.4,night_rise)
 		if surface_pull>0. and not predator:want=lerpf(want,-.35-layer[i]*.5,surface_pull)
 		var floor_y:=-(maxf(0.,.8+shore.x*.65)-1.2)
 		want=maxf(want,maxf(floor_y,floor_limit))

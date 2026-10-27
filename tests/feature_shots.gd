@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -204,3 +204,18 @@ func _home() -> void:
 	var nf: Node3D=game.world.get_node("PescadoresDeTarrafa").get_child(0)
 	nf.clock=1.8
 	await shot("home_netfisher",nf.global_position+nf.global_basis.x*6.+Vector3(0,2.,3.),nf.global_position+(-nf.global_basis.z)*3.+Vector3(0,1,0),2)
+
+func _marks() -> void:
+	game.world.ocean.weather.settle(1)
+	for i: int in 20:await process_frame
+	var nf: Node3D=game.world.get_node("PescadoresDeTarrafa").get_child(0)
+	nf.clock=1.8
+	for i: int in 4:await process_frame
+	await shot("mark_netfisher",nf.global_position+nf.global_basis.x*7.+Vector3(0,2.5,2.),nf.global_position+(-nf.global_basis.z)*3.+Vector3(0,1,0),2)
+	nf.clock=6.5
+	for i: int in 3:await process_frame
+	await shot("mark_netfisher2",nf.global_position+nf.global_basis.x*7.+Vector3(0,2.5,2.),nf.global_position+(-nf.global_basis.z)*3.+Vector3(0,1,0),2)
+	for m: Dictionary in game.world.get_node("Marcos").marks:
+		var at: Vector3=m.pos
+		var eye:=at+Vector3(70,35,70)
+		await shot("mark_"+str(m.kind),eye,at+Vector3(0,8,0),3)

@@ -191,7 +191,28 @@ func observe_guardian() -> bool:
 	guardian_discovered=true
 	game.inventory.record({"id":"abyssal_guardian","name":"Vigia Abissal","rarity":"Lendária","weight":0.,"observation":true})
 	game.inventory.money+=40;game.inventory.changed.emit();return true
+## Fish that travel: their home water moves round a loop through the day (radius in metres).
+const MIGRANTS: Dictionary={"atum_rei":900.,"sardine":260.,"mackerel":320.,"tuna":600.}
+var _migrate_clock: float=0.
+func _migrate() -> void:
+	var hour: float=game.world.ocean.hour
+	var night:=1.-smoothstep(5.,7.,hour)+smoothstep(18.5,20.5,hour)
+	var season: int=game.world.ocean.season()
+	for school: Node3D in fish_schools:
+		if school in shallow_schools:continue
+		school.night_rise=clampf(night,0.,1.)
+		var r: float=MIGRANTS.get(str(school.species),0.)*(1.6 if season==1 else 1.)
+		if r<=0.:continue
+		if not school.has_meta("origin"):school.set_meta("origin",school.home)
+		var origin: Vector3=school.get_meta("origin")
+		var a:=hour/24.*TAU+float(school.seed_value)*.37
+		for shrink: float in [1.,.75,.5,.3]:
+			var target:=origin+Vector3(cos(a),0,sin(a))*r*shrink
+			if Layout.coast(Vector2(target.x,target.z)).x>60.:school.home=target;break
+
 func _physics_process(delta: float) -> void:
+	_migrate_clock-=delta
+	if _migrate_clock<=0.:_migrate_clock=2.;_migrate()
 	elapsed+=delta
 	var threats: Array[Vector3]=[]
 	for hunter: Node3D in predators:threats.append(hunter.center)

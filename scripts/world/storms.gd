@@ -74,8 +74,9 @@ func _process(delta: float) -> void:
 	var eye:=Vector2(camera.global_position.x,camera.global_position.z)
 	_spawn_clock-=delta
 	var roaming:=cells.filter(func(c: Dictionary) -> bool:return not c.anchored).size()
-	if _spawn_clock<=0. and roaming<2:
-		_spawn_clock=_rng.randf_range(90.,200.)
+	if _spawn_clock<=0. and roaming<(3 if world!=null and world.ocean!=null and world.ocean.season()==2 else 2):
+		var season: int=world.ocean.season() if world!=null and world.ocean!=null else 0
+		_spawn_clock=_rng.randf_range(90.,200.)*(.45 if season==2 else (1.6 if season==0 else 1.))
 		_spawn_roaming(eye)
 	var wind_dir:=Waves.direction
 	for c: Dictionary in cells.duplicate():

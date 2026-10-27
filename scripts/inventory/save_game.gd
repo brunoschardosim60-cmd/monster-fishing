@@ -25,7 +25,7 @@ static func save(game: Node,path: String=PATH) -> bool:
 	data["integrity"]=float(game.boat.integrity)
 	data["discovered"]=(game.world.village.discovered as Dictionary).duplicate(true)
 	data["flags"]={"boarded":game.boarded_once,"sailed":game.sailed_once,"caught":game.caught_once,"sold":game.sold_once}
-	data["hour"]=float(game.world.ocean.hour)
+	data["hour"]=float(game.world.ocean.hour);data["day"]=int(game.world.ocean.day)
 	if game.missions!=null:
 		data["missions"]={"step":game.missions.step,"contracts":game.missions.contracts.duplicate(true),"completed":game.missions.completed_contracts}
 	if game.lairs!=null:
@@ -65,7 +65,7 @@ static func load_into(game: Node,path: String=PATH) -> bool:
 	var flags: Dictionary=data.get("flags",{})
 	game.boarded_once=bool(flags.get("boarded",false));game.sailed_once=bool(flags.get("sailed",false))
 	game.caught_once=bool(flags.get("caught",false));game.sold_once=bool(flags.get("sold",false))
-	game.world.ocean.hour=float(data.get("hour",game.world.ocean.hour))
+	game.world.ocean.hour=float(data.get("hour",game.world.ocean.hour));game.world.ocean.day=int(data.get("day",0))
 	if data.has("missions") and game.missions!=null:
 		var m: Dictionary=data.missions
 		game.missions.step=int(m.get("step",0));game.missions.completed_contracts=int(m.get("completed",0))

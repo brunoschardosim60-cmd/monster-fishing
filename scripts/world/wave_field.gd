@@ -14,6 +14,8 @@ static var waves: Array[Vector4] = []
 static var phases := PackedFloat32Array([0.,1.8,4.1,.7,3.3,5.,2.,4.5])
 ## Local sea features, same layout as the shader uniforms: Vector4(x, z, radius, strength), up to 4 each.
 static var storm_cells: Array[Vector4]=[]
+## Tide level (m) added to the whole sea surface.
+static var tide: float=0.
 static var whirls: Array[Vector4]=[]
 
 static func storm_factor(v: Vector2) -> float:
@@ -41,7 +43,7 @@ static func _pad(list: Array[Vector4]) -> Array[Vector4]:
 
 static func reset() -> void:
 	time=0.; wind=.32; energy=.40; rain=0.
-	storm_cells.clear(); whirls.clear()
+	storm_cells.clear(); whirls.clear(); tide=0.
 	ocean_center=Vector2.ZERO
 	direction=Vector2(.9,.43).normalized()
 	phases=PackedFloat32Array([0.,1.8,4.1,.7,3.3,5.,2.,4.5])
@@ -96,7 +98,7 @@ static func height_at(p: Vector3) -> float:
 		h+=(sin(phase)+sharp*sin(2.*phase))*w.z*lerpf(.32 if i<3 else .1,1.,exposed)*(1.-channel*(.2 if i<3 else .65))*fade
 	var wash:=sin(c.x*.85-time*1.15)*.12*(.3+energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x)
 	var guided:=sin(v.y*1.8-time*1.5)*.08*channel*shore
-	return h*shore+(wash+guided)*lod+whirl_offset(v)
+	return h*shore+(wash+guided)*lod+whirl_offset(v)+tide
 
 static func bind(mat: ShaderMaterial) -> void:
 	if waves.is_empty(): advance(0.,wind,energy,rain,direction)
@@ -105,6 +107,7 @@ static func bind(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("wave_data",waves)
 	mat.set_shader_parameter("storm_cell",_pad(storm_cells))
 	mat.set_shader_parameter("whirl",_pad(whirls))
+	mat.set_shader_parameter("tide",tide)
 	mat.set_shader_parameter("wind_direction",direction)
 	mat.set_shader_parameter("wind_strength",wind)
 	mat.set_shader_parameter("swell_energy",energy)

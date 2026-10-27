@@ -111,7 +111,7 @@ func _physics_process(delta: float) -> void:
 	velocity = -global_transform.basis.z * speed
 	# Wind pushes the hull sideways (strongest in the open and in storms); the anchor holds against it.
 	var here:=Vector2(global_position.x,global_position.z)
-	var push:=Vector3(Waves.direction.x,0.,Waves.direction.y)*pow(Waves.wind,2.)*2.4*Waves.exposure(here)/maxf(hydrodynamics.mass_kg/3500.,.6)
+	var push:=Vector3(Waves.direction.x,0.,Waves.direction.y)*pow(Waves.wind,2.)*2.4*Waves.exposure(here)/maxf(hydrodynamics.mass_kg/3500.,.6)/pow(size_factor,3.)
 	if occupied and not (anchored and anchor.holding()):velocity+=push
 	_wave_hits(delta,here)
 	if anchored and anchor.holding():velocity+=anchor.restrain(delta)
@@ -139,7 +139,7 @@ func _physics_process(delta: float) -> void:
 		heave_velocity+=((target-_hull.position.y)*omega*omega-2.*hydrodynamics.damping_ratio*omega*heave_velocity)*delta
 		_hull.position.y+=heave_velocity*delta
 		_hull.position.y=clampf(_hull.position.y,target-.2,target+.2)
-		var blend: float=1.-exp(-delta*hydrodynamics.angular_response)
+		var blend: float=1.-exp(-delta*hydrodynamics.angular_response/size_factor)
 		kick_roll=move_toward(kick_roll,0.,delta*.35)
 		var roll: float=atan((right-left)/hydrodynamics.beam)-steering*wake_strength*.065+kick_roll*sin(Time.get_ticks_msec()*.004)
 		var pitch: float=atan((front-back)/hydrodynamics.waterline_length)+wake_strength*.025
@@ -164,7 +164,7 @@ func _wave_hits(delta: float,here: Vector2) -> void:
 	_wave_hit_clock-=delta*(1.+absf(speed)*.08)
 	if _wave_hit_clock>0.:return
 	_wave_hit_clock=randf_range(6.,13.)/rough
-	take_hit(.01+.025*rough,.22+.25*rough)
+	take_hit((.01+.025*rough)/pow(size_factor,2.),(.22+.25*rough)/size_factor)
 	if water_effects!=null:water_effects.splash(global_position-global_basis.z*2.+global_basis.x*randf_range(-1.,1.),1.2+rough,true)
 	var game:=get_tree().get_first_node_in_group("game")
 	if game!=null:
@@ -469,8 +469,10 @@ func _polygon_deck(points: PackedVector2Array, height: float, deck_scale: float,
 
 ## Repaints the hull (main colour and upper works) and resizes it, for the boats sold at the boatyard.
 ## Same height rule the imported model uses: antifouling stays dark, deck timber stays teak.
+## Hull size relative to the Aurora: bigger hulls drift less in the wind, ship less water and roll slower.
+var size_factor: float=1.
 func set_livery(hull_color: Color,top_color: Color,scale_value: float) -> void:
-	livery_hull=hull_color
+	livery_hull=hull_color;size_factor=scale_value
 	if is_instance_valid(_hull):_hull.scale=Vector3.ONE*scale_value
 	if imported_model==null or not "meshes" in imported_model:return
 	for part: MeshInstance3D in imported_model.meshes:

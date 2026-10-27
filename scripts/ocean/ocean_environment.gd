@@ -22,6 +22,11 @@ var cold: float=0.
 var strike_position:=Vector3.ZERO
 var seabed: MeshInstance3D
 var hour: float=16.6
+## Days gone by and the season they make (3 days each): calm, migration, storms. See season().
+var day: int=0
+const SEASONS: Array[String]=["Estação Calma","Estação da Migração","Estação das Tempestades"]
+signal season_changed(name: String)
+func season() -> int:return (day/3)%3
 var day_length_seconds: float=1800.
 var daylight: float=1.
 var cycle_enabled: bool=true
@@ -110,7 +115,14 @@ func is_ice(at: Vector3) -> bool:
 	return false
 
 func _physics_process(delta: float) -> void:
-	if cycle_enabled: hour=fposmod(hour+delta*24./day_length_seconds,24.)
+	if cycle_enabled:
+		var before:=hour
+		hour=fposmod(hour+delta*24./day_length_seconds,24.)
+		if hour<before:
+			var old:=season();day+=1
+			if season()!=old:season_changed.emit(SEASONS[season()])
+	# A gentle tide (12.4 h), drawn and floated the same way by wave_field and the ocean shader.
+	Waves.tide=sin(hour/12.4*TAU+float(day)*.5)*.35
 	weather.advance(delta)
 	Waves.advance(delta,weather.wind,weather.energy,weather.rain,Vector2.from_angle(weather.heading))
 	Waves.bind(world.ocean_material)

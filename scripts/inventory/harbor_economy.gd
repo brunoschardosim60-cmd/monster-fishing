@@ -143,6 +143,8 @@ static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing:
 static func apply(inventory: RefCounted,boat: CharacterBody3D,fishing: Node) -> void:
 	var hull_data: Dictionary=BOATS.get(inventory.boat_id,BOATS.aurora)
 	boat.max_speed=float(hull_data.speed)*(1.+float(inventory.equipment.engine)*.15)
+	# The hold: how many catches the boat carries before you must sell (bigger hulls carry more).
+	inventory.hold_limit=int(round(14.*float(hull_data.capacity)))
 	fishing.rod_bonus=float(inventory.equipment.rod)*.15
 	fishing.line_bonus=float(inventory.equipment.line)*.15
 	fishing.hook_bonus=float(inventory.equipment.hook)*.08

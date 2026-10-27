@@ -46,7 +46,10 @@ func _process(delta: float) -> void:
 
 func _retire() -> void:
 	current.queue_free();current=null;kind=""
-	next_at=clock+rng.randf_range(300.,540.)
+	var season: int=0
+	var ocean=get_parent().get("ocean")
+	if ocean!=null:season=ocean.season()
+	next_at=clock+rng.randf_range(300.,540.)*(.4 if season==1 else 1.)
 
 ## A point in open water 260–420 m from the boat, or Vector3.INF if none is found.
 func _open_point() -> Vector3:
