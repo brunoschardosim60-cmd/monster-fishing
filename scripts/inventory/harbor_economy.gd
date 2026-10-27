@@ -53,7 +53,10 @@ const CATALOG: Dictionary={
 	"craft_bait":{"title":"Preparar 6 iscas · 1 material","price":0,"service":"workshop","craft":{"materials":1,"goods":{},"result":{"bait":6}}},
 	"feed":{"title":"Saco de ração · 5 punhados para atrair cardumes (tecla C)","price":15,"service":"gear"},
 	"net":{"title":"Rede de arremesso · tecla N no barco","price":90,"service":"gear"},
-	"trap":{"title":"Covo para caranguejo e lagosta · tecla B em água rasa","price":40,"service":"gear"}}
+	"trap":{"title":"Covo para caranguejo e lagosta · tecla B em água rasa","price":40,"service":"gear"},
+	"flares":{"title":"3 sinalizadores · tecla Y espanta monstros por um tempo","price":25,"service":"gear"},
+	"harpoon_gun":{"title":"Arpão de proa · tecla H enfrenta monstros · com 4 arpões","price":140,"service":"workshop"},
+	"harpoons":{"title":"4 arpões para o arpão de proa","price":20,"service":"workshop"}}
 ## Crafting: spends materials (and any goods listed) to produce goods or bait. Recipes live in CATALOG under "craft".
 static func _craft(item: Dictionary,inventory: RefCounted) -> String:
 	var recipe: Dictionary=item.craft
@@ -110,6 +113,8 @@ static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing:
 		inventory.money-=cost;inventory.equipment[id]=level+1
 		apply(inventory,boat,fishing);inventory.changed.emit()
 		return "Melhoria concluída: %s, nível %d/%d."%[str(item.title),level+1,MAX_LEVEL]
+	if id=="harpoon_gun" and inventory.equipment.get("harpoon",0)>=1: return "Você já tem o arpão de proa."
+	if id=="harpoons" and inventory.equipment.get("harpoon",0)<1: return "Instale primeiro o arpão de proa."
 	if id in inventory.equipment and inventory.equipment[id]>=1 and id!="trap": return "Você já possui esta melhoria."
 	if id=="repair" and boat.integrity>=.999: return "O casco já está em boas condições."
 	if inventory.money<int(item.price): return "Moedas insuficientes. Venda capturas ou explore os baús da ilha."
@@ -117,6 +122,9 @@ static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing:
 	if id=="bait": inventory.bait+=6
 	elif id=="feed": inventory.feed+=5
 	elif id=="trap": inventory.traps+=1
+	elif id=="flares": inventory.flares+=3
+	elif id=="harpoon_gun": inventory.equipment["harpoon"]=1;inventory.harpoons+=4
+	elif id=="harpoons": inventory.harpoons+=4
 	elif id=="repair": boat.integrity=1.
 	else: inventory.equipment[id]=1
 	apply(inventory,boat,fishing);inventory.changed.emit()

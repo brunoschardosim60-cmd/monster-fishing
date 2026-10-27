@@ -42,6 +42,9 @@ var _props: Array=[]
 var chest_bone: int=-1
 func _ready() -> void:
 	model=preload("res://assets/characters/survivalist_rigged.glb").instantiate();add_child(model)
+	# Body without the backpack modelled into it; the backpack is a separate accessory (see apply_look).
+	var body_node: MeshInstance3D=model.find_children("*","MeshInstance3D",true,false)[0]
+	body_node.mesh=preload("res://assets/characters/survivalist_body_nopack.res")
 	skeleton=model.find_children("*","Skeleton3D",true,false)[0]
 	animation=model.find_children("*","AnimationPlayer",true,false)[0]
 	animation.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL

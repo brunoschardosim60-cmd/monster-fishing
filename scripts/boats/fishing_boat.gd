@@ -10,6 +10,15 @@ var water_effects: Node3D
 var imported_model: Node3D
 var bucket: Marker3D
 var integrity: float=1.
+## Boost (SHIFT at the helm): a few seconds of extra power to outrun a monster, then the engine cools.
+var boost: float=0.
+var boost_cooldown: float=0.
+const BOOST_TIME: float=6.
+const BOOST_COOLDOWN: float=25.
+## When the hull gives way (integrity 0) the boat goes down; main.gd rescues the player when `sank` fires.
+var sinking: bool=false
+var sink_clock: float=0.
+signal sank
 ## Extra roll from a blow (monster strike, rogue wave); decays back to the wave-driven attitude.
 var kick_roll: float=0.
 var trail: MeshInstance3D
@@ -77,6 +86,11 @@ func _physics_process(delta: float) -> void:
 	light_yaw=clampf(light_yaw,-1.2,1.2);light_pitch=clampf(light_pitch,-.9,.25)
 	if searchlight!=null:
 		searchlight.rotation=Vector3(-.16+light_pitch,light_yaw,0.)
+	boost=maxf(0.,boost-delta);boost_cooldown=maxf(0.,boost_cooldown-delta)
+	if occupied and controls_enabled and throttle>0. and boost_cooldown<=0. and Input.is_action_pressed("sprint") and not sinking:
+		boost=BOOST_TIME;boost_cooldown=BOOST_COOLDOWN+BOOST_TIME
+	if sinking:
+		_sink(delta);return
 	var anchored: bool=anchor!=null and anchor.deployed()
 	if anchored:
 		throttle=0.;steering=0.
@@ -84,7 +98,8 @@ func _physics_process(delta: float) -> void:
 	elif throttle > 0.0:
 		var exposure:=Waves.exposure(Vector2(global_position.x,global_position.z))
 		var limit: float=max_speed*(.55+.45*integrity)*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)
-		speed = move_toward(speed, limit, 2.7 * delta)
+		if boost>0.:limit*=1.45
+		speed = move_toward(speed, limit, (5.5 if boost>0. else 2.7) * delta)
 	elif throttle < 0.0:
 		speed = move_toward(speed, -3.2, (5.5 if speed > 0.2 else 1.8) * delta)
 	else:
@@ -136,9 +151,22 @@ func _physics_process(delta: float) -> void:
 
 ## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.
 func take_hit(damage: float,kick: float) -> void:
-	integrity=maxf(.05,integrity-damage*hull_protection)
+	if sinking:return
+	integrity=maxf(0.,integrity-damage*hull_protection)
 	kick_roll=clampf(kick_roll+absf(kick),0.,.55)
 	heave_velocity+=absf(kick)*2.5
+	if integrity<=.001:
+		sinking=true;sink_clock=0.;speed=0.
+
+## Going down: the stern floods first, the hull lists and slips under in about seven seconds.
+func _sink(delta: float) -> void:
+	sink_clock+=delta;speed=0.;velocity=Vector3.ZERO
+	if is_instance_valid(_hull):
+		_hull.position.y-=delta*(.25+sink_clock*.12)
+		_hull.rotation.x=lerpf(_hull.rotation.x,-.32,delta*.4);_hull.rotation.z=lerpf(_hull.rotation.z,.45,delta*.3)
+	if water_effects!=null and fmod(sink_clock,1.2)<delta:water_effects.splash(global_position+global_basis.z*2.,.8,true)
+	if sink_clock>7.:
+		sinking=false;sank.emit()
 
 func set_occupied(value: bool) -> void:
 	occupied = value
@@ -175,6 +203,8 @@ func seat_position() -> Vector3:
 	return _hull.to_global(Vector3(0.0, 0.95, 0.5)) if is_instance_valid(_hull) else to_global(Vector3(0.0,0.95,0.5))
 
 func reset_to_dock() -> void:
+	sinking=false;sink_clock=0.;boost=0.
+	if is_instance_valid(_hull):_hull.rotation=Vector3.ZERO
 	global_position = DOCK_POSITION
 	rotation = Vector3.ZERO
 	speed = 0.0

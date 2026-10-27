@@ -25,7 +25,7 @@ func _ready() -> void:
 	visual.seated=role in ["helm","rower"] or has_meta("on_seat")
 	# Passengers lean on the rail; deckhands haul when the boat is fishing; helm and rower sit at the wheel or oars.
 	visual.idle_clip=["ual/Rail","ual/IdleLook","ual/FoldArms"][look_id%3] if role=="passenger" else "ual/Idle"
-	visual.seated_clip="ual/Drive" if role in ["helm","rower"] else "ual/Sit"
+	visual.seated_clip={"helm":"ual/Drive","rower":"ual/Row"}.get(role,"ual/Sit")
 	# Sailors do not carry the survivalist backpack.
 	if visual.backpack!=null:visual.backpack.visible=false
 	rotation.y=facing;_target=walk_b;_wait=_rng.randf_range(0.,3.)

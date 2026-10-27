@@ -42,6 +42,28 @@ func run() -> void:
 	check(lair.state=="recuando","leaving the territory sends it back down")
 	await frames(560)
 	check(lair.state=="dormindo" and not (lair.node as Node3D).visible,"it is gone again")
+	# Flare (Y): it dives at once and stays down for a while.
+	game.inventory.flares=1
+	game.boat.global_position=c+Vector3(r*.4,0,0);await frames(60)
+	var reply: String=game.lairs.fire_flare()
+	check(lair.state=="recuando" and float(lair.calm)>60. and game.inventory.flares==0,"a flare scares it off (%s)"%reply)
+	await frames(560)
+	check(lair.state=="dormindo","after the flare it stays down even with the boat on top of it (%s)"%lair.state)
+	# Harpoon (H): enough hits drive the sea serpent off and pay a bounty.
+	var serpent: Dictionary=lairs[1]
+	var sc: Vector3=serpent.center
+	game.inventory.equipment["harpoon"]=1;game.inventory.harpoons=10
+	game.boat.global_position=sc+Vector3(serpent.radius*.4,0,0);await frames(30)
+	game.boat.global_position=sc+Vector3(serpent.radius*.4,0,0);await frames(400)
+	check(serpent.state in ["caca","observando","atacando"],"the serpent surfaces (%s)"%serpent.state)
+	var coins: int=game.inventory.money;var shots:=0
+	for i: int in 10:
+		if serpent.state=="recuando":break
+		var target: Vector3=(serpent.node as Node3D).global_position+Vector3.UP*16.
+		game.player.camera.look_at(target)
+		game.lairs.fire_harpoon();shots+=1
+		await frames(2)
+	check(serpent.state=="recuando" and game.inventory.money>=coins+150 and float(serpent.calm)>500.,"six harpoons drive the serpent off with a bounty (%d shots, +%d)"%[shots,game.inventory.money-coins])
 	# Long swells reach well past the fine water grid.
 	var far_point: Vector3=game.boat.global_position+Vector3(0,0,600)
 	var lo:=99.;var hi:=-99.
@@ -82,5 +104,10 @@ func run() -> void:
 	check(shade>.4 and land>.4,"cloud shadows drift over the sea and the land (%.2f)"%shade)
 	game.world.ocean.hour=23.;await frames(60)
 	check(float(game.world.ocean_material.get_shader_parameter("cloud_shadow_strength"))<.05,"no cloud shadows at night")
+	# Sinking: a hull at 0% goes down and the player is towed home.
+	game.boat.integrity=.02;game.boat.take_hit(.2,.3)
+	check(game.boat.sinking,"a hull at 0% starts to sink")
+	await frames(60*13)
+	check(not game.player.in_boat and game.boat.global_position.distance_to(game.boat.DOCK_POSITION)<1. and absf(game.boat.integrity-.35)<.01,"after sinking the player is rescued and the boat towed to the boatyard")
 	print("OPEN SEA %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

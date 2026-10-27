@@ -47,7 +47,7 @@ func throw_feed() -> String:
 	if inv.feed<=0:return "Sem ração. A loja de pesca vende 5 porções por 15 moedas."
 	var at:=throw_point(6.5)
 	if not game.marine.throw_feed(at):return "Jogue a ração na água."
-	inv.feed-=1;inv.changed.emit()
+	inv.feed-=1;inv.stats.fed=int(inv.stats.fed)+1;inv.changed.emit()
 	game.audio.cue("splash")
 	return "Ração na água (%d restantes). Os peixes já vêm…"%inv.feed
 
@@ -179,7 +179,7 @@ func _collect(t: Dictionary) -> String:
 	var haul: Array[Dictionary]=[]
 	for id: String in t.haul:haul.append(make_catch(id))
 	for c: Dictionary in haul:game.inventory.record(c);game.inventory.add_catch(c)
-	traps.erase(t)
+	traps.erase(t);game.inventory.stats.traps=int(game.inventory.stats.traps)+1
 	hauling.append({"node":t.node,"bottom":t.bottom,"clock":0.})
 	game.inventory.traps+=1;game.inventory.changed.emit()
 	game.audio.cue("chain")

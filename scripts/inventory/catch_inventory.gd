@@ -14,16 +14,22 @@ var boat_id: String="aurora"
 ## Fish feed handfuls, crab traps carried aboard.
 var feed: int=3
 var traps: int=0
+## Harpoons for the bow harpoon gun (H) and distress flares that scare monsters away (Y).
+var harpoons: int=0
+var flares: int=0
 var materials: int=0
 var goods: Dictionary={"repair_kit":0,"tackle":0,"canvas":0}
 var stored_catches: Array[Dictionary]=[]
 var encyclopedia: Dictionary={}
+## Running totals used by missions: fish recorded, fish sold, feed thrown, traps hauled.
+var stats: Dictionary={"caught":0,"sold":0,"fed":0,"traps":0}
 
 func record(data: Dictionary,released: bool=false) -> void:
 	var key: String=str(data.get("species_id",data.get("id","unknown")))
 	var entry: Dictionary=encyclopedia.get(key,{"name":data.get("name",key),"count":0,"released":0,"record":0.,"rarity":data.get("rarity","Comum")})
 	entry.count+=1;entry.released+=1 if released else 0;entry.record=maxf(float(entry.record),float(data.get("weight",0.)))
 	entry["observation"]=bool(data.get("observation",false))
+	if not entry.observation:stats.caught=int(stats.caught)+1
 	encyclopedia[key]=entry;changed.emit()
 
 func add_catch(catch_data: Dictionary) -> bool:
@@ -49,6 +55,7 @@ func sell_all() -> int:
 	if reward <= 0:
 		return 0
 	money += reward
+	stats.sold=int(stats.sold)+catches.size()
 	catches.clear()
 	changed.emit()
 	return reward

@@ -60,6 +60,13 @@ func _rowboat() -> void:
 	for i: int in list.size():_park(list[i],p+Vector3(10+float(i)*7.,0,20),.8+float(i))
 	await shot("rowboat",p+Vector3(14,3.5,30),p+Vector3(12,0,20))
 	await shot("rowboat_top",p+Vector3(12,9,24),p+Vector3(11,0,20))
+	var b: Node3D=list[0]
+	for person in b.crew:
+		var body: MeshInstance3D=person.visual.model.find_children("*","MeshInstance3D",true,false)[0]
+		print("crew ",person.role," pack ",person.visual.backpack.visible," mesh ",body.mesh.resource_path)
+	for k: int in 3:
+		for i: int in 26:await process_frame
+		await shot("rowboat_side_%d"%k,b.global_position+b.global_basis.x*3.2+Vector3(0,1.4,0),b.global_position+Vector3(0,.6,0),1)
 
 func _serpent() -> void:
 	var lairs: Node3D=game.lairs

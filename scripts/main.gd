@@ -42,6 +42,8 @@ var marine: Node3D
 var gear: Node3D
 ## Monster territories in the deep ocean (kraken, sea serpent, leviathan).
 var lairs: Node3D
+## Story objectives and the market's order board.
+var missions: Node
 const Economy=preload("res://scripts/inventory/harbor_economy.gd")
 
 func _ready() -> void:
@@ -61,6 +63,7 @@ func _ready() -> void:
 		if hud==null:return
 		if state=="down":hud.notify("Âncora firme no fundo · %.0f m de corrente."%boat.anchor.rode_length);audio.cue("splash")
 		elif state=="up":hud.notify("Âncora a bordo. Pode navegar."))
+	boat.sank.connect(_on_boat_sank)
 	world.traffic.set_player_boat(boat)
 	world.sea_events.set_player_boat(boat)
 	player = Player.new()
@@ -87,6 +90,7 @@ func _ready() -> void:
 	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
 	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
 	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
+	missions=preload("res://scripts/inventory/missions.gd").new();missions.game=self;missions.name="Missoes";_add_system(missions)
 	hud = HUD.new()
 	world.sea_events.event_started.connect(func(text: String) -> void: hud.notify(text))
 	add_child(hud)
@@ -99,6 +103,7 @@ func _ready() -> void:
 	hud.service_closed.connect(func() -> void: service_id="";Input.mouse_mode=Input.MOUSE_MODE_CAPTURED)
 	hud.time_selected.connect(func(hour_value: float) -> void: world.ocean.hour=hour_value)
 	hud.map_view.game=self
+	hud.missions=missions
 	graphics=preload("res://scripts/visuals/graphics_settings.gd").new();graphics.configure(self)
 	hud.configure_graphics(graphics)
 	hud.graphics_changed.connect(func(level: int,scale_value: float,sync: bool) -> void:graphics.apply(level,scale_value,sync))
@@ -163,6 +168,8 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("feed") and not event.is_echo():hud.notify(gear.throw_feed())
 	if event.is_action_pressed("cast_net") and not event.is_echo():hud.notify(gear.cast_net())
 	if event.is_action_pressed("trap") and not event.is_echo():hud.notify(gear.trap_action())
+	if event.is_action_pressed("harpoon") and not event.is_echo():hud.notify(lairs.fire_harpoon())
+	if event.is_action_pressed("flare") and not event.is_echo():hud.notify(lairs.fire_flare())
 	if event.is_action_pressed("boat_lights"):
 		boat.toggle_lights();hud.notify("Luzes do barco acesas." if boat.lights_enabled else "Luzes do barco apagadas.")
 	if event.is_action_pressed("observe_wildlife"):
@@ -246,7 +253,7 @@ func _process(delta: float) -> void:
 	elif not sold_once:
 		hud.objective.text = "O FRUTO DA VIAGEM\nVolte ao cais. O mercado fica na ilha."
 	else:
-		hud.objective.text = "SEU TEMPO, SEU MAR\nExplore a baía. Tente uma captura maior."
+		hud.objective.text = missions.objective_text()
 
 func can_cast() -> bool:
 	if not pending_catch.is_empty() or stowing or player.swimming or hud.service_open: return false
@@ -388,13 +395,15 @@ func _interaction_hint() -> String:
 	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
 	if fishing.active():return ""
 	if player.in_boat:
+		if lairs!=null and lairs.encounter():return "SHIFT · Turbo    Y · Sinalizador (%d)    H · Arpão (%d)"%[inventory.flares,inventory.harpoons if inventory.equipment.get("harpoon",0)>0 else 0]
 		var near_ship=world.traffic.hailable(boat.global_position)
 		if near_ship!=null:return ("E · Trocar com " if near_ship.activity=="saudado" and not near_ship.get_meta("traded",false) else "E · Saudar ")+near_ship.ship_name
 		var anchor_hint: String={"up":"Z · Âncora","dropping":"Âncora descendo…","down":"Ancorado · Z recolher","raising":"Recolhendo âncora…"}[boat.anchor.state]
 		var trap: Dictionary=gear.nearest_trap(boat.global_position)
 		if not trap.is_empty():return "B · Recolher covo" if float(trap.soak)>=gear.TRAP_SOAK else "Covo na água · %d s"%int(gear.TRAP_SOAK-float(trap.soak))
 		if player.on_deck:return "R · Leme    E · Sair    C · Ração    N · Tarrafa    "+anchor_hint
-		return "%.0f nós · %d%% casco    R · Convés    %s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),anchor_hint]
+		var turbo:="TURBO!" if boat.boost>0. else ("SHIFT turbo" if boat.boost_cooldown<=0. else "turbo %ds"%int(ceil(boat.boost_cooldown)))
+		return "%.0f nós · %d%% casco · %s    R · Convés    %s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),turbo,anchor_hint]
 	if player.global_position.distance_to(boat.global_position+Vector3(0,1,0))<5.:return "E · Embarcar"
 	if near_market():return "E · Vender capturas"
 	var service: String=world.village.nearby_service(player.global_position)
@@ -451,6 +460,7 @@ func _service_action(action: String) -> void:
 			if inventory.money>=price:
 				inventory.money-=price;inventory.add_catch(stock[index]);stock.remove_at(index);message="Peixe comprado."
 			else:message="Moedas insuficientes."
+	elif action.begins_with("contract:"):message=missions.deliver(int(action.get_slice(":",1)))
 	elif action.contains(":") or action in ["use_kit","use_tackle","craft_kit","sell_bait","sell_material"]:message=Economy.trade(action,inventory,boat)
 	elif action=="sell":
 		var amount: int=inventory.sell_all();sold_once=sold_once or amount>0;message="Venda: +%d moedas."%amount
@@ -480,6 +490,24 @@ func _recover_player() -> void:
 	player.velocity = Vector3.ZERO
 	hud.notify("De volta ao cais.")
 
+## The hull gave way: the player ends up in the water, a passing fishing boat picks them up and tows the
+## wreck to the boatyard. The catch aboard is lost and the tow costs money; the hull comes back patched.
+func _on_boat_sank() -> void:
+	var at:=boat.global_position
+	aiming=false;fishing.cancel()
+	boat.set_occupied(false);player.set_boating(false)
+	player.global_position=at+Vector3(2.5,-.5,0)
+	hud.notify("O barco afundou! Segure-se… um pesqueiro vem te buscar.")
+	audio.cue("horn")
+	await get_tree().create_timer(5.).timeout
+	var lost: int=inventory.catches.size()
+	inventory.catches.clear()
+	var fee:=mini(inventory.money,40);inventory.money-=fee
+	boat.integrity=.35
+	return_to_harbor()
+	inventory.changed.emit()
+	hud.notify("Resgatado e rebocado ao porto · reboque %d moedas%s. Casco remendado em 35%%."%[fee," · %d capturas perdidas"%lost if lost>0 else ""])
+
 func return_to_harbor() -> void:
 	player.set_flying(false)
 	aiming=false
@@ -499,7 +527,7 @@ func _configure_input() -> void:
 		"camera_toggle": KEY_F, "pause": KEY_ESCAPE, "inventory": KEY_TAB,
 		"look_left": KEY_LEFT, "look_right": KEY_RIGHT,
 		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,
-		"deck":KEY_R,"anchor":KEY_Z,"feed":KEY_C,"cast_net":KEY_N,"trap":KEY_B,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,
+		"deck":KEY_R,"anchor":KEY_Z,"feed":KEY_C,"cast_net":KEY_N,"trap":KEY_B,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,"harpoon":KEY_H,"flare":KEY_Y,
 	}
 	for action: String in bindings:
 		if not InputMap.has_action(action):

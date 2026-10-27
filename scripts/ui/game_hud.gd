@@ -13,6 +13,7 @@ var service_open: bool=false
 var service_panel: PanelContainer
 var service_message: Label
 var map_view: Control
+var missions: Node
 var sea_label: Label
 var weather_picker: OptionButton
 var graphics_panel: PanelContainer
@@ -157,6 +158,13 @@ func open_service(id: String,inventory: RefCounted,boat: CharacterBody3D,stock: 
 			boat_button.disabled=inventory.boat_id==key
 			boat_button.pressed.connect(func() -> void: service_action.emit("boat:"+key))
 	if id=="market":actions={"sell":"Vender todas as capturas · %d moedas"%inventory.total_value()}
+	if id=="market" and missions!=null:
+		_label(box,"QUADRO DE PEDIDOS",19,GOLD)
+		for i: int in missions.contracts.size():
+			var order_button:=_button(box,missions.describe(i));order_button.custom_minimum_size.x=500.;order_button.add_theme_font_size_override("font_size",14)
+			order_button.disabled=missions.have(i)<int(missions.contracts[i].count)
+			var key:="contract:%d"%i
+			order_button.pressed.connect(func() -> void: service_action.emit(key))
 	if id=="market":
 		for key: String in preload("res://scripts/inventory/harbor_economy.gd").GOODS:
 			var item: Dictionary=preload("res://scripts/inventory/harbor_economy.gd").GOODS[key]
@@ -269,7 +277,7 @@ func show_pause() -> void:
 	ledger.hide()
 	overlay_title.text = "O mar\npode esperar."
 	overlay_title.add_theme_font_size_override("font_size", 58)
-	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular (e escalar beiradas)\nSHIFT correr  ·  CTRL andar devagar / mergulhar nadando\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)"
+	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular (e escalar beiradas)\nSHIFT correr  ·  CTRL andar devagar / mergulhar nadando\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)\nNo leme: SHIFT turbo  ·  H arpão de proa  ·  Y sinalizador (espanta monstros)"
 	play_button.text = "CONTINUAR  →"
 	return_button.show()
 	overlay.show()
