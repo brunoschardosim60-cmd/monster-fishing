@@ -65,7 +65,7 @@ func _living_forest(chunk: Node3D,origin: Vector2) -> void:
 	for i: int in 60:
 		var p:=origin+Vector2(rng.randf_range(2,78),rng.randf_range(2,78));var h:=Layout.height(p);var coast:=Layout.coast(p).x
 		if coast> -9. or h>170. or Layout.path_at(p).x<6. or (p.y<76. and absf(p.x)<110.) or Layout.in_town(p):continue
-		if p.distance_to(Vector2(-110,310))<28. or p.distance_to(Vector2(-65,490))<22. or p.distance_to(Vector2(-170,210))<14.:continue
+		if p.distance_to(Vector2(-110,310))<28. or p.distance_to(Vector2(-80,775))<32. or p.distance_to(Vector2(-170,210))<14.:continue
 		var slope:=absf(Layout.height(p+Vector2(2,0))-h)+absf(Layout.height(p+Vector2(0,2))-h)
 		if slope>2.2:continue
 		var kind:=rng.randi_range(0,1)
@@ -149,7 +149,7 @@ func _forest(chunk: Node3D, origin: Vector2) -> void:
 		var p:=origin+Vector2(rng.randf_range(1.,79.),rng.randf_range(1.,79.))
 		var c:=Layout.coast(p).x;var h:=Layout.height(p)
 		if c> -20. or h>108. or Layout.path_at(p).x<7. or (p.y<75. and absf(p.x)<110.): continue
-		if p.distance_to(Vector2(-65,490))<22. or p.distance_to(Vector2(-170,210))<14.: continue
+		if p.distance_to(Vector2(-80,775))<32. or p.distance_to(Vector2(-170,210))<14.: continue
 		if p.distance_to(Vector2(-110,310))<28.:continue
 		var slope:=absf(Layout.height(p+Vector2(2,0))-h)+absf(Layout.height(p+Vector2(0,2))-h)
 		if slope>2.: continue

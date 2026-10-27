@@ -19,7 +19,7 @@ const DISTRICTS: Array=[
 	["Vale do Meio",Vector2(-80,108),26.,5,["cabana","cabana","costeira"],"",[Vector2(-40,66)],false],
 	["Palafitas da Ponta",Vector2(-128,-24),34.,9,["palafita"],"galpao",[Vector2(-160,30)],true]]
 ## Lighthouses and landmarks the town keeps clear of.
-const KEEP_CLEAR: Array[Vector3]=[Vector3(174,96,24),Vector3(-65,490,26),Vector3(90,345,14),Vector3(-170,210,18),Vector3(-110,310,30)]
+const KEEP_CLEAR: Array[Vector3]=[Vector3(174,96,24),Vector3(-80,775,32),Vector3(90,345,14),Vector3(-170,210,18),Vector3(-110,310,30)]
 var village: Node3D
 var houses: Array[Node3D]=[]
 var footprints: Array[Vector3]=[]

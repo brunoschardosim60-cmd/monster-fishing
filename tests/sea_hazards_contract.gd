@@ -68,11 +68,15 @@ func run() -> void:
 	# --- Lighthouse beam stops at obstacles
 	world.ocean.hour=23.;await frames(10)
 	var lh=world.harbor_lighthouse
+	# The home lighthouse stands on the summit now, so put a wall right in front of its beam.
+	var wall:=StaticBody3D.new();var wall_shape:=CollisionShape3D.new();var wall_box:=BoxShape3D.new();wall_box.size=Vector3(30,40,30);wall_shape.shape=wall_box;wall.add_child(wall_shape)
+	world.add_child(wall);wall.global_position=lh.rotor.global_position-(lh.arms[0] as Node3D).global_basis.z*60.
 	var shortest:=1.
 	for k: int in 60:
 		await frames(1)
 		for cone: MeshInstance3D in lh.cones:shortest=minf(shortest,cone.scale.y)
 	check(shortest<.99,"the lighthouse beam is cut short where something blocks it (%.2f)"%shortest)
+	wall.queue_free()
 	# --- A world that changes: tide, seasons, migration, the hold
 	var probe2:=Vector3(140,0,-330)
 	Waves.tide=0.;var h0:=Waves.height_at(probe2);Waves.tide=.35;var h1:=Waves.height_at(probe2)

@@ -114,7 +114,7 @@ func _lamp(p: Vector3,mat: Material) -> void:
 	var light:=OmniLight3D.new();light.position=p+Vector3(0,3.3,0);light.light_color=Color("ffdcad");light.omni_range=15.;light.light_energy=2.4;light.omni_attenuation=.75;add_child(light);night_lights.append(light)
 
 func _make_landmarks(stone: Material,wood: Material) -> void:
-	for item: Dictionary in [{"id":"lighthouse","title":"Farol da Aurora","p":Vector2(-65,490),"reward":18},{"id":"lookout","title":"Mirante das Marés","p":Vector2(90,345),"reward":12},{"id":"grotto","title":"Gruta do Contrabandista","p":Vector2(-170,210),"reward":24},{"id":"ruins","title":"Ruínas da Vigia","p":Vector2(-110,310),"reward":20},{"id":"beach","title":"Praia dos Navegantes","p":Vector2(190,105),"reward":10},{"id":"summit","title":"Cume das Andorinhas","p":Vector2(50,775),"reward":35},{"id":"north_wood","title":"Bosque do Norte","p":Vector2(-170,650),"reward":20}]:
+	for item: Dictionary in [{"id":"lighthouse","title":"Farol da Aurora","p":Vector2(-80,775),"reward":18},{"id":"lookout","title":"Mirante das Marés","p":Vector2(90,345),"reward":12},{"id":"grotto","title":"Gruta do Contrabandista","p":Vector2(-170,210),"reward":24},{"id":"ruins","title":"Ruínas da Vigia","p":Vector2(-110,310),"reward":20},{"id":"beach","title":"Praia dos Navegantes","p":Vector2(190,105),"reward":10},{"id":"summit","title":"Cume das Andorinhas","p":Vector2(50,775),"reward":35},{"id":"north_wood","title":"Bosque do Norte","p":Vector2(-170,650),"reward":20}]:
 		var p: Vector2=item.p;var at:=Vector3(p.x,Layout.height(p),p.y)
 		item["position"]=at;landmarks.append(item)
 		G.label(self,item.title,at+Vector3(0,3.,0),21)

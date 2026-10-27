@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -331,3 +331,22 @@ func _poses() -> void:
 	game.finish_catch(true)
 	for i: int in 25:await process_frame
 	await shot("pose_release",p+front*2.6+Vector3(0,1.2,0)+b.global_basis.x*1.5,p+Vector3(0,.6,0),1)
+
+func _farois() -> void:
+	var w=game.world
+	w.ocean.cycle_enabled=false;w.ocean.hour=22.
+	for i: int in 30:await process_frame
+	var home: Node3D=w.lighthouse
+	await shot("farol_casa",home.position+Vector3(90,30,-110),home.position+Vector3(0,30,0),3)
+	await shot("farol_noite_mar",Vector3(140,6,-330),home.position+Vector3(0,40,0),3)
+	for l: Node3D in w.remote_lighthouses.lighthouses:
+		await shot("farol_"+String(l.name),l.position+Vector3(150,40,150),l.position+Vector3(0,45,0),3)
+	w.ocean.hour=11.
+	for i: int in 20:await process_frame
+	await shot("farol_casa_dia",home.position+Vector3(90,30,-110),home.position+Vector3(0,30,0),3)
+	var b: CharacterBody3D=game.boat
+	var Econ=load("res://scripts/inventory/harbor_economy.gd")
+	game.inventory.owned_boats.append("escuna");game.inventory.boat_id="escuna";Econ.apply(game.inventory,b,game.fishing)
+	b.global_position=_sea_point();b.rotation=Vector3(0,.4,0);b.speed=0.
+	for i: int in 40:await process_frame
+	await shot("escuna_tripulacao",b.global_position+b.global_basis*Vector3(12.,7.,6.),b.global_position+Vector3(0,3,0),2)
