@@ -211,10 +211,10 @@ func _marks() -> void:
 	var nf: Node3D=game.world.get_node("PescadoresDeTarrafa").get_child(0)
 	nf.clock=1.8
 	for i: int in 4:await process_frame
-	await shot("mark_netfisher",nf.global_position+nf.global_basis.x*7.+Vector3(0,2.5,2.),nf.global_position+(-nf.global_basis.z)*3.+Vector3(0,1,0),2)
+	await shot("mark_netfisher",nf.global_position-nf.global_basis.z*12.+nf.global_basis.x*4.+Vector3(0,3.,0),nf.global_position+Vector3(0,1.2,0),2)
 	nf.clock=6.5
 	for i: int in 3:await process_frame
-	await shot("mark_netfisher2",nf.global_position+nf.global_basis.x*7.+Vector3(0,2.5,2.),nf.global_position+(-nf.global_basis.z)*3.+Vector3(0,1,0),2)
+	await shot("mark_netfisher2",nf.global_position-nf.global_basis.z*12.+nf.global_basis.x*4.+Vector3(0,3.,0),nf.global_position+Vector3(0,1.2,0),2)
 	for m: Dictionary in game.world.get_node("Marcos").marks:
 		var at: Vector3=m.pos
 		var eye:=at+Vector3(70,35,70)

@@ -124,7 +124,9 @@ func _build(lobe: int,id: String,kind: String) -> void:
 			var ice:=G.material(Color("bfe9ff"),.15);ice.metallic_specular=.9;ice.albedo_color=Color("cdeeff")
 			var arch:=MeshInstance3D.new();var tm:=TorusMesh.new();tm.inner_radius=8.;tm.outer_radius=11.5;tm.rings=32;tm.ring_segments=10;arch.mesh=tm;arch.material_override=ice
 			arch.rotation.x=PI*.5;arch.position=Vector3(0,-1.,-6.);root.add_child(arch)
-			for k: int in 5:G.sphere(root,Vector3(float(k)*14.-28.,1.,22.+float(k%2)*8.),Vector3(8.,6.+float(k%3)*3.,7.),ice,10)
+			for k: int in 7:
+				var berg:=G.box(root,Vector3(float(k)*11.-33.,1.5,24.+float(k%3)*7.),Vector3(7.+float(k%3)*3.,6.+float(k%4)*3.,6.+float(k%2)*4.),ice)
+				berg.rotation=Vector3(_rng.randf_range(-.35,.35),_rng.randf()*TAU,_rng.randf_range(-.35,.35))
 		"reef":
 			at=_shore_point(lobe,facing,-30.);at.y=0.
 			G.ellipsoid(root,Vector3(0,-.3,0),Vector3(26.,1.2,14.),G.material(Color("f0e2b8"),.95),16)

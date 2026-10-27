@@ -79,6 +79,19 @@ static func place_all(parent: Node3D,count: int) -> Array[Node3D]:
 		if depth>1.3:continue
 		# Only on a gently shelving sand beach: low land behind, no cliff.
 		if Layout.height(p-dir*8.)>2.2 or Layout.height(p-dir*20.)>5.:continue
+		var rocky:=false
+		var world=parent.get_parent()
+		if world!=null and world.get("shore_rocks")!=null:
+			for r: Vector3 in world.shore_rocks:
+				if Vector2(r.x,r.z).distance_to(p)<18.:rocky=true;break
+		# Nothing solid standing around (cliffs, boulders) within a few metres.
+		var space:=parent.get_world_3d().direct_space_state
+		for k: int in 10:
+			var q:=p+Vector2.from_angle(float(k)*TAU/10.)*(5. if k%2==0 else 10.)
+			var ray:=PhysicsRayQueryParameters3D.create(Vector3(q.x,40.,q.y),Vector3(q.x,-5.,q.y));ray.collision_mask=1
+			var hit:=space.intersect_ray(ray)
+			if not hit.is_empty() and float(hit.position.y)>1.2:rocky=true;break
+		if rocky:continue
 		var f: Node3D=load("res://scripts/world/net_fisher.gd").new()
 		f.set("look_id",40+out.size()*3);f.name="PescadorDeTarrafa_%d"%out.size()
 		f.position=Vector3(p.x,-depth+.05,p.y);f.rotation.y=atan2(-dir.x,-dir.y)

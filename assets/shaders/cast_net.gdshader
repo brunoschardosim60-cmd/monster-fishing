@@ -5,8 +5,8 @@ varying vec3 lp;
 void vertex(){ lp=VERTEX; }
 void fragment(){
 	float r=length(lp.xz);float a=atan(lp.z,lp.x);
-	float rings=abs(fract(r*9.)-.5);float spokes=abs(fract(a/6.2832*48.)-.5);
-	float cord=max(smoothstep(.38,.5,rings),smoothstep(.38,.5,spokes));
+	float rings=abs(fract(r*6.)-.5);float spokes=abs(fract(a/6.2832*32.)-.5);
+	float cord=max(smoothstep(.3,.45,rings),smoothstep(.3,.45,spokes));
 	float rim=smoothstep(.9,.96,r);
 	ALBEDO=mix(vec3(.82,.8,.72),vec3(.15,.15,.16),rim);
 	ROUGHNESS=.9;

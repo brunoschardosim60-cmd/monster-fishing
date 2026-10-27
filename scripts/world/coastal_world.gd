@@ -80,7 +80,8 @@ func _ready() -> void:
 	var meadows:=preload("res://scripts/world/home_meadows.gd").new();meadows.name="CamposDaAurora";add_child(meadows)
 	var landmarks:=preload("res://scripts/world/region_landmarks.gd").new();landmarks.name="Marcos";add_child(landmarks)
 	var net_people:=Node3D.new();net_people.name="PescadoresDeTarrafa";add_child(net_people)
-	preload("res://scripts/world/net_fisher.gd").place_all(net_people,4)
+	# Placed once the whole coast (shore rocks included) exists.
+	get_tree().physics_frame.connect(func() -> void:preload("res://scripts/world/net_fisher.gd").place_all(net_people,4),CONNECT_ONE_SHOT)
 	storms=preload("res://scripts/world/storms.gd").new();storms.world=self;storms.name="Tempestades";add_child(storms)
 	whirlpools=preload("res://scripts/world/whirlpools.gd").new();whirlpools.world=self;whirlpools.name="Redemoinhos";add_child(whirlpools)
 	life=preload("res://scripts/world/coastal_life.gd").new();life.world=self;life.name="CoastalLife";add_child(life)
