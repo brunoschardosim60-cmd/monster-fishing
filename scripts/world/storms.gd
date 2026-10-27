@@ -14,17 +14,16 @@ var cells: Array[Dictionary]=[]
 var _rng:=RandomNumberGenerator.new()
 var _spawn_clock: float=25.
 var _warned: bool=false
-var _deck_mesh: CylinderMesh
+var _puff_mesh: QuadMesh
+var _veil_mesh: QuadMesh
 var _rain_mesh: CylinderMesh
-var _deck_mat: ShaderMaterial
 var _rain_mat: ShaderMaterial
 
 func _ready() -> void:
 	_rng.seed=6061
-	_deck_mat=ShaderMaterial.new();_deck_mat.shader=preload("res://assets/shaders/storm_cloud.gdshader")
 	_rain_mat=ShaderMaterial.new();_rain_mat.shader=preload("res://assets/shaders/storm_rain.gdshader")
-	_deck_mesh=CylinderMesh.new();_deck_mesh.top_radius=1.;_deck_mesh.bottom_radius=.82;_deck_mesh.height=1.;_deck_mesh.radial_segments=48;_deck_mesh.rings=4
-	_rain_mesh=CylinderMesh.new();_rain_mesh.top_radius=.8;_rain_mesh.bottom_radius=.9;_rain_mesh.height=1.;_rain_mesh.radial_segments=48;_rain_mesh.rings=1;_rain_mesh.cap_top=false;_rain_mesh.cap_bottom=false
+	_puff_mesh=QuadMesh.new();_puff_mesh.size=Vector2(1.,1.)
+	_veil_mesh=QuadMesh.new();_veil_mesh.size=Vector2(1.,1.)
 	for i: int in Layout.LOBES.size():
 		var region: Dictionary=Layout.region_for_lobe(i)
 		if str(region.get("biome",""))!="storm" or not bool(region.get("map_visible",false)):continue
@@ -33,14 +32,32 @@ func _ready() -> void:
 
 func _add(at: Vector2,velocity: Vector2,radius: float,peak: float,life: float,anchored: bool) -> Dictionary:
 	var node:=Node3D.new();node.name="Tempestade_%d"%cells.size();add_child(node)
-	var deck:=MeshInstance3D.new();deck.mesh=_deck_mesh;deck.material_override=_deck_mat;deck.scale=Vector3(radius*1.05,420.,radius*1.05);deck.position.y=380.
-	deck.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_ON;deck.extra_cull_margin=radius;node.add_child(deck)
+	# The cloud is a heap of soft billboard puffs (a towering cumulonimbus with a dark base and a spreading
+	# top); the rain under it is a few soft vertical veils from afar and a curtain of streaks up close.
+	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/cloud_puff.gdshader")
+	var mm:=MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.use_colors=true;mm.mesh=_puff_mesh;mm.instance_count=70
+	for k: int in 70:
+		var h:=_rng.randf();var spread:=lerpf(.55,1.,smoothstep(.55,1.,h))*radius*.85
+		var a:=_rng.randf()*TAU;var d:=sqrt(_rng.randf())*spread
+		var size:=_rng.randf_range(radius*.35,radius*.6)*(1.3 if h>.8 else 1.)
+		mm.set_instance_transform(k,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*size),Vector3(cos(a)*d,lerpf(250.,780.,h),sin(a)*d)))
+		var shade:=lerpf(.16,.5,h)*_rng.randf_range(.85,1.1)
+		mm.set_instance_color(k,Color(shade,shade*1.04,shade*1.1,_rng.randf_range(.6,1.)))
+	var deck:=MultiMeshInstance3D.new();deck.multimesh=mm;deck.material_override=mat;deck.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	deck.custom_aabb=AABB(Vector3(-radius*1.5,0,-radius*1.5),Vector3(radius*3.,1100.,radius*3.));node.add_child(deck)
+	var vmat:=ShaderMaterial.new();vmat.shader=preload("res://assets/shaders/cloud_puff.gdshader");vmat.set_shader_parameter("veil",true)
+	var vm:=MultiMesh.new();vm.transform_format=MultiMesh.TRANSFORM_3D;vm.mesh=_veil_mesh;vm.instance_count=9
+	for k: int in 9:
+		var a2:=_rng.randf()*TAU;var d2:=_rng.randf()*radius*.6
+		vm.set_instance_transform(k,Transform3D(Basis.IDENTITY.scaled(Vector3(radius*_rng.randf_range(.45,.7),260.,1.)),Vector3(cos(a2)*d2,130.,sin(a2)*d2)))
+	var veil:=MultiMeshInstance3D.new();veil.multimesh=vm;veil.material_override=vmat;veil.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	veil.custom_aabb=AABB(Vector3(-radius,0,-radius),Vector3(radius*2.,300.,radius*2.));node.add_child(veil)
 	var rain:=MeshInstance3D.new();rain.mesh=_rain_mesh;rain.material_override=_rain_mat;rain.scale=Vector3(radius*.85,200.,radius*.85);rain.position.y=100.
-	rain.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;rain.extra_cull_margin=radius;node.add_child(rain)
+	rain.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;rain.extra_cull_margin=radius;rain.visible=false;node.add_child(rain)
 	var flash:=OmniLight3D.new();flash.omni_range=900.;flash.light_energy=0.;flash.light_color=Color("dfe8ff");flash.position.y=250.;flash.shadow_enabled=false;node.add_child(flash)
 	var bolt:=MeshInstance3D.new();bolt.visible=false;node.add_child(bolt)
 	var cell:={"pos":at,"vel":velocity,"radius":radius,"peak":peak,"intensity":0. if not anchored else peak,"age":0.,"life":life,"anchored":anchored,
-		"node":node,"deck":deck,"rain":rain,"flash":flash,"bolt":bolt,"strike":_rng.randf_range(2.,6.),"flash_t":0.,"phase":_rng.randf()*TAU}
+		"node":node,"deck":deck,"rain":rain,"cloud_mat":mat,"veil_mat":vmat,"flash":flash,"bolt":bolt,"strike":_rng.randf_range(2.,6.),"flash_t":0.,"phase":_rng.randf()*TAU}
 	node.position=Vector3(at.x,0,at.y)
 	cells.append(cell)
 	return cell
@@ -74,7 +91,10 @@ func _process(delta: float) -> void:
 				(c.node as Node3D).queue_free();cells.erase(c);continue
 		var node: Node3D=c.node;node.position=Vector3((c.pos as Vector2).x,0,(c.pos as Vector2).y)
 		var k: float=c.intensity
-		(c.deck as MeshInstance3D).set_instance_shader_parameter("intensity",k)
+		(c.cloud_mat as ShaderMaterial).set_shader_parameter("intensity",clampf(k*1.1,0.,1.))
+		(c.veil_mat as ShaderMaterial).set_shader_parameter("intensity",k)
+		var inside:=(c.pos as Vector2).distance_to(eye)<float(c.radius)*1.15
+		(c.rain as MeshInstance3D).visible=inside
 		(c.rain as MeshInstance3D).set_instance_shader_parameter("intensity",k)
 		_lightning(c,delta,eye)
 	# The four cells nearest the camera shape the sea; the camera's own storm drives the weather.

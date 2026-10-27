@@ -171,10 +171,10 @@ func _storm() -> void:
 	await shot("storm_anchored",Vector3(60,22,-80),Vector3(14,300,2340),3)
 	var st: Node3D=game.world.storms
 	st.spawn_at(p+Vector3(900,0,-900))
-	for i: int in 120:await process_frame
+	for i: int in 20:await process_frame
 	await shot("storm_far",p+Vector3(0,6,0),p+Vector3(900,120,-900),2)
 	st.spawn_at(p)
-	for i: int in 240:await physics_frame
+	for i: int in 40:await physics_frame
 	await shot("storm_inside",p+Vector3(0,5,0),p+Vector3(40,0,-60),2)
 	await shot("storm_waves",p+Vector3(0,14,30),p+Vector3(0,0,-40),2)
 
