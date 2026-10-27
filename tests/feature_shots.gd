@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -352,3 +352,58 @@ func _farois() -> void:
 	b.global_position=_sea_point();b.rotation=Vector3(0,.4,0);b.speed=0.
 	for i: int in 40:await process_frame
 	await shot("escuna_tripulacao",b.global_position+b.global_basis*Vector3(12.,7.,6.),b.global_position+Vector3(0,3,0),2)
+
+func _kit2() -> void:
+	var b: CharacterBody3D=game.boat;var f=game.fishing
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for i: int in 10:await process_frame
+	game.toggle_deck();game.player.deck_local=Vector3(.9,1.12,2.6);game.player.yaw=b.rotation.y+PI*.5
+	# 1) Wind-up, third person and first person.
+	game.aiming=true;game.cast_charge=1.
+	for i: int in 50:await process_frame
+	var p: Vector3=game.player.global_position
+	await shot("kit_windup",p+b.global_basis*Vector3(2.5,1.4,-3.),p+Vector3(0,1.4,0),1)
+	game.player.first_person=true
+	for i: int in 5:await process_frame
+	camera.global_transform=game.player.camera.global_transform
+	await shot("kit_windup_fp",camera.global_position,camera.global_position-camera.global_basis.z*5.,1)
+	game.player.first_person=false;game.aiming=false;game.fish_action()
+	for i: int in 18:await process_frame
+	await shot("kit_cast_flight",p+b.global_basis*Vector3(-4.,3.,-6.),p+b.global_basis*Vector3(6.,2.,0.),1)
+	# 2) Fight with the instrument.
+	while f.state!=f.State.WAITING:await process_frame
+	while f.state!=f.State.BITE:f.advance(.25)
+	for sp: Resource in f.SPECIES:
+		if sp.id=="pargo":f.species_current=sp
+	f.fish_weight=3.;f.strike()
+	Input.action_press("fish")
+	for i: int in 40:await process_frame
+	Input.action_release("fish")
+	for i: int in 20:await process_frame
+	game.hud.show();for c: Node in game.hud.get_children():if c is CanvasItem and c!=game.hud.fight_gauge.get_parent():(c as CanvasItem).visible=c==game.hud.fight_gauge.get_parent()
+	var h: Vector3=game.hooked.global_position
+	await shot("kit_fight_hud",p+b.global_basis*Vector3(-2.,2.,3.),(p+h)*.5,2)
+	game.hud.hide();f.cancel()
+	for i: int in 20:await process_frame
+	# 3) Rods in holders, set net, crew.
+	for i: int in game.holders.holders.size():game.holders.set_rod(i,b.global_position+b.global_basis*Vector3(9. if i==0 else -9.,0,6.),"coast","")
+	game.holders._bite(0)
+	for i: int in 20:await process_frame
+	await shot("kit_holders",b.global_position+b.global_basis*Vector3(0.,3.5,9.),b.global_position+b.global_basis*Vector3(0,1.5,2.5),2)
+	game.inventory.money=5000;game.crew.hire()
+	game.inventory.equipment["gillnet"]=1;game.gear.gillnet_action()
+	for i: int in 60:await process_frame
+	var net_mid: Vector3=(game.gear.gillnet.a+game.gear.gillnet.b)*.5
+	await shot("kit_gillnet",net_mid+b.global_basis*Vector3(-6.,7.,14.),net_mid,2)
+	game.gear.gillnet.caught=["sardine","mackerel","sardine","sargo","sardine"];game.gear.gillnet.soak=200.
+	game.gear.gillnet_action()
+	for i: int in 200:await process_frame
+	await shot("kit_crew_net",b.global_position+b.global_basis*Vector3(9.,4.,3.),b.global_position+b.global_basis*Vector3(2.,1.2,0.),2)
+	# 4) Storm: the hull on a big sea.
+	game.toggle_deck()
+	game.world.ocean.weather.settle(3)
+	for i: int in 120:await process_frame
+	for k: int in 3:
+		for i: int in 25:await process_frame
+		await shot("kit_storm_%d"%k,b.global_position+b.global_basis*Vector3(14.,3.,4.),b.global_position+Vector3(0,1.,0),1)

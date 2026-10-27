@@ -100,13 +100,13 @@ func _draw_fight(font: Font) -> void:
 	var cue_col:=DANGER if cue=="ALIVIE" else (BRASS if cue!="RECOLHA" else TEAL)
 	draw_string(font,Vector2(14,140),cue,HORIZONTAL_ALIGNMENT_LEFT,-1,15,cue_col)
 	# Right column: fish, its strength left, line recovered, gear.
-	var x:=134.
-	draw_string(font,Vector2(x,26),species_name if species_name!="" else "Peixe",HORIZONTAL_ALIGNMENT_LEFT,104,14,CREAM)
+	var x:=126.
+	draw_string(font,Vector2(x,26),species_name if species_name!="" else "Peixe",HORIZONTAL_ALIGNMENT_LEFT,118,13,CREAM)
 	draw_string(font,Vector2(x,43),SIZE_NAMES[clampi(size_class,0,3)],HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color(BRASS,.85))
 	draw_string(font,Vector2(x,64),"força",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(CREAM,.6))
-	draw_rect(Rect2(x,69,100,6),Color(CREAM,.12));draw_rect(Rect2(x,69,100.*stamina,6),Color("e98a6a"))
+	draw_rect(Rect2(x,69,110,6),Color(CREAM,.12));draw_rect(Rect2(x,69,110.*stamina,6),Color("e98a6a"))
 	draw_string(font,Vector2(x,92),"linha recolhida",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(CREAM,.6))
-	draw_rect(Rect2(x,97,100,6),Color(CREAM,.12));draw_rect(Rect2(x,97,100.*progress,6),TEAL)
+	draw_rect(Rect2(x,97,110,6),Color(CREAM,.12));draw_rect(Rect2(x,97,110.*progress,6),TEAL)
 	if overload>1.:
 		draw_string(font,Vector2(x,124),"equipamento fraco",HORIZONTAL_ALIGNMENT_LEFT,-1,12,DANGER)
 	else:
