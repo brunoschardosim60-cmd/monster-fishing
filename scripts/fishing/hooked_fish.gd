@@ -26,6 +26,10 @@ var _thrash_clock: float=0.
 var _roll: float=0.
 ## Where the line ties on (the fish's mouth), for the line renderer.
 var mouth:=Vector3.ZERO
+var _last_phase: String=""
+var _phase_clock: float=0.
+var _run_out: float=0.
+var _splashed_down: bool=false
 
 func _ready() -> void:
 	visible=false
@@ -54,30 +58,54 @@ func hook(at: Vector3,player_pos: Vector3,species: Resource) -> void:
 	_start_dist=maxf(flat.length(),2.);_dir=flat.normalized() if flat.length()>.01 else Vector3.FORWARD
 	global_position=at-Vector3.UP*.5;_velocity=Vector3.ZERO;_depth=.5;visible=true
 
-func fight(delta: float,player_pos: Vector3,tension: float,progress: float,surging: bool) -> void:
+## `fight_phase` (fishing_system): calm, run (bolts away, line going out), dive (heads down), shake
+## (head-shaking at the surface), jump (clears the water).
+func fight(delta: float,player_pos: Vector3,tension: float,progress: float,surging: bool,fight_phase: String="") -> void:
 	if mode!="fight":return
 	clock+=delta;_player=player_pos
+	if fight_phase=="":fight_phase="run" if surging else "calm"
+	if fight_phase!=_last_phase:_phase_clock=0.;_last_phase=fight_phase
+	_phase_clock+=delta
 	var dist: float=lerpf(_start_dist,1.6+length_m*.5,pow(clampf(progress,0.,1.),.85))
+	# A run takes the fish out and across; it sweeps wider when fresh, close to the boat it circles.
+	_run_out=lerpf(_run_out,(4.+length_m*2.) if fight_phase=="run" else 0.,1.-exp(-delta*(1.2 if fight_phase=="run" else .5)))
+	dist+=_run_out*(1.-progress*.7)
 	var side:=Vector3(-_dir.z,0.,_dir.x)
-	var lateral: float=sin(clock*.75+phase)*minf(dist*.3,6.)*(1.-.6*progress)+sin(clock*2.3+phase*2.)*.4
-	# Kept high in the water so the angler sees the flash of its flank; a surge takes it down.
-	var want_depth: float=.22+length_m*.08+(.9 if surging else 0.)+.12*sin(clock*1.6+phase)
+	var sweep: float=1.8 if fight_phase=="run" else 1.
+	var lateral: float=sin(clock*.75*sweep+phase)*minf(dist*.3,6.)*(1.-.6*progress)*sweep+sin(clock*2.3+phase*2.)*.4
+	# Kept high in the water so the angler sees the flash of its flank; a dive takes it down.
+	var want_depth: float=.22+length_m*.08+.12*sin(clock*1.6+phase)
+	match fight_phase:
+		"dive":want_depth+=1.4+length_m*.3
+		"run":want_depth+=.4
+		"shake":want_depth=.05
 	if progress>.82:want_depth=.06
 	_depth=lerpf(_depth,want_depth,1.-exp(-delta*1.8))
 	var target:=Vector3(player_pos.x,0.,player_pos.z)+_dir*dist+side*lateral
-	target.y=Waves.height_at(target)-_depth
+	var surface: float=Waves.height_at(target)
+	target.y=surface-_depth
+	if fight_phase=="jump":
+		# Clears the water in an arc, body bent, and falls back with a splash.
+		var t: float=clampf(_phase_clock/.65,0.,1.)
+		target.y=surface+sin(t*PI)*(.5+length_m*.35)
+		if _phase_clock-delta<=0.:thrash.emit(Vector3(global_position.x,surface,global_position.z),clampf(.5+length_m*.4,.5,1.8))
+		if t>=1. and not _splashed_down:_splashed_down=true;thrash.emit(Vector3(global_position.x,surface,global_position.z),clampf(.6+length_m*.5,.6,2.))
+	else:_splashed_down=false
 	var before:=global_position
-	global_position=global_position.lerp(target,1.-exp(-delta*(2.2+tension*2.)))
+	var follow: float=(6. if fight_phase=="jump" else 2.2+tension*2.)
+	global_position=global_position.lerp(target,1.-exp(-delta*follow))
 	_velocity=_velocity.lerp((global_position-before)/maxf(delta,.001),1.-exp(-delta*6.))
 	# Head away from the angler, swung toward where it is swimming; shaking near the surface.
 	var heading:=_dir*1.2+Vector3(_velocity.x,0.,_velocity.z).limit_length(1.5)
-	if surging:heading+=_dir
-	var shaking:=progress>.82 or (tension>.75 and sin(clock*3.)>.6)
-	_roll=lerpf(_roll,sin(clock*19.)*(.7 if shaking else .12),1.-exp(-delta*10.))
-	_orient(heading,_roll,clampf(_velocity.y*.15,-.6,.6))
+	if fight_phase=="run":heading+=_dir
+	var shaking:=progress>.82 or fight_phase=="shake" or (tension>.75 and sin(clock*3.)>.6)
+	_roll=lerpf(_roll,sin(clock*(24. if fight_phase=="shake" else 19.))*(.8 if shaking else .12),1.-exp(-delta*10.))
+	var pitch: float=clampf(_velocity.y*.15,-.6,.6)
+	if fight_phase=="jump":pitch=lerpf(.7,-.7,clampf(_phase_clock/.65,0.,1.))
+	_orient(heading,_roll,pitch)
 	_thrash_clock-=delta
 	if shaking and _depth<.3 and _thrash_clock<=0.:
-		_thrash_clock=randf_range(.35,.8)
+		_thrash_clock=randf_range(.25,.6) if fight_phase=="shake" else randf_range(.35,.8)
 		thrash.emit(Vector3(global_position.x,Waves.height_at(global_position),global_position.z),clampf(.35+length_m*.4,.35,1.6))
 
 ## Lift out of the water toward `hand`. Returns true while the lift is still running.

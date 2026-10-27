@@ -11,7 +11,12 @@ func _hook(at: Vector3) -> void:
 	var f=game.fishing
 	game.fishing_visual.target=at;game.fishing_visual.cast_start=game.player.rod_tip();game.fishing_visual.cast_elapsed=0.
 	f.start_cast("coast")
-	f.advance(1.);f.advance(8.)
+	f.advance(1.)
+	while f.state!=f.State.BITE:f.advance(.25)
+	# A medium coastal fish that suits starter tackle, so the test checks the physical sequence, not luck.
+	for sp: Resource in Fishing.SPECIES:
+		if sp.id=="pargo":f.species_current=sp
+	f.fish_weight=2.5
 	f.strike()
 	await frames(2)
 

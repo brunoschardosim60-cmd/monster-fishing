@@ -65,16 +65,19 @@ func _catch_one(seed_value: int) -> bool:
 	var before: int = game.inventory.count()
 	game.fish_action()
 	_check(game.fishing.state == Fishing.State.CASTING, "fish action casts from the stationary boat or pier")
-	for tick: int in range(500):
+	# Bites arrive at a random moment set by the conditions (no fixed delay any more).
+	for tick: int in range(30000):
 		game.fishing.advance(0.02)
 		if game.fishing.state == Fishing.State.BITE:
 			break
 	_check(game.fishing.state == Fishing.State.BITE, "line reaches a bite through casting and waiting")
+	# Starter tackle: keep the fish to a size it can land (heavy fish on light gear are meant to break it).
+	game.fishing.fish_weight = minf(game.fishing.fish_weight, 4.0)
 	game.fish_action()
 	_check(game.fishing.state == Fishing.State.REELING, "fish action hooks the bite")
 	var holding: bool = true
-	for tick: int in range(2000):
-		if game.fishing.tension > 0.72:
+	for tick: int in range(6000):
+		if game.fishing.tension > 0.72 or game.fishing.fight_phase == "run":
 			holding = false
 		elif game.fishing.tension < 0.25:
 			holding = true

@@ -69,6 +69,27 @@ func run() -> void:
 	_fish(false);await frames(5)
 	game.fishing.cancel();game.player.first_person=false;await frames(3)
 	check(game.player.visual.model.visible,"third person shows the angler again")
+	# Conditions under the float: dawn beats midday, a running engine scares fish, a school brings them.
+	game.fishing_visual.target=boat.global_position+Vector3(0,0,-15)
+	game.world.ocean.hour=6.5;var dawn: float=game._fishing_conditions().rate
+	game.world.ocean.hour=12.5;var noon: float=game._fishing_conditions().rate
+	check(dawn>noon*1.5,"dawn bites better than bright midday (%.2f vs %.2f)"%[dawn,noon])
+	boat.engine_rpm=1.;var noisy: float=game._fishing_conditions().rate;boat.engine_rpm=0.
+	check(noisy<noon*.5,"a running engine puts the fish off (%.2f)"%noisy)
+	var school: Node3D=null
+	for sc: Node3D in game.marine.fish_schools:
+		if not sc.predator:school=sc;break
+	if school!=null:
+		school.mmi.visible=true;game.fishing_visual.target=Vector3(school.center.x,0,school.center.z)
+		check(game._fishing_conditions().rate>noon*2.,"casting over a school multiplies the bites")
+	# The new instrument: hidden when idle, shown while fishing, in the lower-right corner.
+	var gauge: Control=game.hud.fight_gauge
+	check(not gauge.visible,"the fishing instrument is hidden when not fishing")
+	_fish(true);await frames(30);_fish(false);await frames(80)
+	check(gauge.visible and gauge.state==2,"it appears while the float waits")
+	var vp: Vector2=game.get_viewport().get_visible_rect().size
+	check(gauge.get_global_rect().position.x>vp.x*.5 and gauge.get_global_rect().position.y>vp.y*.5,"it sits in the lower-right corner, clear of the centre")
+	game.fishing.cancel();await frames(5)
 	game.world.ocean.process_mode=Node.PROCESS_MODE_INHERIT
 	print("CAST %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

@@ -260,7 +260,9 @@ func _fight() -> void:
 	for i: int in 5:await process_frame
 	var f=game.fishing
 	game.fishing_visual.target=b.global_position+Vector3(2,0,-9);game.fishing_visual.cast_start=game.player.rod_tip()
-	f.start_cast("coast");f.advance(1.);f.advance(8.);f.strike()
+	f.start_cast("coast");f.advance(1.)
+	while f.state!=f.State.BITE:f.advance(.25)
+	f.strike()
 	Input.action_press("fish")
 	for i: int in 50:await process_frame
 	Input.action_release("fish")

@@ -16,7 +16,8 @@ func _check(condition: bool, description: String) -> void:
 		failures += 1
 
 func _wait_for_bite(fishing: Node) -> void:
-	for i: int in range(500):
+	# Bites come at a random moment set by the conditions (about every 9 s here), not after a fixed delay.
+	for i: int in range(30000):
 		fishing.advance(0.02)
 		if fishing.state == Fishing.State.BITE:
 			return
@@ -62,6 +63,8 @@ func _run() -> void:
 	fishing.advance(3.0)
 	fishing.start_cast()
 	_wait_for_bite(fishing)
+	# A heavy fish on starter tackle: cranking non-stop must break the line (a 100 g fish would just come in).
+	fishing.fish_weight = 30.0
 	fishing.strike()
 	fishing.set_reeling(true)
 	for i: int in range(500):
@@ -84,18 +87,20 @@ func _run() -> void:
 	for species: Resource in Fishing.SPECIES:
 		_check(species.min_weight > 0.0 and species.max_weight >= species.min_weight and species.value_per_kg > 0.0, "valid species range: " + species.id)
 	var sampled: Dictionary = {}
+	# Best tackle: every species, giants included, must be catchable with a sensible reel/rest rhythm.
+	fishing.rod_bonus=.45;fishing.line_bonus=.45
 	for attempt: int in range(180*Fishing.SPECIES.size()):
 		var region: String=["coast","open_water","abyss"][attempt%3]
 		fishing.start_cast(region)
+		_wait_for_bite(fishing)
 		if not fishing.species_current.regions.has(region):
 			_check(false,"selected species belongs to the fishing region")
 			break
-		_wait_for_bite(fishing)
 		fishing.strike()
 		holding = true
 		var duration: float = 0.0
-		for i: int in range(1500):
-			if fishing.tension > 0.72:
+		for i: int in range(6000):
+			if fishing.tension > 0.72 or fishing.fight_phase == "run":
 				holding = false
 			elif fishing.tension < 0.25:
 				holding = true
@@ -110,7 +115,7 @@ func _run() -> void:
 		var species_id: String = str(fishing.species_current.id)
 		if not sampled.has(species_id):
 			sampled[species_id] = duration
-			_check(duration >= 6.0 and duration < 30.0, "interactive, bounded fight: %s (%.1f s)" % [species_id, duration])
+			_check(duration >= 4.0 and duration < 100.0, "interactive, bounded fight: %s (%.1f s, %.0f kg)" % [species_id, duration, fishing.fish_weight])
 		fishing.advance(3.0)
 		if sampled.size() == Fishing.SPECIES.size():
 			break
@@ -120,9 +125,29 @@ func _run() -> void:
 		var count:=0;fishing.rng.seed=941
 		for i: int in 600:
 			fishing.cancel();fishing.start_cast("coast",preference)
-			if fishing.species_current.id=="mackerel":count+=1
+			if fishing._pick_species().id=="mackerel":count+=1
 		encounters.append(count)
 	_check(encounters[1]>encounters[0]+90,"Casting into a visible school increases that species' encounter rate")
+	# Light tackle against a giant: the gear warning is raised and the line goes.
+	fishing.rod_bonus=0.;fishing.line_bonus=0.;fishing.cancel();fishing.start_cast("open_water");_wait_for_bite(fishing)
+	fishing.fish_weight=250.;fishing.strike()
+	_check(fishing.gear_warning and fishing.overload>10.,"starter tackle on a 250 kg fish is flagged as too weak (overload %.0f)"%fishing.overload)
+	var broke:=false
+	for i: int in 3000:
+		fishing.set_reeling(fishing.tension<.5);fishing.advance(.02)
+		if fishing.state!=Fishing.State.REELING:broke=fishing.state==Fishing.State.ESCAPED;break
+	_check(broke,"…and it cannot be hauled in like a sardine")
+	# Bites depend on the conditions: a good spot bites far sooner than a bad one.
+	var waits: Array[float]=[]
+	for rate: float in [3.,.25]:
+		var total:=0.
+		fishing.conditions={"rate":rate,"depth":20.,"hour":12.}
+		for k: int in 30:
+			fishing.cancel();fishing.advance(3.);fishing.start_cast("coast");var t:=0.
+			while fishing.state!=Fishing.State.BITE and t<600.:fishing.advance(.05);t+=.05
+			total+=t
+		waits.append(total/30.)
+	_check(waits[0]<6.5 and waits[1]>waits[0]*4.,"bites come quickly in a rich spot and slowly in a poor one (%.1f s vs %.1f s)"%[waits[0],waits[1]])
 	fishing.queue_free()
 	print("FISHING TESTS: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(0 if failures == 0 else 1)

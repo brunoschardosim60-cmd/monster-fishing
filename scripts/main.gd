@@ -90,6 +90,9 @@ func _ready() -> void:
 	_add_system(fishing)
 	fishing.caught.connect(_on_caught)
 	fishing.status_changed.connect(_on_fishing_message)
+	fishing.nibble.connect(func(strength: float) -> void:
+		fishing_visual.nibble(strength)
+		if hud.fight_gauge!=null:hud.fight_gauge.nibble())
 	fishing.state_changed.connect(_on_fishing_state)
 	fishing_visual = FishingVisual.new()
 	_add_system(fishing_visual)
@@ -292,8 +295,20 @@ func _process(delta: float) -> void:
 			fishing.cancel();hud.notify("Linha fora de alcance.")
 	fishing.set_reeling(Input.is_action_pressed("fish"))
 	if fishing.state==Fishing.State.REELING:
-		hooked.fight(delta,player.global_position,fishing.tension,fishing.progress,fishing.surging)
+		hooked.fight(delta,player.global_position,fishing.tension,fishing.progress,fishing.surging,fishing.fight_phase)
 	fishing_visual.tension=fishing.tension
+	if fishing.state in [Fishing.State.CASTING,Fishing.State.WAITING]:fishing.conditions=_fishing_conditions()
+	# Signs on the water while waiting: over a school small fish now and then jump near the float.
+	if fishing.state==Fishing.State.WAITING and not surface_fish.visible and randf()<delta*.12:
+		var school: String=marine.school_at(fishing_visual.target)
+		if school!="":
+			for sp: Resource in Fishing.SPECIES:
+				if sp.id==school:
+					var off:=Vector2.from_angle(randf()*TAU)*randf_range(3.,8.)
+					surface_fish.breach(fishing_visual.target+Vector3(off.x,0,off.y),sp,.3);break
+	if hud.fight_gauge!=null:
+		hud.fight_gauge.update_from(fishing,int(inventory.equipment.get("rod",0)),int(inventory.equipment.get("line",0)))
+		hud.fight_gauge.visible=hud.fight_gauge.visible and started
 	if "rod_bend" in player.visual:player.visual.rod_bend=_rod_load()
 	fishing_visual.update_line(player.rod_tip(), fishing.state, delta)
 	hud.stats.text = "%d moedas · %d peixes" % [inventory.money, inventory.count()]
@@ -552,11 +567,12 @@ func _service_action(action: String) -> void:
 
 func _on_fishing_message(_message: String) -> void:
 	if is_instance_valid(hud) and fishing.state==Fishing.State.ESCAPED:
-		hud.notify("O peixe escapou.")
+		hud.notify(fishing.last_message if fishing.last_message!="" else "O peixe escapou.")
 
 func _on_fishing_state(state: int) -> void:
 	if state in [Fishing.State.IDLE,Fishing.State.ESCAPED] and is_instance_valid(surface_fish): surface_fish.hide()
 	if state==Fishing.State.REELING and is_instance_valid(hooked):
+		surface_fish.hide()
 		hooked.hook(fishing_visual.target,player.global_position,fishing.species_current)
 		world.ocean.effects.splash(fishing_visual.target,.9,true)
 	if state==Fishing.State.ESCAPED and is_instance_valid(hooked):hooked.escape()
@@ -644,3 +660,25 @@ func _wind_factor() -> float:
 	var Waves=preload("res://scripts/world/wave_field.gd")
 	var forward:=Vector2(-sin(player.yaw),-cos(player.yaw))
 	return 1.+forward.dot(Waves.direction)*Waves.wind*.22
+
+## What the fish under the float think of this moment (fishing_system.conditions): time of day, weather,
+## the school beneath, the boat's noise and the depth all change how soon something bites.
+func _fishing_conditions() -> Dictionary:
+	var Waves=preload("res://scripts/world/wave_field.gd")
+	var at: Vector3=fishing_visual.target
+	var depth: float=Waves.depth_at(Vector2(at.x,at.z))
+	var hour: float=world.ocean.hour
+	var rate:=1.
+	if (hour>=5. and hour<8.) or (hour>=17. and hour<20.):rate*=1.6       # dawn and dusk feeding
+	elif hour>=11. and hour<14.:rate*=.75                                  # bright midday
+	elif hour>=21. or hour<4.:rate*=.85
+	var weather=world.ocean.weather
+	if weather.rain>.1 and weather.rain<.5:rate*=1.15
+	rate*=1.-clampf(Waves.energy-.5,0.,.5)*.8                              # rough water puts fish down
+	if marine.school_at(at)!="":rate*=3.
+	elif marine.fish_near(at,10.)>5:rate*=1.5
+	if player.in_boat:
+		rate*=.25 if absf(boat.speed)>1. else 1.
+		rate*=1.-.6*clampf(absf(float(boat.engine_rpm)),0.,1.)
+	if depth<1.5:rate*=.5
+	return {"rate":rate,"depth":depth,"hour":hour}

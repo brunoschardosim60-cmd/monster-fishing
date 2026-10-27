@@ -13,6 +13,10 @@ var tension: float=0.
 ## Cast timing: the float stays at the rod tip while the rod comes forward, then flies for the rest.
 const RELEASE_AT: float=.22
 var cast_time: float=.85
+## A nibble: the float bobs under for a moment and a small ring spreads.
+var _nibble: float=0.
+func nibble(strength: float) -> void:
+	_nibble=maxf(_nibble,strength)
 
 func _ready() -> void:
 	line_mesh = ImmediateMesh.new()
@@ -61,6 +65,9 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 		var apex: float=clampf(cast_start.distance_to(target)*.22,1.5,9.)
 		var landing:=end
 		end=origin.lerp(landing,t)+Vector3.UP*(4.*t*(1.-t))*apex if cast_elapsed>=RELEASE_AT else origin
+	_nibble=maxf(0.,_nibble-delta*2.2)
+	if state == 2 and _nibble>0.:
+		end.y -= absf(sin(elapsed*22.))*.12*_nibble
 	if state == 3:
 		end.y += sin(elapsed * 24.0) * 0.18
 	var fighting: bool=state==4 and hooked!=null and hooked.visible and hooked.mode=="fight"
@@ -74,7 +81,7 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 	ripple.visible=state!=1
 	Waves.bind(ripple.material_override)
 	ripple.material_override.set_shader_parameter("age",fmod(elapsed,2.5))
-	ripple.material_override.set_shader_parameter("strength",.4 if state!=3 else .9)
+	ripple.material_override.set_shader_parameter("strength",(.4+_nibble*.5) if state!=3 else .9)
 	line_mesh.clear_surfaces()
 	line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
 	# A slack line sags; a tight one runs straight and hums (small fast vibration) near breaking point.

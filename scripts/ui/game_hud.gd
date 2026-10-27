@@ -34,6 +34,8 @@ var toast: Label
 var objective: Label
 var compass: Label
 var fishing_box: PanelContainer
+## The fishing instrument in the lower right corner (fight_gauge.gd); replaces the old centre panel.
+var fight_gauge: Control
 var fishing_title: Label
 var fishing_hint: Label
 var tension_bar: ProgressBar
@@ -110,6 +112,8 @@ func _ready() -> void:
 	tension_label = _label(fishing_content, "TENSÃO DA LINHA", 12, CREAM)
 	tension_bar = _bar(fishing_content, GOLD)
 	fishing_box.hide()
+	fight_gauge=preload("res://scripts/ui/fight_gauge.gd").new();fight_gauge.name="InstrumentoDePesca";root.add_child(fight_gauge);fight_gauge.hide()
+	hud_controls.append(fight_gauge)
 	ledger = _panel(root, Vector2.ZERO, Vector2(470, 340))
 	ledger.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	ledger.offset_left = -505
@@ -307,7 +311,7 @@ func _process(delta: float) -> void:
 		toast.modulate.a = minf(1.0, toast_time)
 
 func update_fishing(state: int, tension: float, progress: float, bite_left: float) -> void:
-	fishing_box.visible = started and state >= 1 and state <= 4
+	fishing_box.visible = false
 	progress_bar.value = progress * 100.0
 	tension_bar.value = tension * 100.0
 	tension_label.text = "TENSÃO  %d%%  %s" % [int(tension*100), "— SOLTE AGORA" if tension > 0.73 else ""]

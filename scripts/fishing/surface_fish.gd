@@ -10,11 +10,11 @@ func _ready() -> void:
 	model=preload("res://scripts/fishing/catch_display.gd").new()
 	add_child(model); model.set_process(false); hide()
 
-func breach(at: Vector3, species: Resource) -> void:
+func breach(at: Vector3, species: Resource, size: float=.55) -> void:
 	if species==null: return
 	origin=at; age=0.
 	model.show_catch({"species_id":species.id,"color":species.color.to_html()})
-	model.scale=Vector3.ONE*.55
+	model.scale=Vector3.ONE*size
 	show()
 	if effects!=null: effects.splash(at,.7,true)
 
