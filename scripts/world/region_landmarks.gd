@@ -102,11 +102,16 @@ func _build(lobe: int,id: String,kind: String) -> void:
 		"volcanic":
 			at=_shore_point(lobe,facing,999.)
 			var smoke:=CPUParticles3D.new();smoke.amount=60;smoke.lifetime=16.;smoke.preprocess=16.;smoke.direction=Vector3.UP;smoke.spread=12.
-			smoke.initial_velocity_min=6.;smoke.initial_velocity_max=10.;smoke.gravity=Vector3(2.,.4,0);smoke.scale_amount_min=8.;smoke.scale_amount_max=22.
+			smoke.initial_velocity_min=4.;smoke.initial_velocity_max=7.;smoke.gravity=Vector3(1.5,.2,0);smoke.scale_amount_min=10.;smoke.scale_amount_max=26.
 			smoke.emission_shape=CPUParticles3D.EMISSION_SHAPE_SPHERE;smoke.emission_sphere_radius=8.
-			var pm:=SphereMesh.new();pm.radius=1.;pm.height=2.;pm.radial_segments=8;pm.rings=4
-			var sm:=StandardMaterial3D.new();sm.albedo_color=Color(.25,.24,.24,.35);sm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;sm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-			pm.material=sm;smoke.mesh=pm;smoke.position.y=4.;smoke.visibility_aabb=AABB(Vector3(-150,0,-150),Vector3(300,300,300));root.add_child(smoke)
+			# Soft round puffs (radial gradient billboards), not polygon balls.
+			var puff:=GradientTexture2D.new();puff.fill=GradientTexture2D.FILL_RADIAL;puff.fill_from=Vector2(.5,.5);puff.fill_to=Vector2(1.,.5)
+			var g:=Gradient.new();g.set_color(0,Color(1,1,1,1));g.set_color(1,Color(1,1,1,0));puff.gradient=g;puff.width=64;puff.height=64
+			var pm:=QuadMesh.new();pm.size=Vector2(2.,2.)
+			var sm:=StandardMaterial3D.new();sm.albedo_texture=puff;sm.albedo_color=Color(.5,.48,.47,.22);sm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+			sm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;sm.billboard_mode=BaseMaterial3D.BILLBOARD_PARTICLES;sm.vertex_color_use_as_albedo=true;sm.albedo_color=Color(1,1,1,1)
+			var ramp:=Gradient.new();ramp.set_color(0,Color(.45,.43,.42,0.));ramp.set_color(1,Color(.62,.6,.6,0.));ramp.add_point(.15,Color(.4,.38,.37,.32));ramp.add_point(.6,Color(.55,.53,.52,.2))
+			smoke.color_ramp=ramp;pm.material=sm;smoke.mesh=pm;smoke.position.y=4.;smoke.visibility_aabb=AABB(Vector3(-150,0,-150),Vector3(300,300,300));root.add_child(smoke)
 			var glow:=OmniLight3D.new();glow.light_color=Color("ff5a2a");glow.omni_range=60.;glow.light_energy=3.;glow.position.y=6.;root.add_child(glow)
 		"mountain":
 			at=_shore_point(lobe,facing,999.)
