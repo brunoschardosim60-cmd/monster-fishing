@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -511,3 +511,14 @@ func _kit4() -> void:
 	for i: int in 70:await process_frame
 	var tr: Dictionary=game.gear.traps.back() if not game.gear.traps.is_empty() else {}
 	if not tr.is_empty():await shot("kit_covo_descendo",tr.at+b.global_basis*Vector3(4.,1.5,5.),tr.at+Vector3(0,-1.,0),1)
+
+func _kit5() -> void:
+	var b: CharacterBody3D=game.boat;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for i: int in 10:await process_frame
+	await shot("kit5_seco",b.global_position+b.global_basis*Vector3(3.,4.5,6.),b.global_position+Vector3(0,1.,0),1)
+	for i: int in 30:
+		b.water_aboard=b.water_capacity()*.55;await process_frame
+	await shot("kit5_agua",b.global_position+b.global_basis*Vector3(2.,5.,4.),b.global_position+Vector3(0,1.,0),1)
+	await shot("kit5_lado",b.global_position+b.global_basis*Vector3(7.,1.2,0.),b.global_position+Vector3(0,.5,0),1)

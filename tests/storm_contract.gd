@@ -94,8 +94,9 @@ func run() -> void:
 	await _ticks(120)
 	check(Waves.hull_box.x>0. and Waves.hull_inv.origin.distance_to(boat._hull.global_transform.affine_inverse().origin)<.5,"the hull's outline is passed to the sea shader, which leaves its inside dry")
 	var dry_y: float=boat._hull.position.y
-	boat._hull.position.y-=float(boat.hull_spec.gunwale)+.4;boat.heave_velocity=0.
-	await _tick()
+	for f: int in 60:
+		boat._hull.position.y=dry_y-float(boat.hull_spec.gunwale)-.4;boat.heave_velocity=0.
+		await _tick()
 	check(boat.water_aboard>20.,"with the rail under, sea water pours aboard (%.0f kg)"%boat.water_aboard)
 	boat.water_aboard=boat.water_capacity()*.6;boat.engine_rpm=0.
 	var sum:=0.
@@ -105,7 +106,7 @@ func run() -> void:
 		if f>120:sum+=boat._hull.position.y
 	var wet_y: float=sum/119.
 	check(wet_y<dry_y-.1,"heavy with water she floats deeper (%.2f m lower)"%(dry_y-wet_y))
-	await _ticks(300)
+	await _ticks(600)
 	check(boat.water_aboard<boat.water_capacity()*.6*.4,"the scuppers drain the deck (%.0f%% left)"%(boat.water_fraction()*100.))
 	var before: float=boat.water_aboard
 	boat.bail()

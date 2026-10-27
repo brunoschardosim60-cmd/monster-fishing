@@ -280,12 +280,15 @@ func _ship_water(delta: float,heights: Array[float],xs: Array[float],zs: Array[f
 			if not (x==0. and z==0.):
 				var rail: float=y+(-z)*sin(pitch)+x*sin(roll)+gunwale
 				var over: float=heights[n]-rail
+				# The first few centimetres are spray off the rail; past that green water comes in.
+				over-=.08
 				if over>0.:
-					inflow+=pow(over,1.5)*1400.*size_factor*(.6 if x==0. else 1.)
+					inflow+=pow(over,1.5)*300.*size_factor*(.6 if x==0. else 1.)
 					if over>worst_over:worst_over=over;worst=n
 			n+=1
 	if inflow>0.:
-		water_aboard+=inflow*delta
+		# However hard it breaks, only so much gets in at once (the rail and the deckhouse shed the rest).
+		water_aboard+=minf(inflow,m*.012)*delta
 		# Water coming over the rail: a burst of white water on that side, and a lurch.
 		if water_effects!=null and impact_cooldown<=0. and worst>=0:
 			var at: Vector3=global_position+global_basis.x*xs[worst%3]*.9+global_basis.z*zs[worst/3]*.9
@@ -296,7 +299,7 @@ func _ship_water(delta: float,heights: Array[float],xs: Array[float],zs: Array[f
 			if game!=null and occupied:game.audio.cue_at("slam",at,-12.)
 	# Out it goes: scuppers on a decked hull (fast while there is a lot), the bilge pump with an engine.
 	var decked: bool=str(hull_spec.get("kind",""))!="canoa"
-	var drain: float=(water_aboard*.06 if decked else 0.)+(14.*size_factor if decked and engine_rpm>.05 else 0.)
+	var drain: float=(water_aboard*.12 if decked else 0.)+(14.*size_factor if decked and engine_rpm>.05 else 0.)
 	water_aboard=maxf(0.,water_aboard-drain*delta)
 	if water_aboard>water_capacity() and not sinking:
 		sinking=true;sink_clock=0.;speed=0.
@@ -320,7 +323,7 @@ func _update_deck_water() -> void:
 	var wf: float=water_fraction()
 	if _deck_water==null or not is_instance_valid(_deck_water) or _deck_water.get_parent()!=_hull:
 		_deck_water=MeshInstance3D.new();_deck_water.name="AguaNoConves";_deck_water.mesh=BoxMesh.new()
-		var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.16,.36,.4,.62);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.roughness=.08;mat.metallic_specular=.8
+		var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.22,.46,.5,.72);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.roughness=.08;mat.metallic_specular=.8
 		_deck_water.material_override=mat;_deck_water.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;_hull.add_child(_deck_water)
 	_deck_water.visible=wf>.01
 	if not _deck_water.visible:return
@@ -335,9 +338,10 @@ func _update_deck_water() -> void:
 func _publish_hull() -> void:
 	if not is_instance_valid(_hull):return
 	var deck: Dictionary=hull_spec.deck
-	var half: float=float(hull_spec.beam)*.5*.9
+	# The cut follows the deck's footprint (just inside the topsides), never wider than the hull itself,
+	# or the sea would show a hole beside or behind the boat.
 	Waves.hull_inv=_hull.global_transform.affine_inverse()
-	Waves.hull_box=Vector4(half,-float(hull_spec.length)*.5,float(hull_spec.length)*.5,float(hull_spec.get("gunwale",float(deck.y)+.3)))
+	Waves.hull_box=Vector4(float(deck.x)+.1,float(deck.z0)-.15,float(deck.z1)+.05,float(hull_spec.get("gunwale",float(deck.y)+.3)))
 	Waves.hull_keel=float(hydrodynamics.draft_offset)-float(hull_spec.get("immersion",.35))*1.6-.3
 
 ## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.
