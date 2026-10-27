@@ -32,6 +32,7 @@ var speed: float=0.
 var hull: Node3D
 var model: Node3D
 var trail: MeshInstance3D
+var searchlight: SpotLight3D
 var crew: Array=[]
 var waiting_for_player: bool=false
 var yield_side: float=1.
@@ -54,6 +55,15 @@ func _ready() -> void:
 	model=Models.build(kind,length_m,seed_value);hull.add_child(model)
 	if length_m>=12.:
 		var lamp:=OmniLight3D.new();lamp.position=Vector3(0,float(model.get_meta("deck",1.))+2.,0);lamp.omni_range=length_m*.4;lamp.light_energy=0.;lamp.light_color=Color("ffd8a0");lamp.name="Luz";hull.add_child(lamp)
+	# Every decked boat carries a searchlight on the wheelhouse, lit at night and swept slowly ahead.
+	if length_m>=6.:
+		searchlight=SpotLight3D.new();searchlight.name="Holofote";searchlight.light_color=Color("fff2d8");searchlight.light_energy=0.
+		searchlight.spot_range=clampf(length_m*4.,40.,220.);searchlight.spot_angle=14.;searchlight.spot_attenuation=.8;searchlight.shadow_enabled=false
+		searchlight.position=Vector3(0,float(model.get_meta("deck",1.))+clampf(length_m*.12,1.6,14.),-length_m*.2);searchlight.rotation.x=-.12
+		hull.add_child(searchlight)
+		var lamp_mat:=StandardMaterial3D.new();lamp_mat.albedo_color=Color("fff6dc");lamp_mat.emission_enabled=true;lamp_mat.emission=Color("fff2d0");lamp_mat.emission_energy_multiplier=0.
+		var lamp_mesh:=SphereMesh.new();lamp_mesh.radius=clampf(length_m*.006,.12,.6);lamp_mesh.height=lamp_mesh.radius*2.
+		var bulb:=MeshInstance3D.new();bulb.mesh=lamp_mesh;bulb.material_override=lamp_mat;searchlight.add_child(bulb);searchlight.set_meta("bulb",lamp_mat)
 	trail=preload("res://scripts/ocean/wake_trail.gd").new();trail.stern_offset=length_m*.46;trail.half_width=beam_m*.5;add_child(trail)
 	_make_crew()
 	base_route=route.duplicate()
@@ -191,6 +201,7 @@ func _animate(delta: float) -> void:
 	for oar: Node3D in model.get_meta("oars",[]):
 		var stroke:=sin(_phase*(2.4 if underway else .6))
 		oar.rotation=Vector3(0.,stroke*.55 if underway else 0.,stroke*.18 if underway else .05)
+	if searchlight!=null and night>.3:searchlight.rotation.y=sin(_phase*.35+float(seed_value))*.45
 	var flag: Node3D=model.get_meta("flag") if model.has_meta("flag") else null
 	if flag!=null:flag.rotation.y=sin(_phase*3.1)*.22*(.4+Waves.wind)+sin(_phase*7.3)*.06
 	var reef:=1.-clampf((Waves.wind-.55)*2.2,0.,.45)
@@ -203,5 +214,8 @@ func set_night(value: float) -> void:
 	if windows!=null:windows.emission_energy_multiplier=value*2.2
 	var painted: GeometryInstance3D=model.get_meta("painted") if model.has_meta("painted") else null
 	if painted!=null:painted.set_instance_shader_parameter("night",value)
+	if searchlight!=null:
+		searchlight.light_energy=smoothstep(.35,.8,value)*(3. if length_m<40. else 6.)
+		(searchlight.get_meta("bulb") as StandardMaterial3D).emission_energy_multiplier=smoothstep(.35,.8,value)*6.
 	var lamp:=hull.get_node_or_null("Luz") as OmniLight3D
 	if lamp!=null:lamp.light_energy=value*(1.8 if length_m<40. else 4.)

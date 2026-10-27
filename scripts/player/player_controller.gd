@@ -47,7 +47,8 @@ var climb_clock: float=0.
 ## Seconds spent under water while diving; past BREATH the swimmer is pulled back up.
 var dive_time: float=0.
 var diving: bool=false
-const BREATH: float=40.
+## Seconds of air (set by diving.gd from the diving gear).
+var breath: float=30.
 const WALK_SPEED: float=1.9
 const STEP_HEIGHT: float=.42
 const CLIMB_TIME: float=.55
@@ -185,10 +186,10 @@ func _physics_process(delta: float) -> void:
 			velocity.y=JUMP_SPEED;jump_buffer=0.;coyote_time=0.
 		elif swimming:
 			# Ctrl dives, Space swims up; otherwise the swimmer floats back to the surface.
-			var want_dive:=controls_enabled and Input.is_action_pressed("fly_down") and dive_time<BREATH
+			var want_dive:=controls_enabled and Input.is_action_pressed("fly_down") and dive_time<breath
 			var want_up:=controls_enabled and Input.is_action_pressed("jump")
 			if want_dive:velocity.y=move_toward(velocity.y,-2.2,6.*delta)
-			elif want_up or not diving or dive_time>=BREATH:velocity.y=clampf((water-.7-global_position.y)*5.,-3.,3. if not diving else 2.4)
+			elif want_up or not diving or dive_time>=breath:velocity.y=clampf((water-.7-global_position.y)*5.,-3.,3. if not diving else 2.4)
 			else:velocity.y=move_toward(velocity.y,.35,3.*delta)
 			diving=global_position.y<water-1.6
 			dive_time=dive_time+delta if diving else maxf(0.,dive_time-delta*4.)

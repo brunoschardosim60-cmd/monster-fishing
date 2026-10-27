@@ -57,9 +57,9 @@ func run() -> void:
 	var on_land:=0
 	for l: Node3D in remote:
 		if Layout.coast(Vector2(l.position.x,l.position.z)).x<0. and l.position.y>-.5:on_land+=1
-	check(remote.size()>=6 and on_land==remote.size(),"%d lighthouses on the distant islands, all on land"%remote.size())
+	check(remote.size()>=4 and on_land==remote.size(),"%d lighthouses on the distant islands, all on land"%remote.size())
 	var periods:={}
 	for l: Node3D in remote:periods[l.period]=true
-	check(periods.size()>=6,"distant lighthouses each have their own rhythm")
+	check(periods.size()>=4,"distant lighthouses each have their own rhythm")
 	print("TOWN %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

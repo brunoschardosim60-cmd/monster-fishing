@@ -32,6 +32,7 @@ static func save(game: Node,path: String=PATH) -> bool:
 		var lairs:={}
 		for lair: Dictionary in game.lairs.lairs:lairs[lair.name]={"observed":lair.observed,"victories":int(lair.get("victories",0))}
 		data["lairs"]=lairs
+	if game.get("diving")!=null:data["chests"]=(game.diving.opened as Dictionary).duplicate()
 	if not game.boat.sinking:
 		data["boat"]={"position":game.boat.global_position,"yaw":game.boat.rotation.y}
 	if not game.player.in_boat and not game.player.swimming and not game.player.flying:
@@ -77,5 +78,6 @@ static func load_into(game: Node,path: String=PATH) -> bool:
 		game.boat.global_position=data.boat.position;game.boat.rotation=Vector3(0,float(data.boat.yaw),0)
 	if data.has("player"):
 		game.player.global_position=data.player
+	if data.has("chests") and game.get("diving")!=null:game.diving.restore_opened(data.chests)
 	inv.changed.emit()
 	return true

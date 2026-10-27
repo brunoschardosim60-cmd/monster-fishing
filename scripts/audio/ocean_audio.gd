@@ -104,7 +104,7 @@ func cue_at(kind: String,at: Vector3,volume_db: float=0.) -> void:
 	p.pitch_scale=randf_range(.93,1.07)
 	p.play()
 
-const LOUD: Dictionary={"roar":6.,"slam":5.,"breach":6.,"axe":-2.,"hammer":-4.,"knock":-6.,"net":-3.,"harpoon":0.,"flare":-2.,"boost":-4.,"sink":0.,"mission":-6.,"coins":-8.}
+const LOUD: Dictionary={"roar":6.,"slam":5.,"breach":6.,"axe":-2.,"hammer":-4.,"knock":-6.,"net":-3.,"harpoon":0.,"flare":-2.,"boost":-4.,"sink":0.,"mission":-6.,"coins":-8.,"ping":-4.}
 
 func _stream(kind: String) -> AudioStreamWAV:
 	if _cues.has(kind):return _cues[kind]
@@ -112,7 +112,7 @@ func _stream(kind: String) -> AudioStreamWAV:
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = 22050
 	var seconds: Dictionary={"catch":.41,"chain":1.36,"splash":.64,"horn":1.36,"bite":.18,"roar":2.6,"slam":1.6,"breach":2.4,"axe":.5,"hammer":.25,
-		"knock":.3,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5}
+		"knock":.3,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5,"ping":1.6}
 	var length: int=int(22050.*float(seconds.get(kind,.2)))
 	var samples := PackedByteArray()
 	samples.resize(length * 2)
@@ -198,6 +198,11 @@ func _stream(kind: String) -> AudioStreamWAV:
 				var n:=floorf(t/.22);var tt:=t-n*.22
 				var fq: float=[523.25,659.25,783.99,1046.5][int(minf(n,3.))]
 				value=(sin(tt*TAU*fq)+.3*sin(tt*TAU*fq*2.))*exp(-tt*5.)*.3*(1.-smoothstep(.95,1.1,t))
+			"ping":
+				# Sonar: a clean high ping with a long underwater echo.
+				var e1:=sin(t*TAU*1480.)*exp(-t*9.)
+				var e2: float=sin((t-.45)*TAU*1480.)*exp(-maxf(t-.45,0.)*7.)*.35*(1. if t>.45 else 0.)
+				value=(e1+e2)*.32
 			"coins":
 				var n2:=floorf(t/.07);var tt2:=t-n2*.07
 				value=sin(tt2*TAU*(2600.+n2*180.))*exp(-tt2*60.)*.25

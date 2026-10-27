@@ -38,14 +38,18 @@ var cast_distance: float=14.
 var cast_marker: MeshInstance3D
 var graphics: RefCounted
 var marine: Node3D
-var creative_mode: bool=false
-var creative_snapshot: Dictionary={}
+## Developer mode (F6): test tools, put-aside inventory, no saving. See scripts/dev/developer_mode.gd.
+var dev: CanvasLayer
 ## Feed, cast net and crab traps (C, N, B).
 var gear: Node3D
 ## Monster territories in the deep ocean (kraken, sea serpent, leviathan).
 var lairs: Node3D
 ## Story objectives and the market's order board.
 var missions: Node
+## Dynamic monster encounters at sea, the diving system (air, depth, wrecks, chests) and the boat sonar.
+var encounters: Node3D
+var diving: Node3D
+var sonar: Control
 const Economy=preload("res://scripts/inventory/harbor_economy.gd")
 const SaveGame=preload("res://scripts/inventory/save_game.gd")
 ## Progress is saved to user:// in normal play; tests and tools (run with --script) never touch it.
@@ -54,6 +58,7 @@ var autosave_clock: float=0.
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("game")
 	process_physics_priority = 10
 	_configure_input()
 	world = World.new()
@@ -97,6 +102,8 @@ func _ready() -> void:
 	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
 	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
 	missions=preload("res://scripts/inventory/missions.gd").new();missions.game=self;missions.name="Missoes";_add_system(missions)
+	encounters=preload("res://scripts/world/encounters.gd").new();encounters.game=self;encounters.name="Encontros";_add_system(encounters)
+	diving=preload("res://scripts/fishing/diving.gd").new();diving.game=self;diving.name="Mergulho";_add_system(diving)
 	hud = HUD.new()
 	world.sea_events.event_started.connect(func(text: String) -> void: hud.notify(text))
 	add_child(hud)
@@ -112,6 +119,8 @@ func _ready() -> void:
 	hud.time_selected.connect(func(hour_value: float) -> void: world.ocean.hour=hour_value)
 	hud.map_view.game=self
 	hud.missions=missions
+	sonar=preload("res://scripts/fishing/sonar.gd").new();sonar.game=self;sonar.name="Sonar";hud.add_child(sonar)
+	dev=preload("res://scripts/dev/developer_mode.gd").new();dev.game=self;dev.name="ModoDesenvolvedor";add_child(dev)
 	graphics=preload("res://scripts/visuals/graphics_settings.gd").new();graphics.configure(self)
 	hud.configure_graphics(graphics)
 	hud.graphics_changed.connect(func(level: int,scale_value: float,sync: bool) -> void:graphics.apply(level,scale_value,sync))
@@ -130,7 +139,7 @@ func _add_system(node: Node) -> void:
 
 ## Writes the save file (no-op in tests). Returns true when written.
 func save_progress() -> bool:
-	if not saving_enabled or not started:return false
+	if not saving_enabled or not started or (dev!=null and dev.active):return false
 	return SaveGame.save(self)
 
 func begin_play() -> void:
@@ -164,8 +173,8 @@ func _input(event: InputEvent) -> void:
 		return
 	if not started or get_tree().paused:
 		return
-	if event.is_action_pressed("creative_toggle") and not event.is_echo():
-		_set_creative_mode(not creative_mode)
+	if event.is_action_pressed("dev_toggle") and not event.is_echo():
+		dev.toggle()
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("fly_toggle") and not event.is_echo():
@@ -188,7 +197,11 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("cast_net") and not event.is_echo():hud.notify(gear.cast_net())
 	if event.is_action_pressed("trap") and not event.is_echo():hud.notify(gear.trap_action())
 	if event.is_action_pressed("harpoon") and not event.is_echo():hud.notify(lairs.fire_harpoon())
-	if event.is_action_pressed("flare") and not event.is_echo():hud.notify(lairs.fire_flare())
+	if event.is_action_pressed("flare") and not event.is_echo():
+		var flare_text: String=lairs.fire_flare()
+		if encounters.scare() and not flare_text.begins_with("Sem"):flare_text="O clarão vermelho afasta a criatura que seguia o barco!"
+		hud.notify(flare_text)
+	if event.is_action_pressed("sonar") and not event.is_echo():hud.notify(sonar.ping())
 	if event.is_action_pressed("boat_lights"):
 		boat.toggle_lights();hud.notify("Luzes do barco acesas." if boat.lights_enabled else "Luzes do barco apagadas.")
 	if event.is_action_pressed("observe_wildlife"):
@@ -319,6 +332,7 @@ func fish_action() -> void:
 
 func interact() -> void:
 	aiming=false
+	if diving!=null and diving.try_open():return
 	if fishing.active():
 		fishing.cancel()
 	if player.in_boat:
@@ -412,6 +426,7 @@ func near_dock() -> bool:
 
 func _interaction_hint() -> String:
 	if player.flying:return "T · Encerrar voo"
+	if diving!=null and not diving.hint().is_empty():return diving.hint()
 	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V · Observar"
 	if aiming:return "%.0f m · Solte para lançar"%cast_distance
 	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
@@ -543,52 +558,14 @@ func return_to_harbor() -> void:
 	resume_play()
 	hud.notify("De volta ao porto.")
 
-func _set_creative_mode(enabled: bool) -> void:
-	creative_mode=enabled
-	if enabled:
-		creative_snapshot={
-			"money":inventory.money,"bait":inventory.bait,"materials":inventory.materials,
-			"equipment":inventory.equipment.duplicate(true),"goods":inventory.goods.duplicate(true),
-			"integrity":boat.integrity,"flares":inventory.flares,"harpoons":inventory.harpoons,"feed":inventory.feed,"traps":inventory.traps
-		}
-		inventory.flares=99;inventory.harpoons=99;inventory.feed=99;inventory.traps=9
-		inventory.money=99999
-		inventory.bait=99
-		inventory.materials=99
-		inventory.goods={"repair_kit":9,"tackle":9,"canvas":9}
-		inventory.equipment={"rod":3,"line":3,"hook":3,"engine":3,"reel":3,"searchlight":1,"hull":1,"harpoon":1,"net":1}
-		boat.integrity=1.
-		Economy.apply(inventory,boat,fishing)
-		inventory.changed.emit()
-		if not player.flying:
-			boat.set_occupied(false)
-			boat.speed=0.;boat.velocity=Vector3.ZERO
-			player.set_boating(false)
-			player.set_flying(true)
-		hud.notify("MODO CRIATIVO · voo, itens e melhorias liberados · F6 para sair")
-		return
-	if not creative_snapshot.is_empty():
-		inventory.money=int(creative_snapshot.money)
-		inventory.bait=int(creative_snapshot.bait)
-		inventory.materials=int(creative_snapshot.materials)
-		inventory.equipment=creative_snapshot.equipment.duplicate(true)
-		inventory.goods=creative_snapshot.goods.duplicate(true)
-		boat.integrity=float(creative_snapshot.integrity)
-		for key: String in ["flares","harpoons","feed","traps"]:inventory.set(key,int(creative_snapshot[key]))
-		Economy.apply(inventory,boat,fishing)
-		inventory.changed.emit()
-	creative_snapshot.clear()
-	player.set_flying(false)
-	hud.notify("Modo Criativo desligado · inventário normal restaurado")
-
 func _configure_input() -> void:
 	var bindings: Dictionary = {
 		"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D,
 		"sprint": KEY_SHIFT, "interact": KEY_E, "fish": KEY_Q, "jump":KEY_SPACE,"boat_lights":KEY_L,"observe_wildlife":KEY_V,
 		"camera_toggle": KEY_F, "pause": KEY_ESCAPE, "inventory": KEY_TAB,
 		"look_left": KEY_LEFT, "look_right": KEY_RIGHT,
-		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,"creative_toggle":KEY_F6,
-		"deck":KEY_R,"anchor":KEY_Z,"feed":KEY_C,"cast_net":KEY_N,"trap":KEY_B,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,"harpoon":KEY_H,"flare":KEY_Y,
+		"fly_toggle": KEY_T, "fly_down": KEY_CTRL,"dev_toggle":KEY_F6,
+		"deck":KEY_R,"anchor":KEY_Z,"feed":KEY_C,"cast_net":KEY_N,"trap":KEY_B,"keep_catch":KEY_G,"release_catch":KEY_X,"world_map":KEY_M,"journal":KEY_J,"harpoon":KEY_H,"flare":KEY_Y,"sonar":KEY_O,
 	}
 	for action: String in bindings:
 		if not InputMap.has_action(action):

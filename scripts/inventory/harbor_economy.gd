@@ -56,7 +56,11 @@ const CATALOG: Dictionary={
 	"trap":{"title":"Covo para caranguejo e lagosta · tecla B em água rasa","price":40,"service":"gear"},
 	"flares":{"title":"3 sinalizadores · tecla Y espanta monstros por um tempo","price":25,"service":"gear"},
 	"harpoon_gun":{"title":"Arpão de proa · tecla H enfrenta monstros · com 4 arpões","price":140,"service":"workshop"},
-	"harpoons":{"title":"4 arpões para o arpão de proa","price":20,"service":"workshop"}}
+	"harpoons":{"title":"4 arpões para o arpão de proa","price":20,"service":"workshop"},
+	"sonar":{"title":"Sonar · tecla O no barco: fundo, cardumes, naufrágios e formas grandes","price":120,"service":"workshop"},
+	"sonar2":{"title":"Sonar de longo alcance · alcance dobrado, leitura mais nítida","price":260,"service":"workshop"},
+	"diving":{"title":"Máscara e cilindro · 75 s de ar, até 35 m","price":90,"service":"gear"},
+	"diving2":{"title":"Equipamento de mergulho profundo · 150 s de ar, até 80 m","price":240,"service":"gear"}}
 ## Crafting: spends materials (and any goods listed) to produce goods or bait. Recipes live in CATALOG under "craft".
 static func _craft(item: Dictionary,inventory: RefCounted) -> String:
 	var recipe: Dictionary=item.craft
@@ -114,6 +118,13 @@ static func buy(id: String, inventory: RefCounted,boat: CharacterBody3D,fishing:
 		apply(inventory,boat,fishing);inventory.changed.emit()
 		return "Melhoria concluída: %s, nível %d/%d."%[str(item.title),level+1,MAX_LEVEL]
 	if id=="harpoon_gun" and inventory.equipment.get("harpoon",0)>=1: return "Você já tem o arpão de proa."
+	if id in ["sonar","sonar2","diving","diving2"]:
+		var key: String=id.trim_suffix("2");var want:=2 if id.ends_with("2") else 1
+		if int(inventory.equipment.get(key,0))>=want:return "Você já tem este equipamento."
+		if want==2 and int(inventory.equipment.get(key,0))<1:return "Compre primeiro o modelo básico."
+		if inventory.money<int(item.price):return "Moedas insuficientes. Venda capturas ou explore os baús da ilha."
+		inventory.money-=int(item.price);inventory.equipment[key]=want;inventory.changed.emit()
+		return "Instalado: %s."%str(item.title).get_slice(" ·",0)
 	if id=="harpoons" and inventory.equipment.get("harpoon",0)<1: return "Instale primeiro o arpão de proa."
 	if id in inventory.equipment and inventory.equipment[id]>=1 and id!="trap": return "Você já possui esta melhoria."
 	if id=="repair" and boat.integrity>=.999: return "O casco já está em boas condições."

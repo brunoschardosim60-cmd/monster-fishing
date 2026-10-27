@@ -104,9 +104,21 @@ func _work_sound() -> void:
 			if audio!=null:audio.cue_at(WORK_SOUNDS[work_pose][0],global_position+Vector3(0,1,0))
 	_work_phase=phase
 
+var _deck_y: float=-INF
+var _deck_frame: int=0
 func _settle(_delta: float,_moving: float,near_camera: bool) -> void:
 	position.y=Layout.height(Vector2(position.x,position.z))+.08 if follow_terrain else route[0].y if route.size()>0 else position.y
 	if ground_sampler.is_valid():position.y=ground_sampler.call(position)
+	# Piers, decks and stairs stand above the terrain: walk on whatever solid surface is under the feet,
+	# so nobody wades through the harbour under a pier.
+	if follow_terrain and is_inside_tree():
+		_deck_frame+=1
+		if _deck_frame%(3 if near_camera else 12)==0:
+			var g:=global_position;var lift:=g.y-position.y
+			var q:=PhysicsRayQueryParameters3D.create(g+Vector3(0,2.2,0),g-Vector3(0,.5,0));q.collision_mask=1
+			var hit:=get_world_3d().direct_space_state.intersect_ray(q)
+			_deck_y=float(hit.position.y)-lift if not hit.is_empty() else -INF
+		if _deck_y>position.y:position.y=_deck_y+.02
 	if talk_text!="" and talk_timer>0. and near_camera:
 		if bubble==null:
 			bubble=Label3D.new();bubble.billboard=BaseMaterial3D.BILLBOARD_ENABLED;bubble.no_depth_test=true

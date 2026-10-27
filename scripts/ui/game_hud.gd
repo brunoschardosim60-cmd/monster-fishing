@@ -289,7 +289,7 @@ func show_pause() -> void:
 	ledger.hide()
 	overlay_title.text = "O mar\npode esperar."
 	overlay_title.add_theme_font_size_override("font_size", 58)
-	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular (e escalar beiradas)\nSHIFT correr  ·  CTRL andar devagar / mergulhar nadando\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)\nNo leme: SHIFT turbo  ·  H arpão de proa  ·  Y sinalizador (espanta monstros)"
+	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular (e escalar beiradas)\nSHIFT correr  ·  CTRL andar devagar / mergulhar nadando\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)\nNo leme: SHIFT turbo  ·  H arpão de proa  ·  Y sinalizador (espanta monstros)\nO sonar  ·  F6 modo desenvolvedor (ferramentas de teste; não salva)\nMergulho: CTRL desce, ESPAÇO sobe, E abre baús; o ar e o limite de profundidade dependem do equipamento"
 	play_button.text = "CONTINUAR  →"
 	return_button.show()
 	overlay.show()

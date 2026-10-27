@@ -22,6 +22,9 @@ var water_root: Node3D
 var life: Node3D
 var traffic: Node3D
 var sea_events: Node3D
+## Storm cells and whirlpools: local, dynamic sea hazards.
+var storms: Node3D
+var whirlpools: Node3D
 var lighthouse: Node3D
 var harbor_lighthouse: Node3D
 var remote_lighthouses: Node3D
@@ -59,7 +62,7 @@ func _ready() -> void:
 	_make_dock()
 	village=preload("res://scripts/world/harbor_village.gd").new();village.world=self;village.name="VilaDaAurora";add_child(village)
 	_make_lighthouse(Vector3(-65,Layout.height(Vector2(-65,490)),490))
-	harbor_lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();harbor_lighthouse.world=self;harbor_lighthouse.position=Vector3(174,Layout.height(Vector2(174,96)),96);harbor_lighthouse.name="FarolDaEntrada";harbor_lighthouse.tower_height=32.;harbor_lighthouse.style="faixas";harbor_lighthouse.period=8.;harbor_lighthouse.tint=Color("ffd9a0");add_child(harbor_lighthouse)
+	harbor_lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();harbor_lighthouse.world=self;harbor_lighthouse.position=Vector3(174,Layout.height(Vector2(174,96)),96);harbor_lighthouse.name="FarolDaEntrada";harbor_lighthouse.tower_height=32.;harbor_lighthouse.style="faixas";harbor_lighthouse.period=8.;harbor_lighthouse.tint=Color("ffd9a0");harbor_lighthouse.scale=Vector3.ONE*1.35;add_child(harbor_lighthouse)
 	remote_lighthouses=preload("res://scripts/world/remote_lighthouses.gd").new();remote_lighthouses.world=self;remote_lighthouses.name="FaroisDistantes";add_child(remote_lighthouses)
 	_make_sign()
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
@@ -74,6 +77,8 @@ func _ready() -> void:
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
 	traffic=preload("res://scripts/world/maritime_traffic.gd").new();traffic.name="TrafegoMaritimo";add_child(traffic)
 	sea_events=preload("res://scripts/world/sea_events.gd").new();sea_events.name="EventosMarinhos";add_child(sea_events)
+	storms=preload("res://scripts/world/storms.gd").new();storms.world=self;storms.name="Tempestades";add_child(storms)
+	whirlpools=preload("res://scripts/world/whirlpools.gd").new();whirlpools.world=self;whirlpools.name="Redemoinhos";add_child(whirlpools)
 	life=preload("res://scripts/world/coastal_life.gd").new();life.world=self;life.name="CoastalLife";add_child(life)
 	var seabed:=preload("res://scripts/world/seabed_life.gd").new();seabed.name="VidaNoFundo";add_child(seabed)
 
@@ -702,7 +707,7 @@ func _make_trail_walkers() -> Node3D:
 	return holder
 
 func _make_lighthouse(pos: Vector3) -> void:
-	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.tower_height=24.;lighthouse.style="preto";lighthouse.period=16.;lighthouse.beam_angles=[0.,26.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");add_child(lighthouse)
+	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.tower_height=24.;lighthouse.style="preto";lighthouse.period=16.;lighthouse.beam_angles=[0.,26.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");lighthouse.scale=Vector3.ONE*1.35;add_child(lighthouse)
 
 func _make_wildlife() -> void:
 	var white := G.material(Color("eee6cf"))

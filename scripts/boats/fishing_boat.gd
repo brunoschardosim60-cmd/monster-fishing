@@ -109,6 +109,11 @@ func _physics_process(delta: float) -> void:
 	if absf(speed) > 0.12:
 		rotation.y -= steering * signf(speed) * (0.3 + minf(absf(speed), 9.0) * 0.065) * delta
 	velocity = -global_transform.basis.z * speed
+	# Wind pushes the hull sideways (strongest in the open and in storms); the anchor holds against it.
+	var here:=Vector2(global_position.x,global_position.z)
+	var push:=Vector3(Waves.direction.x,0.,Waves.direction.y)*pow(Waves.wind,2.)*2.4*Waves.exposure(here)/maxf(hydrodynamics.mass_kg/3500.,.6)
+	if occupied and not (anchored and anchor.holding()):velocity+=push
+	_wave_hits(delta,here)
 	if anchored and anchor.holding():velocity+=anchor.restrain(delta)
 	velocity.y = 0.0
 	move_and_slide()
@@ -150,6 +155,21 @@ func _physics_process(delta: float) -> void:
 		_foam_right.scale.z = 0.5 + wake_strength * 2.3
 		Waves.bind(_wake_material)
 		_wake_material.set_shader_parameter("strength", wake_strength)
+
+## In heavy seas green water breaks over the bow now and then: a small blow to the hull, a lurch and spray.
+var _wave_hit_clock: float=8.
+func _wave_hits(delta: float,here: Vector2) -> void:
+	var rough:=maxf(Waves.storm_factor(here),smoothstep(.68,1.,Waves.energy))*Waves.exposure(here)
+	if rough<.25 or not occupied:return
+	_wave_hit_clock-=delta*(1.+absf(speed)*.08)
+	if _wave_hit_clock>0.:return
+	_wave_hit_clock=randf_range(6.,13.)/rough
+	take_hit(.01+.025*rough,.22+.25*rough)
+	if water_effects!=null:water_effects.splash(global_position-global_basis.z*2.+global_basis.x*randf_range(-1.,1.),1.2+rough,true)
+	var game:=get_tree().get_first_node_in_group("game")
+	if game!=null:
+		game.audio.cue_at("slam",global_position-global_basis.z*3.,-9.)
+		if not get_meta("wave_hint",false):set_meta("wave_hint",true);game.hud.notify("Uma onda quebra sobre a proa! Em mar grosso o casco sofre: reduza ou procure abrigo.")
 
 ## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.
 func take_hit(damage: float,kick: float) -> void:

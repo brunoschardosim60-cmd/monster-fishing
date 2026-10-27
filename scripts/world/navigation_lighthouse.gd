@@ -14,6 +14,8 @@ var tint: Color=Color("ffe7af")
 var arms: Array[Node3D]=[]
 var spots: Array[SpotLight3D]=[]
 var beam_materials: Array[ShaderMaterial]=[]
+var cones: Array[MeshInstance3D]=[]
+var _trim_frame: int=0
 var glow: MeshInstance3D
 var glow_material: ShaderMaterial
 const BEAM_LENGTH: float=800.
@@ -38,7 +40,7 @@ func _ready() -> void:
 		var shaft:=CylinderMesh.new();shaft.top_radius=radius;shaft.bottom_radius=.15;shaft.height=BEAM_LENGTH;shaft.radial_segments=32;shaft.rings=1;shaft.cap_top=false;shaft.cap_bottom=false
 		var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/lighthouse_beam.gdshader");mat.set_shader_parameter("tint",Vector3(tint.r,tint.g,tint.b))
 		var cone:=G.mesh_node(arm,shaft,mat,Vector3(0,0,-BEAM_LENGTH*.5));cone.rotation.x=-PI*.5;cone.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		beam_materials.append(mat)
+		beam_materials.append(mat);cones.append(cone)
 	elapsed=phase
 	preload("res://scripts/world/static_batch.gd").build(self,[rotor])
 	# Added after batching so the flare is never merged into the tower mesh.
@@ -54,6 +56,7 @@ func _process(delta: float) -> void:
 	if world.ocean!=null:haze=1.+clampf(world.ocean.weather.rain,0.,1.)*1.1+clampf(world.ocean.weather.fog*320.,0.,1.2)+world.ocean.weather.cloud*.3
 	rotor.visible=night>.01;glow.visible=rotor.visible
 	for spot: SpotLight3D in spots:spot.light_energy=12.*night
+	if rotor.visible:_trim_beams()
 	for mat: ShaderMaterial in beam_materials:mat.set_shader_parameter("strength",night*haze)
 	var flash:=0.
 	var camera:=get_viewport().get_camera_3d()
@@ -62,6 +65,22 @@ func _process(delta: float) -> void:
 		for arm: Node3D in arms:flash=maxf(flash,pow(maxf(0.,(-arm.global_basis.z).dot(to_camera)),40.))
 	lens.emission_energy_multiplier=(2.+flash*18.)*night
 	glow_material.set_shader_parameter("intensity",night*(.16+flash*1.5)*(1.+(haze-1.)*.5))
+
+## The shaft and its spotlight stop at the first solid thing in their way (a house, a cliff, a hull),
+## so the light never passes through walls.
+func _trim_beams() -> void:
+	_trim_frame+=1
+	if _trim_frame%2!=0:return
+	var space:=get_world_3d().direct_space_state
+	var origin:=rotor.global_position;var reach:=BEAM_LENGTH*global_basis.x.length()
+	for i: int in arms.size():
+		var dir:=-(arms[i].global_basis.z.normalized())
+		var q:=PhysicsRayQueryParameters3D.create(origin+dir*3.*global_basis.x.length(),origin+dir*reach);q.collision_mask=1
+		var hit:=space.intersect_ray(q)
+		var d:=reach if hit.is_empty() else origin.distance_to(hit.position)
+		var k:=clampf(d/reach,.02,1.)
+		cones[i].scale=Vector3(k,k,k);cones[i].position=Vector3(0,0,-BEAM_LENGTH*.5*k)
+		spots[i].spot_range=BEAM_LENGTH*k
 
 ## Tapered, banded tower with a gallery, glazed lantern room, dome and vent; returns the gallery height.
 func _build_tower() -> float:

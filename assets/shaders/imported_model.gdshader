@@ -16,6 +16,8 @@ instance uniform float lunge = 0.;
 uniform float sway_from = .3;
 // Turtles: flippers (|x| beyond the shell) beat up and down; the front pair leads.
 instance uniform float flap = 0.;
+// Wrecks on the sea floor: algae, silt and rust over everything.
+instance uniform float wreck = 0.;
 instance uniform float flap_rate = 1.6;             // grime and rust
 instance uniform vec3 hull_paint : source_color = vec3(.12,.2,.32);
 instance uniform float seed = 0.;
@@ -153,6 +155,12 @@ void fragment(){
 		rough=.88;
 	}else{
 		c=base*(.85+.3*grime);
+	}
+	if(wreck>0.){
+		float algae=smoothstep(.35,.75,fbm(p.xz*.6+p.y*.3))*smoothstep(-.3,.7,n.y);
+		c=mix(c*.45,srgb(vec3(.2,.27,.14)),algae*.8*wreck);
+		c=mix(c,srgb(vec3(.33,.2,.1)),smoothstep(.6,.8,vnoise(p.xy*1.3))*.4*wreck);
+		rough=.95;metal=0.;emit=vec3(0.);
 	}
 	ALBEDO=c; ROUGHNESS=rough; METALLIC=metal; EMISSION=emit;
 }

@@ -60,13 +60,34 @@ void fragment() {
 	float breaker=pow(.5+.5*sin(coast.x*.85-sea_time*1.15),5.);
 	float surf=(1.-smoothstep(.4,4.,abs(coast.x)))*breaker*smoothstep(.25,.64,foam_noise)*(.4+swell_energy);
 	float whitecap=smoothstep(.3+swell_energy*.8,.65+swell_energy*1.05,crest)*smoothstep(.4,.67,foam_noise)*wind_strength*exposure;
-	float foam=clamp(shore+surf+whitecap,0.,.96);
+	// Wind-driven streaks of old foam lying along the wind, and spray-white crests inside storm cells.
+	float storm=storm_factor(p);
+	vec2 along=normalize(wind_direction+vec2(1e-4));vec2 across=vec2(-along.y,along.x);
+	float streak_noise=texture(foam_tex,vec2(dot(p,along)*.012,dot(p,across)*.09)+sea_time*vec2(.006,0.)).r;
+	float streaks=smoothstep(.62,.8,streak_noise)*smoothstep(.45,.9,wind_strength+storm*.5)*exposure*.55;
+	float crest_top=smoothstep(.55,1.,crest/max(.6,1.+swell_energy*2.2));
+	float storm_caps=crest_top*smoothstep(.5,.75,foam_noise)*storm*.8+smoothstep(.62,.8,streak_noise)*storm*.35;
+	float swirl=0.;float vortex=0.;
+	for(int i=0;i<4;i++){
+		vec4 wh=whirl[i];if(wh.w<=0.)continue;
+		vec2 d=p-wh.xy;float dist=length(d);if(dist>=wh.z*1.1)continue;
+		float t=clamp(1.-dist/wh.z,0.,1.);
+		// Foam advected round the funnel: noise sampled in rotating polar coordinates, broken into streaks.
+		float ang=atan(d.y,d.x)+sea_time*wh.w*(.4+1.6*t*t)+log(dist+1.)*1.6;
+		vec2 polar=vec2(ang*2.,dist*.05);
+		float churn=texture(foam_tex,polar*vec2(.5,1.)).r*.6+texture(foam_tex,polar*vec2(1.3,3.)+.3).r*.4;
+		float arms=.5+.5*sin(ang*5.);
+		swirl=max(swirl,smoothstep(.5,.85,churn*.7+arms*.45)*smoothstep(0.,.3,t)*(1.-smoothstep(.9,1.,t))*wh.w*.7);
+		vortex=max(vortex,t*t*wh.w);
+	}
+	float foam=clamp(shore+surf+whitecap+streaks+storm_caps+swirl,0.,.96);
 	// --- Colour model -------------------------------------------------------------------
 	// Water body: turquoise only over shallow sand near the coast, deep teal-navy in open sea.
 	float column=min(thickness,bottom_depth);
 	float open_sea=smoothstep(18.,140.,coast.x);
 	vec3 col=mix(deep_color,shallow_color,exp(-column*.16)*(1.-open_sea*.85));
 	col=mix(col,abyss_color,open_sea*.75);
+	col=mix(col,vec3(.004,.03,.05),vortex*.8);
 	float cold=1.-smoothstep(60.,300.,length(p-COLD_CENTER));
 	col=mix(col,col*vec3(.55,.7,.85),cold*.75+rain_strength*.22);
 	vec2 distortion=wn.xz*.018*min(thickness,2.);
@@ -89,7 +110,7 @@ void fragment() {
 	vec3 surface=mix(body,sky,fresnel*(1.-foam));
 	float shade=cloud_shadow(cloud_tex,p);
 	glint*=1.-shade;sss*=1.-shade*.7;
-	ALBEDO=mix(surface*(1.-fresnel*.6),vec3(.86,.9,.88),foam)*mix(1.,.72,shade);
+	ALBEDO=mix(surface*(1.-fresnel*.6),vec3(.86,.9,.88),foam)*mix(1.,.72,shade)*(1.-vortex*.65);
 	EMISSION=(sky*fresnel*.55+sss)*(1.-foam)+sun_color*glint*6.*(1.-foam)+col*sea_glow*(1.-foam);
 	ROUGHNESS=mix(.06+wind_strength*.08+rain_strength*.1,.85,foam)+.05*(1.-distance_fade);
 	METALLIC=0.;
