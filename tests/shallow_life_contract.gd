@@ -34,11 +34,12 @@ func run() -> void:
 		if Layout.coast(Vector2(p.x,p.z)).x<.5:dry+=1
 	check(shallow>=school.count*0.9 and dry==0,"the shoal swims within 2 m of the surface, in the water (%d/%d shallow)"%[shallow,school.count])
 	# Feed: fish gather at the pellets and rise.
-	var at: Vector3=game.gear.throw_point(6.5)
+	var at: Vector3=game.gear.throw_point(5.)
 	var before: int=marine.fish_near(at,6.)
 	var fed_before: int=game.inventory.feed
 	var message: String=game.gear.throw_feed()
-	check(game.inventory.feed==fed_before-1 and marine.feed.size()==1,"C throws a handful of feed (%s)"%message)
+	await frames(45)
+	check(game.inventory.feed==fed_before-1 and marine.feed.size()==1,"C throws a handful of feed: it flies out and lands in front (%s)"%message)
 	await frames(900)
 	var after: int=marine.fish_near(at,6.)
 	check(after>before+5,"fish come to the feed (%d → %d within 6 m)"%[before,after])
@@ -49,10 +50,10 @@ func run() -> void:
 	# The cast net catches the gathered fish.
 	game.inventory.equipment.net=1
 	var catches: int=game.inventory.count()
-	check(game.gear.cast_net()=="Tarrafa lançada!","N casts the net from the stopped boat")
+	check(game.gear.cast_net().begins_with("Que lance"),"N casts the net from the stopped boat (a clean throw)")
 	await frames(400)
 	check(game.gear.last_haul.size()>=2 and game.inventory.count()>=catches+2,"the net hauls %d fish"%game.gear.last_haul.size())
-	check(game.gear.cast_net()!="Tarrafa lançada!","the net needs a moment before the next cast")
+	check(not game.gear.cast_net().begins_with("Que lance"),"the net needs a moment before the next cast")
 	check(game.gear.net_state=="pendurada" and is_instance_valid(game.gear.net_catch) and game.gear.net_catch.get_child_count()>=2,"the net hangs at the gunwale with the fish visible in it")
 	var flap: float=(game.gear.net_catch.get_child(0) as Node3D).rotation.z;await frames(7)
 	check(absf((game.gear.net_catch.get_child(0) as Node3D).rotation.z-flap)>.02,"netted fish flap")

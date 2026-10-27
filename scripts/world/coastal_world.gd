@@ -64,7 +64,7 @@ func _ready() -> void:
 	_make_dock()
 	village=preload("res://scripts/world/harbor_village.gd").new();village.world=self;village.name="VilaDaAurora";add_child(village)
 	# On the summit of the northern mountain (highest flat ground on the island), reached by the north trail.
-	_make_lighthouse(Vector3(-80,Layout.height(Vector2(-80,775)),775))
+	_make_lighthouse(Vector3(-80,Layout.ground(Vector2(-80,775)),775))
 	# One lighthouse on the home island (FarolDaAurora on the northern heights); the old harbour-entrance
 	# tower was removed so the night sky is not full of beams. The name stays as an alias for the map beacon.
 	harbor_lighthouse=lighthouse
@@ -539,7 +539,7 @@ func _plant_remote_flora(center: Vector3,size: Vector2,biome: String,palette: Di
 		else:Flora.plant(self,pick,groups[pick],rng)
 
 func home_surface_height(x: float,z: float) -> float:
-	return Layout.height(Vector2(x,z))
+	return Layout.ground(Vector2(x,z))
 
 func _make_dock() -> void:
 	G.box(self, Vector3(0, 1.2, -17), Vector3(3.6, 0.3, 18), dark_wood, true)
@@ -713,7 +713,7 @@ func _make_trail_walkers() -> Node3D:
 		walker.target_index=mini(start,out_and_back.size()-1);walker.position=out_and_back[walker.target_index]
 	for keeper_spec: Array in [[Vector3(-72.,0,786.),2.1]]:
 		var keeper:=Resident.new();keeper.look_id=20+(0 if keeper_spec[0].x>0. else 1)
-		var at: Vector3=keeper_spec[0];at.y=Layout.height(Vector2(at.x,at.z))+.08
+		var at: Vector3=keeper_spec[0];at.y=Layout.ground(Vector2(at.x,at.z))+.08
 		keeper.position=at;keeper.rotation.y=float(keeper_spec[1]);holder.add_child(keeper)
 	return holder
 

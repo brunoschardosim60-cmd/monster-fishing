@@ -106,6 +106,6 @@ func run() -> void:
 	# Night: windows light up.
 	game.world.ocean.hour=23.;await frames(200)
 	var lit: StandardMaterial3D=ships[0].model.get_meta("windows")
-	check(lit.emission_energy_multiplier>1.,"cabin windows glow at night")
+	check(lit.emission_energy_multiplier>.5,"cabin windows glow at night (softly, no blown-out halos)")
 	print("FLEET %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

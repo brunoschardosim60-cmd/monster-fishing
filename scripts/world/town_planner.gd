@@ -13,7 +13,7 @@ const Props=preload("res://scripts/world/cc0_props.gd")
 const PLAZA_R: float=10.
 ## name, centre (x,z), radius, houses, styles, landmark, links (where the avenue joins the rest of the town), over water
 const DISTRICTS: Array=[
-	["Bairro do Poente",Vector2(-160,30),62.,18,["costeira","costeira","sobrado","costeira","cabana","sobrado","galpao"],"capela",[Vector2(-92,-3)],false],
+	["Bairro do Poente",Vector2(-160,30),62.,18,["costeira","costeira","sobrado","costeira","cabana","sobrado","galpao"],"capela",[Vector2(-97,-4)],false],
 	["Bairro do Nascente",Vector2(165,22),58.,16,["costeira","sobrado","costeira","sobrado","costeira","cabana"],"prefeitura",[Vector2(88,22)],false],
 	["Encosta Leste",Vector2(205,112),36.,7,["cabana","costeira","cabana","costeira"],"escola",[Vector2(165,22)],false],
 	["Vale do Meio",Vector2(-80,108),26.,5,["cabana","cabana","costeira"],"",[Vector2(-40,66)],false],
@@ -48,8 +48,11 @@ func _ready() -> void:
 	_rng.seed=1977
 	_street=M.surface("cobblestone",Color("c7c1ad"),.35)
 	_curb=House.flat(Color("9a9b90"),.9)
+	# Every district's avenue is known before any house goes up, so no house is built across one.
+	for data: Array in DISTRICTS:
+		for link: Vector2 in data[6]:_avenues.append([data[1],link])
 	for data: Array in DISTRICTS:_district(data)
-	_bridge(Vector3(-61,1.4,-4),Vector3(-93,Layout.height(Vector2(-93,-4))+.25,-4),1.6)
+	_bridge(Vector3(-61,1.4,-4),Vector3(-93,Layout.ground(Vector2(-93,-4))+.25,-4),1.6)
 	_clear_ground_cover()
 	var dynamic: Array[Node3D]=[];dynamic.append_array(residents)
 	for shop: Node3D in shops:dynamic.append(shop.keeper)
@@ -60,10 +63,9 @@ func _district(data: Array) -> void:
 	var name_text: String=data[0];var centre: Vector2=data[1];var radius: float=data[2];var count: int=data[3]
 	var styles: Array=data[4];var landmark: String=data[5];var links: Array=data[6];var water: bool=data[7]
 	var record:={"name":name_text,"centre":centre,"houses":[],"doors":[]}
-	var plaza_y:=Layout.height(centre)+.08
+	var plaza_y:=Layout.ground(centre)+.08
 	if not water:_plaza(centre,plaza_y)
 	for link: Vector2 in links:
-		_avenues.append([centre,link])
 		_street_line(centre,link,3.2)
 	G.label(self,name_text,Vector3(centre.x,plaza_y+4.5,centre.y),28)
 	if not landmark.is_empty():
@@ -100,7 +102,7 @@ func _district(data: Array) -> void:
 	_dress(record,water,radius)
 	for link: Vector2 in links:
 		var sign_at:=centre+(link-centre).normalized()*(PLAZA_R+3.)
-		Props.spawn(self,"SignPost",Vector3(sign_at.x,Layout.height(sign_at),sign_at.y),2.6,atan2(-(link-centre).x,-(link-centre).y))
+		Props.spawn(self,"SignPost",Vector3(sign_at.x,Layout.ground(sign_at),sign_at.y),2.6,atan2(-(link-centre).x,-(link-centre).y))
 	_people(record,plaza_y)
 
 ## Gardens, fences, market stalls, barrels and carts, beach shells and rocks (CC0 models).
@@ -120,10 +122,11 @@ func _dress(record: Dictionary,water: bool,radius: float) -> void:
 		if style=="galpao":
 			for i: int in 4:
 				var local:=Vector3((-1. if i<2 else 1.)*(size.x*.5+.9),0.,-size.y*.5+float(i%2)*1.3)
-				var p:=building.position+basis*local;p.y=Layout.height(Vector2(p.x,p.z))
+				var p:=building.position+basis*local;p.y=_foot(Vector2(p.x,p.z),.45)
 				Props.spawn(self,"Barrel",p,1.1,_rng.randf()*TAU)
-			var cart:=building.position+basis*Vector3(size.x*.5+3.,0.,size.y*.2);cart.y=Layout.height(Vector2(cart.x,cart.z))
-			Props.solid(Props.spawn(self,"Cart",cart,3.4,building.rotation.y+PI*.5,true,220.),Vector3(1.6,1.6,2.6))
+			var cart:=building.position+basis*Vector3(size.x*.5+3.,0.,size.y*.2);cart.y=_foot(Vector2(cart.x,cart.z),1.3)
+			if not on_paving(Vector2(cart.x,cart.z)) and not _near_street(Vector2(cart.x,cart.z),2.):
+				Props.solid(Props.spawn(self,"Cart",cart,3.4,building.rotation.y+PI*.5,true,220.),Vector3(1.6,1.6,2.6))
 			continue
 		for i: int in _rng.randi_range(3,6):
 			var side:=_rng.randi()%4;var t:=_rng.randf_range(-.45,.45)
@@ -136,7 +139,7 @@ func _dress(record: Dictionary,water: bool,radius: float) -> void:
 			if side==0 and absf(local.x)<1.5:continue
 			var p:=building.position+basis*local
 			if on_paving(Vector2(p.x,p.z)) or Layout.coast(Vector2(p.x,p.z)).x>-2.:continue
-			p.y=Layout.height(Vector2(p.x,p.z))
+			p.y=Layout.ground(Vector2(p.x,p.z))
 			var plant: Array=PLANTS[_rng.randi()%PLANTS.size()]
 			Props.spawn(self,plant[0],p,float(plant[1])*_rng.randf_range(.85,1.2),_rng.randf()*TAU,false,110.)
 		if style in ["costeira","cabana"] and _rng.randf()<.4:
@@ -145,7 +148,10 @@ func _dress(record: Dictionary,water: bool,radius: float) -> void:
 				var local:=Vector3(x,0.,-size.y*.5+float(k)*2.4+1.2)
 				var p:=building.position+basis*local
 				if on_paving(Vector2(p.x,p.z)):continue
-				p.y=Layout.height(Vector2(p.x,p.z))
+				# A fence panel on a slope is set by its lower end (posts go into the ground uphill),
+				# never left hanging at the downhill end.
+				var along: Vector3=basis.z*1.2
+				p.y=minf(Layout.ground(Vector2(p.x,p.z)),minf(Layout.ground(Vector2(p.x+along.x,p.z+along.z)),Layout.ground(Vector2(p.x-along.x,p.z-along.z))))
 				Props.spawn(self,"Fence_01_Art",p,2.4,building.rotation.y+PI*.5,true,130.)
 	# Market stalls around the square of the larger districts.
 	if not water and (record.houses as Array).size()>=10:
@@ -154,24 +160,39 @@ func _dress(record: Dictionary,water: bool,radius: float) -> void:
 			if stalls>=2:break
 			var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*(PLAZA_R+3.2)
 			if on_paving(q):continue
-			var y:=Layout.height(q)
+			var clear:=true
+			for st: Array in _streets:
+				if _segment_distance(q,st[0],st[1])<float(st[2])*.5+1.8:clear=false;break
+			if not clear:continue
+			var y:=_foot(q,1.1)
 			Props.solid(Props.spawn(self,"Table_Dinner",Vector3(q.x,y,q.y),2.6,atan2(-(centre-q).x,-(centre-q).y),true,200.),Vector3(2.4,1.,1.))
 			var side:=Vector2(-sin(a),cos(a))*3.2
-			Props.spawn(self,"Barrel",Vector3(q.x+side.x,Layout.height(q+side),q.y+side.y),1.05,_rng.randf()*TAU)
+			Props.spawn(self,"Barrel",Vector3(q.x+side.x,_foot(q+side,.45),q.y+side.y),1.05,_rng.randf()*TAU)
 			stalls+=1
 	# Beach dressing: shells and rocks on the sand inside the district.
 	for k: int in 40:
 		var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*_rng.randf_range(0.,radius+20.)
 		var c:=Layout.coast(q).x
 		if c<-4. or c>.5:continue
-		if k%4==0:Props.spawn(self,"nature:Rock_Medium_1" if k%8==0 else "nature:Rock_Medium_2",Vector3(q.x,Layout.height(q)-.3,q.y),_rng.randf_range(.8,1.8),_rng.randf()*TAU,false,300.)
-		else:Props.spawn(self,"Shell01",Vector3(q.x,Layout.height(q),q.y),.18,_rng.randf()*TAU,false,60.)
+		if k%4==0:Props.spawn(self,"nature:Rock_Medium_1" if k%8==0 else "nature:Rock_Medium_2",Vector3(q.x,Layout.ground(q)-.3,q.y),_rng.randf_range(.8,1.8),_rng.randf()*TAU,false,300.)
+		else:Props.spawn(self,"Shell01",Vector3(q.x,Layout.ground(q),q.y),.18,_rng.randf()*TAU,false,60.)
 	# Woodland edge: logs and mushrooms for the valley cabins.
 	if String(record.name)=="Vale do Meio":
 		for k: int in 10:
 			var a:=_rng.randf()*TAU;var q:=centre+Vector2(cos(a),sin(a))*_rng.randf_range(PLAZA_R+2.,radius+6.)
 			if on_paving(q) or Layout.path_at(q).x<3.:continue
-			Props.spawn(self,"Log_01_Art" if k%3==0 else "Mushroom_01_Art",Vector3(q.x,Layout.height(q),q.y),1.1 if k%3==0 else .45,_rng.randf()*TAU,false,140.)
+			Props.spawn(self,"Log_01_Art" if k%3==0 else "Mushroom_01_Art",Vector3(q.x,Layout.ground(q),q.y),1.1 if k%3==0 else .45,_rng.randf()*TAU,false,140.)
+
+func _near_street(p: Vector2,margin: float) -> bool:
+	for st: Array in _streets:
+		if _segment_distance(p,st[0],st[1])<float(st[2])*.5+margin:return true
+	return false
+
+## Lowest ground under a prop's footprint (radius r): set there, it never hangs over a slope.
+func _foot(p: Vector2,r: float) -> float:
+	var y:=Layout.ground(p)
+	for d: Vector2 in [Vector2(r,0),Vector2(-r,0),Vector2(0,r),Vector2(0,-r)]:y=minf(y,Layout.ground(p+d))
+	return y
 
 func _size_of(style: String) -> Vector2:
 	match style:
@@ -205,6 +226,15 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 	for avenue: Array in _avenues:
 		if _segment_distance(at,avenue[0],avenue[1])<reach+2.5:return false
 	if Layout.path_at(at).x<reach+3.:return false
+	# Never on top of a street already laid, and the new door's own street to the square must not run
+	# through another house.
+	for st: Array in _streets:
+		if _rect_meets_segment(at,half,yaw,st[0],st[1],float(st[2])*.5+.6):return false
+	if not water:
+		var door_at:=at+to_face*(half.y+(3.42 if style=="capela" else 0.)+1.6)
+		var square_at:=Vector2(record.centre)+(door_at-Vector2(record.centre)).normalized()*PLAZA_R*.9
+		for r: Array in _rects:
+			if _rect_meets_segment(r[0],r[1],r[2],door_at,square_at,1.5):return false
 	var basis:=Basis(Vector3.UP,yaw)
 	var lowest:=1e9;var highest:=-1e9
 	for corner: Vector2 in [Vector2(-1,-1),Vector2(1,-1),Vector2(1,1),Vector2(-1,1),Vector2(0,0),Vector2(0,-1.35)]:
@@ -214,7 +244,7 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 		if water:
 			if c<.5 or c>16.:return false
 		elif c>-5.:return false
-		var h:=Layout.height(p);lowest=minf(lowest,h);highest=maxf(highest,h)
+		var h:=Layout.ground(p);lowest=minf(lowest,h);highest=maxf(highest,h)
 	if not water and (highest-lowest>2.6 or highest>42.):return false
 	var floor_y:=1.9 if water else highest+.25
 	var depth:=floor_y-lowest+(.3 if water else .5)
@@ -233,7 +263,7 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 		building.title=record.get("shop_title","Loja de Pesca");building.width=size.x;building.depth=size.y;building.use="shop"
 		building.tint=Color("c9b991") if shops.is_empty() else Color("8fb0a6")
 	else:building=House.build(style,size.x,size.y,_rng,depth)
-	building.set_meta("style",style);building.set_meta("size",size)
+	building.set_meta("style",style);building.set_meta("size",size);building.set_meta("over_water",water)
 	building.name="Casa_%s_%d"%[style,houses.size()]
 	building.position=Vector3(at.x,floor_y,at.y);building.rotation.y=yaw
 	add_child(building);houses.append(building);footprints.append(Vector3(at.x,at.y,reach))
@@ -244,9 +274,14 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 		shops.append(building)
 		village.services["gear_%d"%shops.size()]=building.service
 		village.buildings.append(building);village.night_lights.append_array(building.lamps)
-	var door:=Vector2(at.x,at.y)+to_face*(half.y+1.6)
+	if not water:_entrance_steps(building,size,floor_y)
+	var front_dist: float=-float(building.get_meta("front",-half.y))
+	# The street (and whoever lives there) starts at the foot of the front steps.
+	var door:=Vector2(at.x,at.y)+to_face*(front_dist+float(building.get_meta("steps",0))*STEP_RUN+1.6)
+	_rects.append([at,half,yaw])
 	(record.doors as Array).append(door)
-	if not water:_street_line(door,Vector2(record.centre)+(door-Vector2(record.centre)).normalized()*PLAZA_R*.9,1.8)
+	# A building site has no front door yet, so no street of its own.
+	if not water and style!="obra":_street_line(door,Vector2(record.centre)+(door-Vector2(record.centre)).normalized()*PLAZA_R*.9,1.8)
 	return true
 
 ## Hides the island's grass tufts that would poke through streets, squares and floors.
@@ -271,6 +306,19 @@ func on_paving(p: Vector2) -> bool:
 		if p.distance_to(Vector2(f.x,f.y))<f.z*.85:return true
 	return false
 
+## Placed buildings as rectangles: [centre, half size, yaw].
+var _rects: Array=[]
+## Whether a street (a→b) passes within `margin` of a building's rectangle.
+static func _rect_meets_segment(c: Vector2,half: Vector2,yaw: float,a: Vector2,b: Vector2,margin: float) -> bool:
+	var n: int=maxi(2,int(a.distance_to(b)/.5))
+	var cs: float=cos(yaw);var sn: float=sin(yaw)
+	for i: int in n+1:
+		var p: Vector2=a.lerp(b,float(i)/float(n))-c
+		# Into the building's frame (rotation by -yaw about Y, x/z → x/y here).
+		var lx: float=p.x*cs-p.y*sn;var lz: float=p.x*sn+p.y*cs
+		if absf(lx)<half.x+margin and absf(lz)<half.y+margin:return true
+	return false
+
 static func _segment_distance(p: Vector2,a: Vector2,b: Vector2) -> float:
 	var ab:=b-a;var t:=clampf((p-a).dot(ab)/maxf(ab.length_squared(),.001),0.,1.)
 	return p.distance_to(a+ab*t)
@@ -289,7 +337,7 @@ func _street_line(a: Vector2,b: Vector2,width: float) -> void:
 		if Layout.coast(p0).x>-.5 or Layout.coast(p1).x>-.5:continue
 		var q:=[p0-side,p0+side,p1+side,p1-side]
 		var v: Array[Vector3]=[]
-		for pt: Vector2 in q:v.append(Vector3(pt.x,Layout.height(pt)+.07,pt.y))
+		for pt: Vector2 in q:v.append(Vector3(pt.x,Layout.ground(pt)+.07,pt.y))
 		for idx: int in [0,2,1,0,3,2]:st.set_normal(Vector3.UP);st.add_vertex(v[idx])
 		any=true
 	if not any:return
@@ -304,7 +352,7 @@ func _plaza(centre: Vector2,y: float) -> void:
 		var a0:=TAU*float(i)/segs;var a1:=TAU*float(i+1)/segs
 		var p0:=centre+Vector2(cos(a0),sin(a0))*PLAZA_R;var p1:=centre+Vector2(cos(a1),sin(a1))*PLAZA_R
 		var c:=Vector3(centre.x,y,centre.y)
-		var v0:=Vector3(p0.x,maxf(y,Layout.height(p0)+.08),p0.y);var v1:=Vector3(p1.x,maxf(y,Layout.height(p1)+.08),p1.y)
+		var v0:=Vector3(p0.x,maxf(y,Layout.ground(p0)+.08),p0.y);var v1:=Vector3(p1.x,maxf(y,Layout.ground(p1)+.08),p1.y)
 		# Both windings: the square must show from above whatever the triangle order.
 		for v: Vector3 in [c,v1,v0,c,v0,v1]:st.set_normal(Vector3.UP);st.add_vertex(v)
 	var node:=MeshInstance3D.new();node.name="Praca_%d"%get_child_count();node.mesh=st.commit();node.material_override=_street;add_child(node)
@@ -333,9 +381,38 @@ func _plaza(centre: Vector2,y: float) -> void:
 	for i: int in 3:
 		var a:=float(i)*TAU/3.+.4
 		var p:=centre+Vector2(cos(a),sin(a))*(PLAZA_R+3.)
-		var tree_at:=Vector3(p.x,Layout.height(p),p.y)
+		var tree_at:=Vector3(p.x,Layout.ground(p),p.y)
 		if Props.exists("nature:CherryBlossom_1"):Props.spawn(self,"nature:CherryBlossom_1" if i==0 else "nature:CommonTree_%d"%(i+1),tree_at,_rng.randf_range(6.,8.),_rng.randf()*TAU,false,600.)
 		else:village.world._make_tree(tree_at,1.2)
+
+## A house on sloping ground stands on its plinth with the floor level; where the ground in front of the
+## door is lower than a step, stone steps lead down to it (each block reaches the ground, so none hangs
+## in the air), with a low cheek wall either side when the flight is tall.
+const STEP_RISE: float=.19
+const STEP_RUN: float=.34
+func _entrance_steps(building: Node3D,size: Vector2,floor_y: float) -> void:
+	var stone:=M.surface("granite",Color("a9aa9c"),1.)
+	var front: float=float(building.get_meta("front",-size.y*.5))
+	var out: Vector3=building.global_transform*Vector3(0.,0.,front-.6)
+	var drop: float=floor_y-Layout.ground(Vector2(out.x,out.z))
+	if drop<.24:return
+	var count: int=clampi(int(ceil(drop/STEP_RISE)),1,18)
+	var rise: float=drop/float(count)
+	var width: float=minf(1.8,size.x*.4)
+	for i: int in count:
+		# The first block is a landing level with the floor; each one after is a rise lower.
+		var top: float=-float(i)*rise
+		var z: float=front-.18-float(i)*STEP_RUN
+		var p: Vector3=building.global_transform*Vector3(0.,0.,z)
+		var g: float=Layout.ground(Vector2(p.x,p.z))
+		var height: float=maxf(.12,floor_y+top-g+.25)
+		G.box(building,Vector3(0.,top-height*.5,z),Vector3(width,height,STEP_RUN+.02),stone,true).name="Degrau_%d"%i
+	if drop>.9:
+		for side: float in [-1.,1.]:
+			var length: float=float(count)*STEP_RUN
+			var mid_z: float=front-.18-length*.5+STEP_RUN*.5
+			G.box(building,Vector3(side*(width*.5+.15),-drop*.5+.15,mid_z),Vector3(.3,drop+.3,length+.02),stone,true).name="Mureta"
+	building.set_meta("steps",count)
 
 ## Stilt houses get a boardwalk from their porch to dry land.
 func _boardwalks(record: Dictionary) -> void:
@@ -348,6 +425,8 @@ func _boardwalks(record: Dictionary) -> void:
 			end=door+dir*float(i)
 			if Layout.coast(end).x<-1.5:break
 		var length:=door.distance_to(end)
+		record["landings"]=(record.get("landings",{}) as Dictionary)
+		record.landings[door]=end
 		if length<1.:continue
 		var mid:=(door+end)*.5
 		var deck:=G.box(self,Vector3(mid.x,1.78,mid.y),Vector3(1.6,.14,length+1.),wood,true)
@@ -356,7 +435,7 @@ func _boardwalks(record: Dictionary) -> void:
 			var p:=door+dir*float(i)*2.5
 			for s: float in [-.7,.7]:
 				var q:=p+Vector2(-dir.y,dir.x)*s
-				var bottom:=Layout.height(q)
+				var bottom:=Layout.ground(q)
 				G.cylinder(self,Vector3(q.x,(1.75+bottom)*.5,q.y),.08,1.75-bottom+.3,post)
 
 func _people(record: Dictionary,plaza_y: float) -> void:
@@ -368,8 +447,11 @@ func _people(record: Dictionary,plaza_y: float) -> void:
 		var person:=Resident.new();person.speed=_rng.randf_range(.8,1.15);person.look_id=20+residents.size()*3
 		var a: Vector2=doors[(i*2)%doors.size()];var b: Vector2=doors[(i*2+1)%doors.size()]
 		var plaza_a:=centre+(a-centre).normalized()*PLAZA_R*.7;var plaza_b:=centre+(b-centre).normalized()*PLAZA_R*.7
+		# Over the water there is no square: people go along their boardwalk to the shore and back.
+		var landings: Dictionary=record.get("landings",{})
+		if landings.has(a) and landings.has(b):plaza_a=landings[a];plaza_b=landings[b]
 		var route: Array[Vector3]=[]
-		for p: Vector2 in [a,plaza_a,plaza_b,b,plaza_b,plaza_a]:route.append(Vector3(p.x,Layout.height(p),p.y))
+		for p: Vector2 in [a,plaza_a,plaza_b,b,plaza_b,plaza_a]:route.append(Vector3(p.x,Layout.ground(p),p.y))
 		person.route.assign(route)
 		add_child(person);residents.append(person)
 		if social!=null:social.residents.append(person)

@@ -27,7 +27,7 @@ func _ready() -> void:
 	for x: float in [-half,half]:
 		for z: float in [-back,back]:
 			var corner:=Basis(Vector3.UP,rotation.y)*Vector3(x,0,z)
-			ground_low=minf(ground_low,preload("res://scripts/world/archipelago_layout.gd").height(Vector2(position.x+corner.x,position.z+corner.z)))
+			ground_low=minf(ground_low,preload("res://scripts/world/archipelago_layout.gd").ground(Vector2(position.x+corner.x,position.z+corner.z)))
 	var foundation:=maxf(.3,position.y-ground_low+.25)
 	G.box(self,Vector3(0,-foundation*.5,0),Vector3(width+.5,foundation,depth+.5),stone,true)
 	G.box(self,Vector3(0,.04,0),Vector3(width,.08,depth),wood,true)
@@ -37,9 +37,9 @@ func _ready() -> void:
 	for side: float in [-1.,1.]: G.box(self,Vector3(side*(half+.9)*.5,1.65,-back),Vector3(half-.9,3.3,.18),wall,true)
 	G.box(self,Vector3(0,2.94,-back),Vector3(1.8,.72,.18),wall,true)
 	var front:=Basis(Vector3.UP,rotation.y)*Vector3(0,0,-back-4.)
-	var approach: float=preload("res://scripts/world/archipelago_layout.gd").height(Vector2(position.x+front.x,position.z+front.z))
+	var approach: float=preload("res://scripts/world/archipelago_layout.gd").ground(Vector2(position.x+front.x,position.z+front.z))
 	var rise_to_door:=position.y+.08-approach
-	var ramp:=G.box(self,Vector3(0,.03-rise_to_door*.5,-back-2.),Vector3(2.,.1,sqrt(16.+rise_to_door*rise_to_door)),wood,true);ramp.rotation.x=-atan2(rise_to_door,4.)
+	var ramp:=G.box(self,Vector3(0,.03-rise_to_door*.5,-back-2.),Vector3(2.,.1,sqrt(16.+rise_to_door*rise_to_door)),wood,true);ramp.rotation.x=-atan2(rise_to_door,4.);ramp.name="Rampa"
 	entry=Marker3D.new();entry.name="Entry";entry.position=Vector3(0,.1,-back-1.);add_child(entry)
 	service=Marker3D.new();service.name="Service";service.position=Vector3(0,.1,.55 if use=="shop" else -.5);add_child(service)
 	# A swung open timber door communicates access without covering the entrance.

@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -522,3 +522,30 @@ func _kit5() -> void:
 		b.water_aboard=b.water_capacity()*.55;await process_frame
 	await shot("kit5_agua",b.global_position+b.global_basis*Vector3(2.,5.,4.),b.global_position+Vector3(0,1.,0),1)
 	await shot("kit5_lado",b.global_position+b.global_basis*Vector3(7.,1.2,0.),b.global_position+Vector3(0,.5,0),1)
+
+func _ilhaA() -> void:
+	# Fase A da ilha principal: casas em encosta com escadas, a capela com a torre assentada, as palafitas,
+	# árvores e cercas no declive.
+	var w=game.world;var t=w.village.town
+	var Lay=load("res://scripts/world/archipelago_layout.gd")
+	w.ocean.hour=10.5
+	for i: int in 20:await process_frame
+	var best: Node3D=null
+	for b: Node3D in t.houses:
+		if best==null or int(b.get_meta("steps",0))>int(best.get_meta("steps",0)):best=b
+	if best!=null:
+		var fwd: Vector3=-best.global_basis.z
+		var eye: Vector3=best.global_position+fwd*9.+best.global_basis.x*6.;eye.y=Lay.ground(Vector2(eye.x,eye.z))+2.2
+		await shot("ilha_casa_escada",eye,best.global_position+fwd*2.+Vector3(0,-1.,0),2)
+		var side: Vector3=best.global_position+best.global_basis.x*11.;side.y=Lay.ground(Vector2(side.x,side.z))+1.8
+		await shot("ilha_casa_lado",side,best.global_position+Vector3(0,-.5,0),2)
+	for b: Node3D in t.houses:
+		if String(b.name).contains("capela"):
+			var f2: Vector3=-b.global_basis.z
+			var e2: Vector3=b.global_position+f2*16.+b.global_basis.x*7.;e2.y=Lay.ground(Vector2(e2.x,e2.z))+2.
+			await shot("ilha_capela",e2,b.global_position+f2*4.+Vector3(0,3.,0),2)
+			break
+	await shot("ilha_palafitas",Vector3(-112,6,-8),Vector3(-130,1.5,-26),2)
+	# Forest on a slope, close to the ground.
+	var p:=Vector2(-30,300)
+	await shot("ilha_floresta",Vector3(p.x,Lay.ground(p)+2.,p.y),Vector3(p.x+20.,Lay.ground(p+Vector2(20,10))+1.,p.y+10.),2)

@@ -78,7 +78,7 @@ static func place_all(parent: Node3D,count: int) -> Array[Node3D]:
 		var depth:=Waves.depth_at(p)
 		if depth>1.3:continue
 		# Only on a gently shelving sand beach: low land behind, no cliff.
-		if Layout.height(p-dir*8.)>2.2 or Layout.height(p-dir*20.)>5.:continue
+		if Layout.ground(p-dir*8.)>2.2 or Layout.ground(p-dir*20.)>5.:continue
 		var rocky:=false
 		var world=parent.get_parent()
 		if world!=null and world.get("shore_rocks")!=null:

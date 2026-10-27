@@ -36,6 +36,8 @@ static func _glass() -> StandardMaterial3D:
 ## Builds a building. `plinth` is how far the stone base reaches below the floor (metres).
 static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,plinth: float) -> Node3D:
 	var root:=Node3D.new();root.name="Casa_"+style
+	# Where the front door is (local z): the planner leads the street and the steps from there.
+	root.set_meta("front",-d*.5)
 	var wall_color: Color=WALLS[rng.randi()%WALLS.size()]
 	var wall:=_textured("lime_plaster",wall_color,.35)
 	var stone:=_textured("granite",Color("a9aa9c"),1.)
@@ -87,7 +89,7 @@ static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,pli
 			var planks:=_textured("weathered_wood",Color("a08a68").lerp(wall_color,.25),1.5)
 			for x: float in [-w*.45,0.,w*.45]:
 				for z: float in [-d*.45-1.5,-d*.15,d*.45]:G.cylinder(root,Vector3(x,-plinth*.5,z),.14,plinth+.2,wood)
-			G.box(root,Vector3(0,-.12,-.75),Vector3(w+.6,.22,d+1.6),wood)
+			G.box(root,Vector3(0,-.12,-.75),Vector3(w+.6,.22,d+1.6),wood,true)
 			G.box(root,Vector3(0,height*.5,0),Vector3(w,height,d),planks)
 			_openings(root,w,d,1,height,door,shutter,rng,true)
 			_gable(root,w,d,height,.5,Color("8a8f94").lerp(roof_color,.3),planks)
@@ -100,6 +102,9 @@ static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,pli
 			_box_walls(root,w,d,height,_textured("lime_plaster",Color("f6f4ee"),.35),trim)
 			_gable(root,w,d,height,1.,Color("9a3f2a"),_textured("lime_plaster",Color("f6f4ee"),.35))
 			var tower:=Vector3(0,0,-d*.5-1.6)
+			# The bell tower stands in front of the nave on its own footing, and its door is the way in.
+			G.box(root,tower+Vector3(0,-plinth*.5+.05,0),Vector3(3.95,plinth+.1,3.95),stone)
+			root.set_meta("front",-d*.5-3.42)
 			G.box(root,tower+Vector3(0,8.,0),Vector3(3.6,16.,3.6),_textured("lime_plaster",Color("f6f4ee"),.35))
 			for side: float in [-1.,1.]:
 				G.box(root,tower+Vector3(side*1.81,13.,0),Vector3(.06,1.8,1.1),flat(Color("1c1c1c"),.6))

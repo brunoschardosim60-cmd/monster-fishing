@@ -104,6 +104,16 @@ static func region_at(p: Vector2) -> Dictionary:
 
 ## Town districts on the main island (x, z, radius). Trees keep out of them; town_planner builds them.
 const TOWN: Array[Vector3]=[Vector3(-160,30,62),Vector3(165,22,58),Vector3(205,112,36),Vector3(-80,108,26),Vector3(-128,-24,30)]
+## The avenues that join each district to the rest of the town (centre → link, as town_planner.DISTRICTS),
+## so the forest and meadows leave them clear.
+const TOWN_AVENUES: Array=[[Vector2(-160,30),Vector2(-97,-4)],[Vector2(165,22),Vector2(88,22)],[Vector2(205,112),Vector2(165,22)],[Vector2(-80,108),Vector2(-40,66)],[Vector2(-128,-24),Vector2(-160,30)]]
+static func near_avenue(p: Vector2,margin: float) -> bool:
+	for av: Array in TOWN_AVENUES:
+		var a: Vector2=av[0];var ab: Vector2=av[1]-a
+		var t:=clampf((p-a).dot(ab)/ab.length_squared(),0.,1.)
+		if p.distance_to(a+ab*t)<margin:return true
+	return false
+
 static func in_town(p: Vector2) -> bool:
 	for t: Vector3 in TOWN:
 		if p.distance_to(Vector2(t.x,t.y))<t.z+6.:return true
@@ -181,6 +191,24 @@ static func height(p: Vector2) -> float:
 	# Coastal settlement terraces stay grounded and connected, not floating props.
 	if p.y<62. and absf(p.x)<85.: h=1.25
 	return lerpf(-1.2,h,smoothstep(-6.,10.,-c))
+
+## The main island's walkable ground exactly as built: the terrain mesh (and its collision) is a 2.5 m
+## grid of Layout.height samples split into triangles (island_region.gd), so between samples the real
+## surface is a plane, not the noisy height() curve. Anything that has to stand on the ground — houses,
+## props, trees, people — should take its height from here, or it floats or sinks by up to a metre on
+## the hills.
+const GROUND_STEP: float=2.5
+static func ground(p: Vector2) -> float:
+	var gx: float=p.x/GROUND_STEP;var gz: float=p.y/GROUND_STEP
+	var ix: float=floorf(gx);var iz: float=floorf(gz)
+	var fx: float=gx-ix;var fz: float=gz-iz
+	var x0: float=ix*GROUND_STEP;var z0: float=iz*GROUND_STEP
+	var a: float=height(Vector2(x0,z0));var d: float=height(Vector2(x0+GROUND_STEP,z0+GROUND_STEP))
+	if fx+fz<=1.:
+		var b: float=height(Vector2(x0+GROUND_STEP,z0));var c: float=height(Vector2(x0,z0+GROUND_STEP))
+		return a+(b-a)*fx+(c-a)*fz
+	var b2: float=height(Vector2(x0+GROUND_STEP,z0));var c2: float=height(Vector2(x0,z0+GROUND_STEP))
+	return d+(c2-d)*(1.-fx)+(b2-d)*(1.-fz)
 
 static func wrapped(p: Vector3) -> Vector3:
 	return Vector3(wrapf(p.x,-WORLD_HALF,WORLD_HALF),p.y,wrapf(p.z,-WORLD_HALF,WORLD_HALF))

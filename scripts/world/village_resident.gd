@@ -104,21 +104,35 @@ func _work_sound() -> void:
 			if audio!=null:audio.cue_at(WORK_SOUNDS[work_pose][0],global_position+Vector3(0,1,0))
 	_work_phase=phase
 
-var _deck_y: float=-INF
-var _deck_frame: int=0
+var _floor_y: float=-INF
+var _floor_frame: int=0
+## Feet on whatever is really underfoot: the terrain as meshed, a pier, a deck, steps or paving. Two rays
+## a hand apart (deck planks have gaps); a ledge higher than a step is an obstacle, not a floor. Rays run
+## every few frames near the camera and seldom far away; the height eases between them.
+func _floor_under(at: Vector3) -> float:
+	var g: float=Layout.ground(Vector2(at.x,at.z))+.02
+	if not is_inside_tree():return g
+	var space:=get_world_3d().direct_space_state
+	var best:=-INF
+	var top: float=maxf(at.y,g)
+	for dx: float in [-.12,.12]:
+		var q:=PhysicsRayQueryParameters3D.create(Vector3(at.x+dx,top+1.6,at.z),Vector3(at.x+dx,top-3.,at.z),1)
+		var hit:=space.intersect_ray(q)
+		if hit.is_empty():continue
+		var y: float=float(hit.position.y)+.02
+		if y>at.y+.3 and _floor_y!=-INF:continue   # a ledge, not a step
+		best=maxf(best,y)
+	return best if best!=-INF else g
+
 func _settle(_delta: float,_moving: float,near_camera: bool) -> void:
-	position.y=Layout.height(Vector2(position.x,position.z))+.08 if follow_terrain else route[0].y if route.size()>0 else position.y
-	if ground_sampler.is_valid():position.y=ground_sampler.call(position)
-	# Piers, decks and stairs stand above the terrain: walk on whatever solid surface is under the feet,
-	# so nobody wades through the harbour under a pier.
-	if follow_terrain and is_inside_tree():
-		_deck_frame+=1
-		if _deck_frame%(3 if near_camera else 12)==0:
-			var g:=global_position;var lift:=g.y-position.y
-			var q:=PhysicsRayQueryParameters3D.create(g+Vector3(0,2.2,0),g-Vector3(0,.5,0));q.collision_mask=1
-			var hit:=get_world_3d().direct_space_state.intersect_ray(q)
-			_deck_y=float(hit.position.y)-lift if not hit.is_empty() else -INF
-		if _deck_y>position.y:position.y=_deck_y+.02
+	if not follow_terrain:
+		position.y=route[0].y if route.size()>0 else position.y
+		if ground_sampler.is_valid():position.y=ground_sampler.call(position)
+	else:
+		_floor_frame+=1
+		if _floor_y==-INF or _floor_frame%(3 if near_camera else 15)==0:_floor_y=_floor_under(position)
+		if ground_sampler.is_valid():_floor_y=ground_sampler.call(position)
+		position.y=_floor_y if (absf(position.y-_floor_y)>1. or not near_camera) else lerpf(position.y,_floor_y,.5)
 	if talk_text!="" and talk_timer>0. and near_camera:
 		if bubble==null:
 			bubble=Label3D.new();bubble.billboard=BaseMaterial3D.BILLBOARD_ENABLED;bubble.no_depth_test=true

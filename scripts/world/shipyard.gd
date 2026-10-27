@@ -34,7 +34,7 @@ func _ready() -> void:
 	var yaw:=atan2(-_out.x,-_out.y)
 	# Open shed facing the sea, set back from the shore.
 	var shed_at:=SITE-_out*11.
-	var floor_y:=Layout.height(shed_at)+.2
+	var floor_y:=Layout.ground(shed_at)+.2
 	# Shed, slipway and timber stack: the town keeps this whole stretch of shore clear.
 	footprint=Vector3(SITE.x,SITE.y,30.)
 	var shed:=Node3D.new();shed.name="Galpao";shed.position=Vector3(shed_at.x,floor_y,shed_at.y);shed.rotation.y=yaw;add_child(shed)
@@ -54,20 +54,20 @@ func _ready() -> void:
 	var slip_start:=SITE-_out*2.+_side*14.
 	var slip_end:=SITE+_out*9.+_side*14.
 	var slip_mid:=(slip_start+slip_end)*.5
-	var slip:=G.box(self,Vector3(slip_mid.x,(Layout.height(slip_start)+Layout.height(slip_end))*.5-.2,slip_mid.y),Vector3(6.,.4,slip_start.distance_to(slip_end)+2.),stone)
-	slip.rotation=Vector3(atan2(Layout.height(slip_start)-Layout.height(slip_end),slip_start.distance_to(slip_end)),yaw,0)
+	var slip:=G.box(self,Vector3(slip_mid.x,(Layout.ground(slip_start)+Layout.ground(slip_end))*.5-.2,slip_mid.y),Vector3(6.,.4,slip_start.distance_to(slip_end)+2.),stone)
+	slip.rotation=Vector3(atan2(Layout.ground(slip_start)-Layout.ground(slip_end),slip_start.distance_to(slip_end)),yaw,0)
 	var hull_at:=slip_start+_out*1.
-	var hull:=Models.build("pesqueiro",14.,77);hull.position=Vector3(hull_at.x,Layout.height(hull_at)+1.4,hull_at.y);hull.rotation.y=yaw+PI
+	var hull:=Models.build("pesqueiro",14.,77);hull.position=Vector3(hull_at.x,Layout.ground(hull_at)+1.4,hull_at.y);hull.rotation.y=yaw+PI
 	add_child(hull)
 	for z: float in [-5.,0.,5.]:
 		for s: float in [-1.,1.]:
 			var post:=hull_at+_side*s*3.2+_out*z*.6
-			G.cylinder(self,Vector3(post.x,Layout.height(post)+2.5,post.y),.08,5.,dark)
+			G.cylinder(self,Vector3(post.x,Layout.ground(post)+2.5,post.y),.08,5.,dark)
 	var hull_body:=StaticBody3D.new();hull_body.collision_layer=1;hull_body.collision_mask=0
 	var shape:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=Vector3(5.,4.,14.);shape.shape=box;shape.position=Vector3(0,2.,0);hull_body.add_child(shape);hull.add_child(hull_body)
 	# Timber stack and logs.
 	var pile_at:=SITE-_out*6.+_side*22.
-	for i: int in 4:Props.spawn(self,"Log_01_Art",Vector3(pile_at.x,Layout.height(pile_at)+float(i)*.45,pile_at.y)+Vector3(_side.x,0,_side.y)*float(i%2)*.4,1.1,yaw+PI*.5)
+	for i: int in 4:Props.spawn(self,"Log_01_Art",Vector3(pile_at.x,Layout.ground(pile_at)+float(i)*.45,pile_at.y)+Vector3(_side.x,0,_side.y)*float(i%2)*.4,1.1,yaw+PI*.5)
 	# Pier out to the berth, with bollards and berth buoys.
 	var pier_from:=SITE-_out*1.
 	var pier_to:=SITE+_out*36.
@@ -76,7 +76,7 @@ func _ready() -> void:
 	for i: int in 13:
 		var p:=pier_from.lerp(pier_to,float(i)/12.)
 		for s: float in [-1.4,1.4]:
-			var q:=p+_side*s;var bottom:=Layout.height(q)
+			var q:=p+_side*s;var bottom:=Layout.ground(q)
 			G.cylinder(self,Vector3(q.x,(1.35+bottom)*.5,q.y),.14,1.35-bottom+.3,dark)
 	for i: int in 4:
 		var p:=pier_to-_out*(float(i)*7.)+_side*1.6
@@ -96,7 +96,7 @@ func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) 
 	for i: int in 3:
 		var person:=Porter.new();person.look_id=40+i;person.speed=.9+float(i)*.1
 		var a:=pile_at+_side*float(i)*1.2;var h:=hull_at+_side*(2.8 if i%2==0 else -2.8)+_out*float(i-1)*2.
-		var route: Array[Vector3]=[Vector3(a.x,Layout.height(a),a.y),Vector3(h.x,Layout.height(h),h.y)]
+		var route: Array[Vector3]=[Vector3(a.x,Layout.ground(a),a.y),Vector3(h.x,Layout.ground(h),h.y)]
 		person.route.assign(route);person.loaded_legs.assign([1])
 		person.cargo=Porter.plank_load();person.add_child(person.cargo)
 		add_child(person);workers.append(person)
@@ -104,7 +104,7 @@ func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) 
 		var cutter:=Porter.new();cutter.look_id=50+i;cutter.speed=.8+float(i)*.08
 		var wood:=_woods(pile_at)+_side*float(i)*1.5
 		var drop:=pile_at+_side*(1.5+float(i))-_out*1.5
-		var route: Array[Vector3]=[Vector3(wood.x,Layout.height(wood),wood.y),Vector3(drop.x,Layout.height(drop),drop.y)]
+		var route: Array[Vector3]=[Vector3(wood.x,Layout.ground(wood),wood.y),Vector3(drop.x,Layout.ground(drop),drop.y)]
 		cutter.route.assign(route);cutter.loaded_legs.assign([1])
 		cutter.cargo=Porter.log_load();cutter.add_child(cutter.cargo)
 		add_child(cutter);workers.append(cutter)
@@ -114,22 +114,22 @@ func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) 
 	var bark:=G.material(Color("6b4e33"),.95);var cut:=G.material(Color("d8b884"),.8)
 	for k: int in 3:
 		var t:=camp-_out*(4.+float(k)*2.5)+_side*(float(k)*3.-3.)
-		Props.spawn(self,"nature:CommonTree_%d"%(k%3+1),Vector3(t.x,Layout.height(t),t.y),7.5+float(k),float(k)*1.7)
+		Props.spawn(self,"nature:CommonTree_%d"%(k%3+1),Vector3(t.x,Layout.ground(t),t.y),7.5+float(k),float(k)*1.7)
 	for k: int in 3:
 		var st:=camp+_side*(float(k)*2.2-1.)+_out*1.8
-		G.cylinder(self,Vector3(st.x,Layout.height(st)+.22,st.y),.3,.5,bark,.28,10)
-		G.cylinder(self,Vector3(st.x,Layout.height(st)+.475,st.y),.28,.02,cut,.28,10)
-	Props.spawn(self,"Log_01_Art",Vector3(camp.x,Layout.height(camp),camp.y)-Vector3(_out.x,0,_out.y)*1.,1.,atan2(_side.x,_side.y))
+		G.cylinder(self,Vector3(st.x,Layout.ground(st)+.22,st.y),.3,.5,bark,.28,10)
+		G.cylinder(self,Vector3(st.x,Layout.ground(st)+.475,st.y),.28,.02,cut,.28,10)
+	Props.spawn(self,"Log_01_Art",Vector3(camp.x,Layout.ground(camp),camp.y)-Vector3(_out.x,0,_out.y)*1.,1.,atan2(_side.x,_side.y))
 	# A woodcutter chopping at the standing trees, and a shipwright kneeling at the hull with a hammer.
 	var first_tree:=camp-_out*4.+_side*-3.
 	var chop_at:=first_tree+_out*1.1
 	var cutter:=Resident.new();cutter.look_id=53;cutter.hide_backpack=true;cutter.work_pose="ual/Chop"
-	cutter.route.assign([Vector3(chop_at.x,Layout.height(chop_at),chop_at.y)]);add_child(cutter);workers.append(cutter)
+	cutter.route.assign([Vector3(chop_at.x,Layout.ground(chop_at),chop_at.y)]);add_child(cutter);workers.append(cutter)
 	cutter.rotation.y=atan2(-(first_tree-chop_at).x,-(first_tree-chop_at).y)
 	cutter.visual.hold_prop(Tools.axe(),Tools.GRIP)
 	var fix_at:=hull_at+_side*2.4
 	var wright:=Resident.new();wright.look_id=54;wright.hide_backpack=true;wright.work_pose="ual/Fix"
-	wright.route.assign([Vector3(fix_at.x,Layout.height(fix_at),fix_at.y)]);add_child(wright);workers.append(wright)
+	wright.route.assign([Vector3(fix_at.x,Layout.ground(fix_at),fix_at.y)]);add_child(wright);workers.append(wright)
 	wright.rotation.y=atan2(-(hull_at-fix_at).x,-(hull_at-fix_at).y)
 	wright.visual.hold_prop(Tools.hammer(),Tools.GRIP)
 	var keeper:=Resident.new();keeper.look_id=44;keeper.hide_backpack=true;keeper.idle_pose="ual/FoldArms"
@@ -149,7 +149,7 @@ func _woods(pile_at: Vector2) -> Vector2:
 			for d: Array in districts:
 				if p.distance_to(d[1] as Vector2)<float(d[2])+12.:clear=false;break
 			if not clear:continue
-			var score:=absf(Layout.height(p)-Layout.height(pile_at))+p.distance_to(pile_at)*.1
+			var score:=absf(Layout.ground(p)-Layout.ground(pile_at))+p.distance_to(pile_at)*.1
 			if score<best_score:best_score=score;best=p
 	return best
 

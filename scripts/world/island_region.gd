@@ -41,9 +41,11 @@ func _chunk(origin: Vector2) -> void:
 	chunk.position=Vector3(origin.x,0,origin.y)
 	var vertices:=PackedVector3Array();var normals:=PackedVector3Array();var colors:=PackedColorArray();var indices:=PackedInt32Array()
 	const N: int=32
+	_grid.resize((N+1)*(N+1));_grid_origin=origin
 	for z: int in N+1:
 		for x: int in N+1:
 			var p:=origin+Vector2(x*2.5,z*2.5);var h:=Layout.height(p)
+			_grid[z*(N+1)+x]=h
 			vertices.append(Vector3(x*2.5,h,z*2.5))
 			normals.append(Vector3(Layout.height(p-Vector2(1,0))-Layout.height(p+Vector2(1,0)),2.,Layout.height(p-Vector2(0,1))-Layout.height(p+Vector2(0,1))).normalized())
 			var path:=Layout.path_at(p).x;var col:=Color("45653e")
@@ -60,14 +62,29 @@ func _chunk(origin: Vector2) -> void:
 	_living_forest(chunk,origin)
 	_ground_cover(chunk,origin)
 
+## Heights of the chunk being built (its 33×33 terrain samples): plants are set on the surface exactly
+## as meshed, the same plane the collision uses (Layout.ground does this for any point, slower).
+var _grid:=PackedFloat32Array()
+var _grid_origin:=Vector2.ZERO
+func _gh(p: Vector2) -> float:
+	var g:=(p-_grid_origin)/2.5
+	var ix: int=int(floorf(g.x));var iz: int=int(floorf(g.y))
+	if ix<0 or iz<0 or ix>=32 or iz>=32:return Layout.ground(p)
+	var fx: float=g.x-float(ix);var fz: float=g.y-float(iz)
+	var a: float=_grid[iz*33+ix];var b: float=_grid[iz*33+ix+1];var c: float=_grid[(iz+1)*33+ix];var d: float=_grid[(iz+1)*33+ix+1]
+	if fx+fz<=1.:return a+(b-a)*fx+(c-a)*fz
+	return d+(c-d)*(1.-fx)+(b-d)*(1.-fz)
+
 func _living_forest(chunk: Node3D,origin: Vector2) -> void:
 	var kinds: Array[Array]=[[],[],[],[],[]]
 	for i: int in 60:
-		var p:=origin+Vector2(rng.randf_range(2,78),rng.randf_range(2,78));var h:=Layout.height(p);var coast:=Layout.coast(p).x
-		if coast> -9. or h>170. or Layout.path_at(p).x<6. or (p.y<76. and absf(p.x)<110.) or Layout.in_town(p):continue
+		var p:=origin+Vector2(rng.randf_range(2,78),rng.randf_range(2,78));var h:=_gh(p);var coast:=Layout.coast(p).x
+		if coast> -9. or h>170. or Layout.path_at(p).x<6. or (p.y<76. and absf(p.x)<110.) or Layout.in_town(p) or Layout.near_avenue(p,6.):continue
 		if p.distance_to(Vector2(-110,310))<28. or p.distance_to(Vector2(-80,775))<32. or p.distance_to(Vector2(-170,210))<14.:continue
-		var slope:=absf(Layout.height(p+Vector2(2,0))-h)+absf(Layout.height(p+Vector2(0,2))-h)
+		var slope:=absf(_gh(p+Vector2(2,0))-h)+absf(_gh(p+Vector2(0,2))-h)
 		if slope>2.2:continue
+		# On a slope the trunk is set a little into the hill, so its downhill side shows no gap.
+		h-=minf(.6,slope*.18)+.05
 		var kind:=rng.randi_range(0,1)
 		if coast> -45. or (p.y<150. and rng.randf()<.55):kind=rng.randi_range(2,3)
 		var size:=rng.randf_range(.7,1.4)
@@ -76,10 +93,11 @@ func _living_forest(chunk: Node3D,origin: Vector2) -> void:
 		var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0
 		var shape:=CollisionShape3D.new();var cylinder:=CylinderShape3D.new();cylinder.radius=.26*size;cylinder.height=4.*size;shape.shape=cylinder;shape.position=t.origin+Vector3(0,2.*size,0);body.add_child(shape);chunk.add_child(body)
 	for i: int in 70:
-		var p:=origin+Vector2(rng.randf_range(1,79),rng.randf_range(1,79));var h:=Layout.height(p)
-		if Layout.coast(p).x> -16. or Layout.path_at(p).x<3.3 or Layout.plot_ground(p) or Layout.in_town(p) or h>155.:continue
+		var p:=origin+Vector2(rng.randf_range(1,79),rng.randf_range(1,79));var h:=_gh(p)
+		if Layout.coast(p).x> -16. or Layout.path_at(p).x<3.3 or Layout.plot_ground(p) or Layout.in_town(p) or Layout.near_avenue(p,4.) or h>155.:continue
 		if p.y<75. and absf(p.x)<110.:continue
-		if absf(Layout.height(p+Vector2.ONE)-h)>1.:continue
+		if absf(_gh(p+Vector2.ONE)-h)>1.:continue
+		h-=.06
 		kinds[4].append(Transform3D(Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3.ONE*rng.randf_range(.7,1.6)),Vector3(p.x-origin.x,h,p.y-origin.y)))
 	for kind: int in 5:
 		var transforms: Array[Transform3D]=[];transforms.assign(kinds[kind]);Nature.grove(chunk,kind,transforms)
@@ -122,9 +140,9 @@ func _ground_cover(chunk: Node3D,origin: Vector2) -> void:
 	for i: int in 900:
 		var p:=origin+Vector2(rng.randf_range(0,80),rng.randf_range(0,80))
 		if p.y<75. and absf(p.x)<110.:continue
-		if Layout.coast(p).x> -13. or Layout.path_at(p).x<4.:continue
-		var h:=Layout.height(p)
-		if h>100. or absf(Layout.height(p+Vector2(1,0))-h)>.55:continue
+		if Layout.coast(p).x> -13. or Layout.path_at(p).x<4. or Layout.near_avenue(p,2.5):continue
+		var h:=_gh(p)
+		if h>100. or absf(_gh(p+Vector2(1,0))-h)>.55:continue
 		instances.append(Transform3D(Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3.ONE*rng.randf_range(.8,1.6)),Vector3(p.x-origin.x,h-.02,p.y-origin.y)))
 	var multi:=MultiMesh.new();multi.transform_format=MultiMesh.TRANSFORM_3D;multi.mesh=grass_mesh;multi.instance_count=instances.size()
 	for i: int in instances.size():multi.set_instance_transform(i,instances[i])
@@ -147,12 +165,13 @@ func _forest(chunk: Node3D, origin: Vector2) -> void:
 	var transforms: Array[Transform3D]=[]
 	for i: int in 38:
 		var p:=origin+Vector2(rng.randf_range(1.,79.),rng.randf_range(1.,79.))
-		var c:=Layout.coast(p).x;var h:=Layout.height(p)
+		var c:=Layout.coast(p).x;var h:=_gh(p)
 		if c> -20. or h>108. or Layout.path_at(p).x<7. or (p.y<75. and absf(p.x)<110.): continue
 		if p.distance_to(Vector2(-80,775))<32. or p.distance_to(Vector2(-170,210))<14.: continue
 		if p.distance_to(Vector2(-110,310))<28.:continue
-		var slope:=absf(Layout.height(p+Vector2(2,0))-h)+absf(Layout.height(p+Vector2(0,2))-h)
+		var slope:=absf(_gh(p+Vector2(2,0))-h)+absf(_gh(p+Vector2(0,2))-h)
 		if slope>2.: continue
+		h-=minf(.6,slope*.18)+.05
 		var s:=rng.randf_range(1.2,2.5);var t:=Transform3D(Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3(s,s*rng.randf_range(.9,1.25),s)),Vector3(p.x-origin.x,h,p.y-origin.y))
 		transforms.append(t);foliage_count+=1
 		var body:=StaticBody3D.new();body.collision_layer=1;body.collision_mask=0

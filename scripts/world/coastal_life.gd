@@ -46,7 +46,7 @@ func _process(delta: float) -> void:
 		var centre:=Vector3(-20,0,105) if item.small else Vector3(0,0,-28)
 		var radius: float=18. if item.small else 40.
 		var p:=centre+Vector3(cos(phase)*radius,0,sin(phase)*radius)
-		p.y=maxf(0.,Layout.height(Vector2(p.x,p.z)))+(8. if item.small else 17.)+sin(phase*3.)*2.
+		p.y=maxf(0.,Layout.ground(Vector2(p.x,p.z)))+(8. if item.small else 17.)+sin(phase*3.)*2.
 		item.node.position=p;item.node.rotation.y=-phase
 		item.node.visible=world.ocean.weather.rain<.55 and world.ocean.daylight>.2 and p.distance_squared_to(camera.global_position)<40000.
 		item.wings[0].rotation.z=sin(clock*(12. if item.small else 4.)+item.phase)*.4

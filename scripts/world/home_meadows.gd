@@ -34,8 +34,8 @@ func _bounds() -> Rect2:
 
 ## Slope (rise per metre) of the terrain at p.
 func _slope(p: Vector2) -> float:
-	var h:=Layout.height(p)
-	return maxf(absf(Layout.height(p+Vector2(1.5,0))-h),absf(Layout.height(p+Vector2(0,1.5))-h))/1.5
+	var h:=Layout.ground(p)
+	return maxf(absf(Layout.ground(p+Vector2(1.5,0))-h),absf(Layout.ground(p+Vector2(0,1.5))-h))/1.5
 
 func _spot(kind: String) -> Vector3:
 	var area:=_bounds()
@@ -43,7 +43,7 @@ func _spot(kind: String) -> Vector3:
 		var p:=Vector2(_rng.randf_range(area.position.x,area.end.x),_rng.randf_range(area.position.y,area.end.y))
 		var c:=Layout.coast(p)
 		if c.x>-6.:continue  # in the water or on the beach
-		var h:=Layout.height(p)
+		var h:=Layout.ground(p)
 		if h<2.5 or _slope(p)>.5 or Layout.in_town(p) or Layout.plot_ground(p):continue
 		var trail:=Layout.path_at(p).x
 		if trail<2.2:continue
@@ -71,7 +71,7 @@ func _scatter(asset: String,count: int,scale_range: Vector2,view: float,kind: St
 			var q:=Vector2(centre.x,centre.z)+Vector2.from_angle(_rng.randf()*TAU)*_rng.randf_range(0.,6.)
 			if Layout.coast(q).x>-6. or Layout.in_town(q):continue
 			var s:=_rng.randf_range(scale_range.x,scale_range.y)
-			transforms.append(Transform3D(Basis(Vector3.UP,_rng.randf()*TAU).scaled(Vector3.ONE*s),Vector3(q.x,Layout.height(q)-.05,q.y)))
+			transforms.append(Transform3D(Basis(Vector3.UP,_rng.randf()*TAU).scaled(Vector3.ONE*s),Vector3(q.x,Layout.ground(q)-.05,q.y)))
 	counts[asset]=transforms.size()
 	if transforms.is_empty():return
 	# Split into tiles so the visibility range culls per area, not per island.
@@ -119,7 +119,7 @@ func _animals() -> void:
 		for k: int in int(herd[1]):
 			var q:=Vector2(anchor.x,anchor.z)+Vector2.from_angle(_rng.randf()*TAU)*_rng.randf_range(2.,14.)
 			if Layout.coast(q).x>-6. or Layout.in_town(q):continue
-			spots.append(Vector3(q.x,Layout.height(q),q.y))
+			spots.append(Vector3(q.x,Layout.ground(q),q.y))
 		Life.make_animals(holder,str(herd[0]),spots,_rng,Vector2(.5,.6) if herd[0]=="coelho" else Vector2(.9,1.2))
 	var centre:=Vector3(-60,70,330)
 	Life.make_birds(holder,"papagaio",centre,140.,9,_rng)
@@ -145,4 +145,4 @@ func _process(_delta: float) -> void:
 	var world=get_parent()
 	var day: bool=world==null or world.get("ocean")==null or float(world.ocean.daylight)>.5
 	butterflies.emitting=on_land and day
-	if on_land:butterflies.global_position=Vector3(p.x,Layout.height(q)+1.2,p.z)
+	if on_land:butterflies.global_position=Vector3(p.x,Layout.ground(q)+1.2,p.z)

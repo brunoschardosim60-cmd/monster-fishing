@@ -56,7 +56,7 @@ func _ready() -> void:
 	for i: int in 3:
 		var resident:=preload("res://scripts/world/village_resident.gd").new();resident.speed=1.+float(i)*.15;resident.look_id=4+i
 		resident.follow_terrain=false
-		resident.route.assign([Vector3(-24.+i*17,1.4,-7),Vector3(25,1.4,-7),Vector3(29,1.4,-23),Vector3(29,1.4,-7),Vector3(-25,1.4,-7)])
+		resident.route.assign([Vector3(-24.+i*17,1.4,-7),Vector3(29,1.4,-7),Vector3(29,1.4,-23),Vector3(29,1.4,-7),Vector3(-25,1.4,-7)])
 		add_child(resident);residents.append(resident)
 	var Porter:=preload("res://scripts/world/village_porter.gd")
 	for i: int in 2:
@@ -75,7 +75,7 @@ func _ready() -> void:
 		add_child(porter);porters.append(porter)
 	var social:=preload("res://scripts/world/village_social.gd").new();social.name="VidaSocial";social.residents=residents;add_child(social)
 	_make_landmarks(stone,wood)
-	for p: Vector2 in [Vector2(-8,35),Vector2(8,18),Vector2(-35,15),Vector2(57,32),Vector2(-55,55)]:world._make_tree(Vector3(p.x,Layout.height(p),p.y),1.5)
+	for p: Vector2 in [Vector2(-8,35),Vector2(8,18),Vector2(-35,15),Vector2(57,32),Vector2(-55,55)]:world._make_tree(Vector3(p.x,Layout.ground(p),p.y),1.5)
 	var excluded: Array[Node3D]=[];excluded.append_array(residents);excluded.append_array(porters)
 	for b: Node3D in buildings:
 		if b.keeper!=null:excluded.append(b.keeper)
@@ -92,7 +92,7 @@ func _ready() -> void:
 
 func _build(title: String,p: Vector2,w: float,d: float,kind: String,color: Color,id: String) -> void:
 	var building:=Building.new();building.title=title;building.width=w;building.depth=d;building.use=kind;building.tint=color
-	building.position=Vector3(p.x,Layout.height(p),p.y);add_child(building);buildings.append(building)
+	building.position=Vector3(p.x,Layout.ground(p),p.y);add_child(building);buildings.append(building)
 	night_lights.append_array(building.lamps)
 	if not id.is_empty(): services[id]=building.service
 
@@ -115,14 +115,14 @@ func _lamp(p: Vector3,mat: Material) -> void:
 
 func _make_landmarks(stone: Material,wood: Material) -> void:
 	for item: Dictionary in [{"id":"lighthouse","title":"Farol da Aurora","p":Vector2(-80,775),"reward":18},{"id":"lookout","title":"Mirante das Marés","p":Vector2(90,345),"reward":12},{"id":"grotto","title":"Gruta do Contrabandista","p":Vector2(-170,210),"reward":24},{"id":"ruins","title":"Ruínas da Vigia","p":Vector2(-110,310),"reward":20},{"id":"beach","title":"Praia dos Navegantes","p":Vector2(190,105),"reward":10},{"id":"summit","title":"Cume das Andorinhas","p":Vector2(50,775),"reward":35},{"id":"north_wood","title":"Bosque do Norte","p":Vector2(-170,650),"reward":20}]:
-		var p: Vector2=item.p;var at:=Vector3(p.x,Layout.height(p),p.y)
+		var p: Vector2=item.p;var at:=Vector3(p.x,Layout.ground(p),p.y)
 		item["position"]=at;landmarks.append(item)
 		G.label(self,item.title,at+Vector3(0,3.,0),21)
 		var chest_at:=at+Vector3(4,0,-4)
 		for offset: Vector2 in [Vector2(4,-4),Vector2(-4,-4),Vector2(4,4),Vector2(-4,4)]:
 			var candidate:=p+offset
 			if Layout.path_at(candidate).x>3.:
-				chest_at=Vector3(candidate.x,Layout.height(candidate),candidate.y);break
+				chest_at=Vector3(candidate.x,Layout.ground(candidate),candidate.y);break
 		G.box(self,chest_at+Vector3.UP*.42,Vector3(1.2,.8,.7),wood,true)
 		G.box(self,chest_at+Vector3.UP*.87,Vector3(1.23,.13,.74),wood)
 		if item.id=="grotto":
@@ -154,7 +154,7 @@ func _add_external_scenery() -> void:
 
 ## Walkable floor under a point: piers, boardwalks and floors first, then the terrain.
 func _floor_at(p: Vector3) -> float:
-	var ground:=Layout.height(Vector2(p.x,p.z))+.08
+	var ground:=Layout.ground(Vector2(p.x,p.z))+.08
 	if not is_inside_tree():return ground
 	# Two rays a hand apart, so the small gaps between deck planks never drop a walker through.
 	var best:=ground
