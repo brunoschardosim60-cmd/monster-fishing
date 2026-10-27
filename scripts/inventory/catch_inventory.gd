@@ -11,6 +11,8 @@ var bait: int=0
 ## Boats owned (ids from harbor_economy.BOATS) and the one in use.
 var owned_boats: Array[String]=["aurora"]
 var boat_id: String="aurora"
+## Paint scheme bought at the shipyard (0 = the boat's factory colours).
+var boat_paint: int=0
 ## Fish feed handfuls, crab traps carried aboard.
 var feed: int=3
 var traps: int=0

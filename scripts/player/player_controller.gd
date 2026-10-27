@@ -88,7 +88,8 @@ func _ready() -> void:
 	arm = SpringArm3D.new()
 	arm.spring_length = 6.8
 	arm.margin = 0.2
-	arm.collision_mask = 1
+	# Terrain and hulls (layer 2): the camera never slips inside a boat.
+	arm.collision_mask = 3
 	arm.add_excluded_object(get_rid())
 	pivot.add_child(arm)
 	camera = Camera3D.new()
@@ -132,12 +133,10 @@ func _physics_process(delta: float) -> void:
 		var deck_speed:=1.6*(1.8 if is_sprinting else 1.)
 		deck_velocity=deck_velocity.lerp(direction*deck_speed,1.-exp(-delta*8.))
 		deck_local+=deck_velocity*delta
-		deck_local.x=clampf(deck_local.x,-1.4,1.4);deck_local.z=clampf(deck_local.z,-3.3,3.1);deck_local.y=1.12
-		# The wheelhouse is a visible obstacle; side decks remain open around it.
-		if absf(deck_local.x)<1.13 and deck_local.z> -1.65 and deck_local.z<.9:
-			if deck_local.z>.45: deck_local.z=.9
-			elif deck_local.z< -1.2: deck_local.z=-1.65
-			else: deck_local.x=signf(deck_local.x if absf(deck_local.x)>.01 else direction.x)*1.13
+		# Each hull class has its own walkable deck; cabins, wheelhouses and masts are walked around.
+		var deck: Dictionary=deck_boat.deck_layout() if deck_boat.has_method("deck_layout") else {"y":1.12,"x":1.4,"z0":-3.3,"z1":3.1,"blocks":[]}
+		deck_local.x=clampf(deck_local.x,-float(deck.x),float(deck.x));deck_local.z=clampf(deck_local.z,float(deck.z0),float(deck.z1));deck_local.y=float(deck.y)
+		deck_local=preload("res://scripts/boats/hull_classes.gd").resolve_blocks(deck_local,deck.blocks)
 		if jump_buffer>0. and deck_jump<=.001:
 			deck_vertical_speed=JUMP_SPEED;jump_buffer=0.
 		deck_vertical_speed-=20.*delta
@@ -297,7 +296,7 @@ func set_flying(value: bool) -> void:
 	flying = value
 	collision_layer = 0 if value else 4
 	collision_mask = 0 if value else 1
-	arm.collision_mask = 0 if value else 1
+	arm.collision_mask = 0 if value else 3
 	velocity = Vector3.ZERO
 	is_sprinting=false
 	deck_velocity=Vector3.ZERO

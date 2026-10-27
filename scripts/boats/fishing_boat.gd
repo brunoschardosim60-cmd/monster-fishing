@@ -45,10 +45,45 @@ var speed: float = 0.0
 var max_speed: float = 11.0
 var wake_strength: float = 0.0
 var _clock: float = 0.0
+## Helm and engine state. The rudder (-1 port … +1 starboard) follows the wheel at a limited rate and
+## self-centres slowly; the hull's yaw rate builds up with inertia, so heavier hulls answer later and
+## keep turning after the wheel is centred. The engine spools up and down instead of jumping to power.
+var rudder: float=0.
+var yaw_rate: float=0.
+var engine_rpm: float=0.
+## Per-class handling (set by harbor_economy.apply): wheel speed, turning power, acceleration,
+## yaw inertia (seconds to answer the rudder) and astern speed.
+var handling: Dictionary={"rudder_rate":1.6,"turn":1.,"accel":2.7,"inertia":.55,"reverse":3.2}
+var helm_wheel: Node3D
+## Hull class (hull_classes.gd): "tripo" is the imported launch, the others are built by vessel_models.
+const HullClasses=preload("res://scripts/boats/hull_classes.gd")
+const VesselModels=preload("res://scripts/boats/vessel_models.gd")
+var _tripo_propeller: Node3D
+signal warning(text: String)
+var hull_model: String="tripo"
+var hull_spec: Dictionary=HullClasses.SPECS.tripo
+var sail_rig: RefCounted
+## Sail the skipper asked for (0 furled, .5 reefed, 1 full) and the push the sails give (m/s).
+var sail_target: float=0.
+var sail_speed: float=0.
+var sail_heel: float=0.
+var _overcanvas_clock: float=0.
+var _alt_body: Node3D
+var _tripo_parts: Array[Node3D]=[]
+var _tripo_lights: Array[Light3D]=[]
+var _tripo_lamps: Array[StandardMaterial3D]=[]
+var _tripo_wheel: Node3D
+var _tripo_bucket: Marker3D
+var _tripo_hydro: Resource
+var _collision_box: BoxShape3D
+var _base_box: Vector3
 var _hull: Node3D
 var _propeller: Node3D
 var _foam_left: MeshInstance3D
 var _foam_right: MeshInstance3D
+## Bow wave: white water peeling off both sides of the stem, growing with speed.
+var _bow_left: MeshInstance3D
+var _bow_right: MeshInstance3D
 var _wake_material: ShaderMaterial
 const DOCK_POSITION: Vector3 = Vector3(3.9, 0.0, -23.0)
 
@@ -60,11 +95,16 @@ func _ready() -> void:
 	var box := BoxShape3D.new()
 	box.size = Vector3(3.65, 1.0, 8.1) if ResourceLoader.exists("res://assets/boats/fishing_boat.glb") else Vector3(2.05, 1.0, 4.8)
 	shape.shape = box
+	_collision_box=box;_base_box=box.size
 	shape.position.y = 0.5
 	add_child(shape)
 	_build_visual()
 	_build_bucket()
 	_build_lights()
+	for child: Node in _hull.get_children():
+		if child!=_propeller and child!=searchlight and child is Node3D:_tripo_parts.append(child)
+	_tripo_lights=deck_lights.duplicate();_tripo_lamps=lamp_materials.duplicate()
+	_tripo_wheel=helm_wheel;_tripo_bucket=bucket;_tripo_propeller=_propeller;_tripo_hydro=hydrodynamics.duplicate()
 	trail=preload("res://scripts/ocean/wake_trail.gd").new()
 	add_child(trail)
 	anchor=preload("res://scripts/boats/boat_anchor.gd").new();anchor.name="Ancora";anchor.boat=self
@@ -96,18 +136,40 @@ func _physics_process(delta: float) -> void:
 	var anchored: bool=anchor!=null and anchor.deployed()
 	if anchored:
 		throttle=0.;steering=0.
+	# Wheel → rudder: limited rate, slower self-centring when the wheel is let go.
+	var rudder_rate: float=float(handling.rudder_rate)*(.65 if absf(steering)<.01 else 1.)
+	rudder=move_toward(rudder,steering,rudder_rate*delta)
+	# Engine spools up gradually and drops faster than it rises; boost answers at once.
+	# Shifting from ahead to astern (or back) goes through neutral quickly: that is how a skipper brakes.
+	var reversing: bool=absf(throttle)>.01 and signf(throttle)!=signf(engine_rpm) and absf(engine_rpm)>.02
+	engine_rpm=move_toward(engine_rpm,throttle,(4.5 if reversing else (1.5 if absf(throttle)>absf(engine_rpm) else 2.4))*delta)
+	if boost>0. and throttle>0.:engine_rpm=1.
+	var accel: float=float(handling.accel)
+	_update_sails(delta)
+	if anchored:
 		speed=move_toward(speed,0.,(2.5 if anchor.holding() else 1.2)*delta)
-	elif throttle > 0.0:
+	elif engine_rpm > 0.02 or sail_speed>.05:
 		var exposure:=Waves.exposure(Vector2(global_position.x,global_position.z))
 		var limit: float=max_speed*(.55+.45*integrity)*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)
 		if boost>0.:limit*=1.45
-		speed = move_toward(speed, limit, (5.5 if boost>0. else 2.7) * delta)
-	elif throttle < 0.0:
-		speed = move_toward(speed, -3.2, (5.5 if speed > 0.2 else 1.8) * delta)
+		var rpm: float=maxf(engine_rpm,0.)
+		var target: float=limit*rpm+sail_speed*(1.-.4*rpm)
+		var push: float=maxf((5.5 if boost>0. else accel)*rpm,accel*.35*minf(sail_speed/3.,1.))
+		speed = move_toward(speed, target, (push if speed<target else 0.85+.5*accel*(1.-rpm)) * delta)
+	elif engine_rpm < -0.02:
+		speed = move_toward(speed, -float(handling.reverse)*absf(engine_rpm), (accel*2. if speed > 0.2 else accel*.66) * delta)
 	else:
 		speed = move_toward(speed, 0.0, 0.85 * delta)
-	if absf(speed) > 0.12:
-		rotation.y -= steering * signf(speed) * (0.3 + minf(absf(speed), 9.0) * 0.065) * delta
+	# Water flowing past the rudder: the boat's own speed plus prop wash, so a boat in gear turns at low speed.
+	var flow: float=absf(speed)+maxf(engine_rpm,0.)*1.6
+	var direction_sign: float=signf(speed) if absf(speed)>.3 else (1. if engine_rpm>=0. else -1.)
+	var target_rate: float=0.
+	if flow>.12:target_rate=-rudder*direction_sign*(0.3+minf(flow,9.)*0.065)*float(handling.turn)*minf(flow/1.2,1.)
+	yaw_rate=lerpf(yaw_rate,target_rate,1.-exp(-delta/maxf(float(handling.inertia),.05)))
+	rotation.y+=yaw_rate*delta
+	# A hard-over rudder costs speed.
+	speed-=speed*absf(rudder)*.05*delta
+	if is_instance_valid(helm_wheel):helm_wheel.rotation.y=-rudder*PI*float(hull_spec.wheel[3])
 	velocity = -global_transform.basis.z * speed
 	# Wind pushes the hull sideways (strongest in the open and in storms); the anchor holds against it.
 	var here:=Vector2(global_position.x,global_position.z)
@@ -141,18 +203,27 @@ func _physics_process(delta: float) -> void:
 		_hull.position.y=clampf(_hull.position.y,target-.2,target+.2)
 		var blend: float=1.-exp(-delta*hydrodynamics.angular_response/size_factor)
 		kick_roll=move_toward(kick_roll,0.,delta*.35)
-		var roll: float=atan((right-left)/hydrodynamics.beam)-steering*wake_strength*.065+kick_roll*sin(Time.get_ticks_msec()*.004)
+		var roll: float=atan((right-left)/hydrodynamics.beam)-yaw_rate*wake_strength*.11+sail_heel+kick_roll*sin(Time.get_ticks_msec()*.004)
 		var pitch: float=atan((front-back)/hydrodynamics.waterline_length)+wake_strength*.025
 		_hull.rotation.z=lerpf(_hull.rotation.z,clampf(roll,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
 		_hull.rotation.x=lerpf(_hull.rotation.x,clampf(pitch,-hydrodynamics.maximum_tilt,hydrodynamics.maximum_tilt),blend)
 		if water_effects!=null and impact_cooldown<=0. and wake_strength>.18 and front-_hull.position.y>.17:
 			water_effects.splash(global_position-global_basis.z*2.1,.4+wake_strength*Waves.energy,true)
+			var spray:=get_tree().get_first_node_in_group("wind_spray")
+			if spray!=null:
+				var bow:=_hull.to_global(Vector3(0,float(hull_spec.deck.y)*.6,-float(hull_spec.length)*.46))
+				var wind:=Vector3(Waves.direction.x,0.,Waves.direction.y)*(2.+Waves.wind*7.)
+				for k: int in 3:spray.burst(bow+global_basis.x*(k-1)*.6,wind+global_basis.z*absf(speed)*.35+Vector3(0,3.+wake_strength*3.,0)+global_basis.x*(k-1)*1.2,.7+wake_strength)
 			impact_cooldown=.65
 		_propeller.rotation.z += delta * speed * 8.0
 		_foam_left.visible = wake_strength > 0.08
 		_foam_right.visible = wake_strength > 0.08
 		_foam_left.scale.z = 0.5 + wake_strength * 2.3
 		_foam_right.scale.z = 0.5 + wake_strength * 2.3
+		if _bow_left!=null:
+			var bow: float=clampf((absf(speed)-1.5)/7.,0.,1.)
+			_bow_left.visible=bow>.02 and speed>0.;_bow_right.visible=_bow_left.visible
+			_bow_left.scale=Vector3(.6+bow*.8,1.,.4+bow*1.6)*sqrt(size_factor*float(hull_spec.beam)/3.65);_bow_right.scale=_bow_left.scale
 		Waves.bind(_wake_material)
 		_wake_material.set_shader_parameter("strength", wake_strength)
 
@@ -223,6 +294,7 @@ func _build_lights() -> void:
 	update_lights()
 
 func seat_position() -> Vector3:
+	if hull_model!="tripo" and is_instance_valid(_hull):return _hull.to_global(hull_spec.helm)
 	if imported_model!=null: return imported_model.get_node("Helm").global_position
 	return _hull.to_global(Vector3(0.0, 0.95, 0.5)) if is_instance_valid(_hull) else to_global(Vector3(0.0,0.95,0.5))
 
@@ -292,20 +364,7 @@ func _build_visual() -> void:
 	for x: float in [-0.42, 0.42]:
 		_box(_hull, Vector3(0.045, 0.37, 0.045), Vector3(x, 1.27, -0.72), cream)
 	_box(_hull, Vector3(0.90, 0.045, 0.045), Vector3(0.0, 1.46, -0.72), cream)
-	# Wheel is a simple torus, orientated toward the driver.
-	var wheel := MeshInstance3D.new()
-	var wheel_mesh := TorusMesh.new()
-	wheel_mesh.inner_radius = 0.13
-	wheel_mesh.outer_radius = 0.17
-	wheel_mesh.rings = 16
-	wheel_mesh.ring_segments = 6
-	wheel.mesh = wheel_mesh
-	wheel.material_override = dark
-	wheel.position = Vector3(0.0, 1.16, -0.22)
-	wheel.rotation.x = PI * 0.5
-	_hull.add_child(wheel)
-	_box(_hull, Vector3(0.025, 0.30, 0.025), wheel.position, metal)
-	_box(_hull, Vector3(0.30, 0.025, 0.025), wheel.position, metal)
+	helm_wheel=_build_helm_wheel(_hull,Vector3(0.0, 1.16, -0.22),.17,PI*.5)
 	for x: float in [-.23,.23]:
 		var dial:=G.cylinder(_hull,Vector3(x,1.075,-.275),.063,.02,metal,.063,24)
 		dial.rotation.x=PI*.5
@@ -375,12 +434,13 @@ func _build_external_visual() -> void:
 	_propeller=Node3D.new(); _hull.add_child(_propeller)
 	var metal:=Materials.surface("paint",Color("253e43"),3.,false)
 	G.cylinder(_hull,Vector3(0,1.55,.85),.06,.85,metal)
-	var wheel:=TorusMesh.new(); wheel.inner_radius=.16; wheel.outer_radius=.2
-	var wheel_node:=G.mesh_node(_hull,wheel,metal,Vector3(0,1.96,.85));wheel_node.rotation.x=PI*.3
+	helm_wheel=_build_helm_wheel(_hull,Vector3(0,1.96,.85),.24,PI*.3)
 	_wake_material=ShaderMaterial.new();_wake_material.shader=preload("res://assets/shaders/wake.gdshader")
 	_wake_material.set_shader_parameter("foam_tex",load("res://assets/textures/foam_noise.png"))
 	_foam_left=_make_wake(Vector3(-1.8,0,3.9));_foam_right=_make_wake(Vector3(1.8,0,3.9))
 	_foam_left.rotation.y=-.18;_foam_right.rotation.y=.18
+	_bow_left=_make_wake(Vector3(-.9,0,-3.4));_bow_right=_make_wake(Vector3(.9,0,-3.4))
+	_bow_left.rotation.y=-.62;_bow_right.rotation.y=.62
 
 func _make_wake(at: Vector3) -> MeshInstance3D:
 	var mesh:=PlaneMesh.new()
@@ -391,18 +451,20 @@ func _make_wake(at: Vector3) -> MeshInstance3D:
 	instance.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return instance
 
-func _build_bucket() -> void:
+func _build_bucket(parent: Node3D=null,where: Variant=null) -> void:
+	if parent==null:parent=_hull
 	var at:=Vector3(1.,1.12,2.55) if imported_model!=null else Vector3(-.65,.48,1.4)
+	if where!=null:at=where
 	var metal:=Materials.surface("paint",Color("9faea3"),2.,false)
 	metal.metallic=.55;metal.roughness=.32;metal.cull_mode=BaseMaterial3D.CULL_DISABLED
 	var shell:=CylinderMesh.new();shell.top_radius=.26;shell.bottom_radius=.21;shell.height=.43;shell.radial_segments=24;shell.cap_top=false
-	G.mesh_node(_hull,shell,metal,at+Vector3.UP*.215)
-	G.cylinder(_hull,at+Vector3.UP*.05,.2,.02,G.material(Color("213f43")),.2,24)
+	G.mesh_node(parent,shell,metal,at+Vector3.UP*.215)
+	G.cylinder(parent,at+Vector3.UP*.05,.2,.02,G.material(Color("213f43")),.2,24)
 	var rim:=TorusMesh.new();rim.inner_radius=.245;rim.outer_radius=.27;rim.rings=24;rim.ring_segments=8
-	G.mesh_node(_hull,rim,metal,at+Vector3.UP*.43)
-	for side: float in [-1.,1.]:G.beam(_hull,at+Vector3(side*.255,.35,0),at+Vector3(side*.2,.7,0),.012,metal)
-	G.beam(_hull,at+Vector3(-.2,.7,0),at+Vector3(.2,.7,0),.014,metal)
-	bucket=Marker3D.new();bucket.position=at+Vector3.UP*.24;_hull.add_child(bucket)
+	G.mesh_node(parent,rim,metal,at+Vector3.UP*.43)
+	for side: float in [-1.,1.]:G.beam(parent,at+Vector3(side*.255,.35,0),at+Vector3(side*.2,.7,0),.012,metal)
+	G.beam(parent,at+Vector3(-.2,.7,0),at+Vector3(.2,.7,0),.014,metal)
+	bucket=Marker3D.new();bucket.position=at+Vector3.UP*.24;parent.add_child(bucket)
 
 func _smooth_outline(control: PackedVector2Array) -> PackedVector2Array:
 	var result:=PackedVector2Array()
@@ -474,6 +536,8 @@ var size_factor: float=1.
 func set_livery(hull_color: Color,top_color: Color,scale_value: float) -> void:
 	livery_hull=hull_color;size_factor=scale_value
 	if is_instance_valid(_hull):_hull.scale=Vector3.ONE*scale_value
+	# The physical hull grows with the visible one (docks, rocks and the camera meet the real size).
+	if _collision_box!=null:_collision_box.size=Vector3(_base_box.x*scale_value,_base_box.y,_base_box.z*scale_value)
 	if imported_model==null or not "meshes" in imported_model:return
 	for part: MeshInstance3D in imported_model.meshes:
 		var box:=part.get_aabb();var height:=box.get_center().y
@@ -483,3 +547,132 @@ func set_livery(hull_color: Color,top_color: Color,scale_value: float) -> void:
 		var tint:=top_color if height>.36 else hull_color
 		if part.name in ["tripo_part_8","tripo_part_11","tripo_part_13","tripo_part_17","tripo_part_18"]:tint=top_color.darkened(.55)
 		part.material_override=Materials.surface("paint",tint,3.,false)
+
+## A spoked ship's wheel: rim, hub, eight spokes running out to turned handles. The returned node spins
+## about its local Y axis (the shaft) when the rudder moves: one and a half turns lock to lock.
+func _build_helm_wheel(parent: Node3D,at: Vector3,radius: float,tilt: float) -> Node3D:
+	var mount:=Node3D.new();mount.name="HelmMount";mount.position=at;mount.rotation.x=tilt;parent.add_child(mount)
+	var spin:=Node3D.new();spin.name="HelmWheel";mount.add_child(spin)
+	var wood:=Materials.surface("teak",Color("8a5a32"),2.)
+	var brass:=G.material(Color("b8913f"),.3);brass.metallic=.85
+	var rim:=TorusMesh.new();rim.inner_radius=radius-.022;rim.outer_radius=radius+.012;rim.rings=36;rim.ring_segments=8
+	G.mesh_node(spin,rim,wood,Vector3.ZERO)
+	G.cylinder(spin,Vector3.ZERO,.045,.07,brass,.045,16)
+	for i: int in 8:
+		var dir:=Vector3(cos(i*TAU/8.),0.,sin(i*TAU/8.))
+		G.beam(spin,dir*.03,dir*(radius+.1),.011,wood)
+		G.sphere(spin,dir*(radius+.11),Vector3(.022,.022,.022),wood,8)
+	G.cylinder(mount,Vector3(0,-.07,0),.02,.1,brass,.02,10)
+	return spin
+
+## Swaps the hull class: physical size, mass, deck, helm, anchor roller, lights and visible model.
+var _model_seed: int=11
+func set_hull_model(model: String,seed_value: int=11) -> void:
+	if not HullClasses.SPECS.has(model):model="tripo"
+	if model==hull_model and (model=="tripo" or (is_instance_valid(_alt_body) and seed_value==_model_seed)):return
+	hull_model=model;_model_seed=seed_value;hull_spec=HullClasses.spec(model)
+	if is_instance_valid(_alt_body):_hull.remove_child(_alt_body);_alt_body.queue_free();_alt_body=null
+	var tripo:=model=="tripo"
+	for part: Node3D in _tripo_parts:part.visible=tripo
+	for light: Light3D in _tripo_lights:light.visible=false
+	sail_rig=null;sail_speed=0.;sail_heel=0.
+	if tripo:
+		helm_wheel=_tripo_wheel;bucket=_tripo_bucket;_propeller=_tripo_propeller
+		deck_lights=_tripo_lights.duplicate();lamp_materials=_tripo_lamps.duplicate()
+		hydrodynamics=_tripo_hydro.duplicate()
+	else:
+		_propeller=_tripo_propeller
+		var length: float=float(hull_spec.model_length)
+		_alt_body=VesselModels.build(str(hull_spec.kind),length,_model_seed);_alt_body.name="CascoDoJogador";_hull.add_child(_alt_body)
+		var wheel: Array=hull_spec.wheel
+		if float(wheel[3])<0.:helm_wheel=_build_rabeta(_alt_body,wheel[0])
+		else:
+			var brass:=G.material(Color("8a6a3a"),.4)
+			var deck_y: float=float(hull_spec.deck.y)
+			G.cylinder(_alt_body,Vector3(wheel[0].x,(deck_y+wheel[0].y)*.5,wheel[0].z+.12),.07,wheel[0].y-deck_y,brass)
+			helm_wheel=_build_helm_wheel(_alt_body,wheel[0],float(wheel[1]),float(wheel[2]))
+		_build_bucket(_alt_body,hull_spec.bucket)
+		deck_lights=[];lamp_materials=[]
+		var lamp:=OmniLight3D.new();lamp.position=hull_spec.helm+Vector3(0,2.1,-.4);lamp.light_color=Color("ffd69c");lamp.light_energy=1.8;lamp.omni_range=6.;_alt_body.add_child(lamp);deck_lights.append(lamp)
+		if float(hull_spec.sails)>0.:
+			sail_rig=load("res://scripts/boats/sail_rig.gd").rig(_alt_body);sail_target=1.;sail_rig.hoist=1.
+		var h: Resource=_tripo_hydro.duplicate()
+		h.mass_kg=hull_spec.mass;h.waterline_length=hull_spec.length;h.beam=hull_spec.beam;h.draft_offset=hull_spec.draft
+		h.heave_stiffness=hull_spec.heave;h.angular_response=hull_spec.angular;h.maximum_tilt=hull_spec.tilt
+		hydrodynamics=h
+	_base_box=Vector3(float(hull_spec.beam),1.,float(hull_spec.length))
+	if _collision_box!=null:_collision_box.size=Vector3(_base_box.x*size_factor,_base_box.y,_base_box.z*size_factor)
+	if anchor!=null:anchor.roller=Vector3(0,float(hull_spec.deck.y)-.07,-float(hull_spec.length)*.48)
+	if searchlight!=null:searchlight.position=Vector3(0,float(hull_spec.deck.y)+(2.1 if tripo else 1.4),-float(hull_spec.length)*(.15 if tripo else .4))
+	var half: float=float(hull_spec.beam)*.5;var stern: float=float(hull_spec.length)*.48
+	_foam_left.position=Vector3(-half,0,stern);_foam_right.position=Vector3(half,0,stern)
+	if _bow_left!=null:
+		var bow_z: float=-float(hull_spec.length)*.42*size_factor
+		_bow_left.position=Vector3(-half*.5,0,bow_z);_bow_right.position=Vector3(half*.5,0,bow_z)
+	update_lights()
+
+## Long-tail outboard ("rabeta") for the canoe: engine on a pivot over the transom, a long shaft
+## trailing into the water. Steering swings the whole unit, so the returned pivot is the "wheel".
+func _build_rabeta(parent: Node3D,at: Vector3) -> Node3D:
+	var pivot:=Node3D.new();pivot.name="Rabeta";pivot.position=at;parent.add_child(pivot)
+	var red:=G.material(Color("b23a2e"),.45);var steel:=G.material(Color("8f979b"),.35);steel.metallic=.7
+	var black:=G.material(Color("1d2124"),.6)
+	G.box(pivot,Vector3(0,.14,-.05),Vector3(.32,.26,.42),red)
+	G.box(pivot,Vector3(0,.3,-.05),Vector3(.26,.06,.34),black)
+	G.cylinder(pivot,Vector3(0,.0,0),.05,.16,steel)
+	G.beam(pivot,Vector3(0,.05,.1),Vector3(0,-.8,1.75),.035,steel)
+	G.beam(pivot,Vector3(0,.18,-.25),Vector3(0,.42,-.95),.028,black)
+	_propeller=Node3D.new();_propeller.position=Vector3(0,-.84,1.8);pivot.add_child(_propeller)
+	for i: int in 3:
+		var blade:=G.box(_propeller,Vector3.ZERO,Vector3(.24,.035,.06),steel);blade.rotation.z=i*TAU/3.
+	return pivot
+
+func has_sails() -> bool:
+	return sail_rig!=null
+
+## Cycles furled → reefed → full sail. Returns the new setting for the HUD.
+func cycle_sails() -> String:
+	if sail_rig==null:return ""
+	sail_target={0.:.5,.5:1.}.get(sail_target,0.)
+	return {0.:"Velas recolhidas.",.5:"Velas rizadas (meia vela).",1.:"Velas cheias."}[sail_target]
+
+func _update_sails(delta: float) -> void:
+	if sail_rig==null:sail_speed=0.;sail_heel=0.;return
+	var wind_world:=Vector3(Waves.direction.x,0.,Waves.direction.y)
+	var local_wind:=global_basis.inverse()*wind_world
+	var strength: float=Waves.wind
+	var target: float=sail_target
+	if anchor!=null and anchor.deployed():target=0.
+	sail_rig.update(delta,local_wind,strength,target)
+	var aw: Vector2=sail_rig.wind_angle(local_wind)
+	var wind_ms: float=2.5+strength*13.
+	var exposure: float=Waves.exposure(Vector2(global_position.x,global_position.z))
+	var force: float=sail_rig.drive(aw.x)*sail_rig.hoist*(.6+.4*exposure)
+	sail_speed=force*wind_ms*float(hull_spec.sails)
+	# The wind on the cloth heels the hull to leeward; carrying full sail in a gale strains it.
+	sail_heel=lerpf(sail_heel,aw.y*force*pow(strength,1.3)*.55,1.-exp(-delta*1.5))
+	_overcanvas_clock=maxf(0.,_overcanvas_clock-delta)
+	if strength>.72 and sail_rig.hoist>.6 and force>.3:
+		integrity=maxf(.2,integrity-delta*.004)
+		if _overcanvas_clock<=0.:warning.emit("Vento forte demais para vela cheia! P para rizar.");_overcanvas_clock=10.
+
+func deck_layout() -> Dictionary:
+	return hull_spec.deck
+
+## Where a swimmer ends up when stepping off the side.
+func exit_point() -> Vector3:
+	return _hull.to_global(Vector3(-(float(hull_spec.beam)*.5+.9/size_factor),.2,float(hull_spec.length)*.2/size_factor))
+
+func board_radius() -> float:
+	return maxf(6.,float(hull_spec.length)*.5*size_factor)
+
+## Point of sail for the HUD: how the boat lies to the wind right now.
+func point_of_sail() -> String:
+	if sail_rig==null:return ""
+	if sail_target<=0.:return "recolhidas"
+	var angle: float=rad_to_deg(sail_rig.wind_angle(global_basis.inverse()*Vector3(Waves.direction.x,0.,Waves.direction.y)).x)
+	if angle<38.:return "panejando (contra o vento)"
+	if angle<65.:return "bolina"
+	if angle<115.:return "través"
+	if angle<155.:return "largo"
+	return "popa"

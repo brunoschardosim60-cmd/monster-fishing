@@ -69,5 +69,9 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 "%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/upgrades_contract.gd
 if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/boat_handling_contract.gd
+if errorlevel 1 exit /b 1
+"%MF_GODOT%" --headless --fixed-fps 60 --path . --script res://tests/capture_contract.gd
+if errorlevel 1 exit /b 1
 echo Testes concluidos.
 pause

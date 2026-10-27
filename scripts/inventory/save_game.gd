@@ -6,7 +6,7 @@ extends RefCounted
 ## main.gd saves automatically every minute, when selling, delivering, finishing a mission and on quit.
 const PATH: String="user://progresso.save"
 const VERSION: int=1
-const INVENTORY_FIELDS: Array[String]=["money","bait","feed","traps","harpoons","flares","materials","boat_id"]
+const INVENTORY_FIELDS: Array[String]=["money","bait","feed","traps","harpoons","flares","materials","boat_id","boat_paint"]
 const INVENTORY_DICTS: Array[String]=["equipment","goods","encyclopedia","stats"]
 
 static func exists(path: String=PATH) -> bool:

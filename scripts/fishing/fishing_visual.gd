@@ -7,6 +7,9 @@ var target: Vector3 = Vector3.ZERO
 var elapsed: float = 0
 var cast_start:=Vector3.ZERO
 var cast_elapsed: float=0.
+## The fish on the line (hooked_fish.gd) and the line's tension (0 slack … 1 about to break), set by main.
+var hooked: Node3D
+var tension: float=0.
 
 func _ready() -> void:
 	line_mesh = ImmediateMesh.new()
@@ -53,6 +56,12 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 		end=cast_start.lerp(end,t)+Vector3.UP*sin(t*PI)*maxf(2.,cast_start.distance_to(target)*.2)
 	if state == 3:
 		end.y += sin(elapsed * 24.0) * 0.18
+	var fighting: bool=state==4 and hooked!=null and hooked.visible and hooked.mode=="fight"
+	if fighting:
+		# The float is dragged along above the fish and pulled under when it dives.
+		var above: Vector3=hooked.global_position
+		var surface: float=Waves.height_at(above)
+		end=Vector3(above.x,surface+.1-clampf((surface-above.y)*.45,0.,.6),above.z)
 	bobber.global_position = end
 	ripple.global_position = Vector3(end.x, 0, end.z)
 	ripple.visible=state!=1
@@ -61,9 +70,17 @@ func update_line(origin: Vector3, state: int, delta: float) -> void:
 	ripple.material_override.set_shader_parameter("strength",.4 if state!=3 else .9)
 	line_mesh.clear_surfaces()
 	line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	# A slack line sags; a tight one runs straight and hums (small fast vibration) near breaking point.
+	var sag: float=0.5 if state!=4 else lerpf(.45,.02,clampf(tension*1.3,0.,1.))
+	var hum: float=maxf(0.,tension-.75)*.12
 	for i in 17:
 		var t := float(i) / 16.0
 		var p := origin.lerp(end, t)
-		p.y -= sin(t * PI) * (0.1 if state == 4 else 0.5)
+		p.y -= sin(t * PI) * sag
+		p.y += sin(t*PI)*sin(elapsed*60.+t*9.)*hum
 		line_mesh.surface_add_vertex(p)
 	line_mesh.surface_end()
+	if fighting:
+		line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+		line_mesh.surface_add_vertex(end);line_mesh.surface_add_vertex(hooked.mouth)
+		line_mesh.surface_end()

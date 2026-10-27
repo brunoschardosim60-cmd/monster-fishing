@@ -53,6 +53,10 @@ func run() -> void:
 	await frames(400)
 	check(game.gear.last_haul.size()>=2 and game.inventory.count()>=catches+2,"the net hauls %d fish"%game.gear.last_haul.size())
 	check(game.gear.cast_net()!="Tarrafa lançada!","the net needs a moment before the next cast")
+	check(game.gear.net_state=="pendurada" and is_instance_valid(game.gear.net_catch) and game.gear.net_catch.get_child_count()>=2,"the net hangs at the gunwale with the fish visible in it")
+	var flap: float=(game.gear.net_catch.get_child(0) as Node3D).rotation.z;await frames(7)
+	check(absf((game.gear.net_catch.get_child(0) as Node3D).rotation.z-flap)>.02,"netted fish flap")
+	await frames(400)
 	# Crab trap: drop it, it is empty at first, full after the soak.
 	game.inventory.traps=1
 	var placed: String=game.gear.trap_action()
@@ -65,6 +69,15 @@ func run() -> void:
 	catches=game.inventory.count()
 	var hauled: String=game.gear.trap_action()
 	check(hauled.contains("Caranguejo") and game.inventory.count()>catches and game.inventory.traps==1,"after the soak the trap comes up with crabs (%s)"%hauled)
+	var crab: Node3D=null
+	for n: Node in game.gear.fresh_haul.animals:if str(n.get_meta("critter"))=="caranguejo":crab=n
+	var crab_at: Vector3=crab.position;await frames(20)
+	check(crab.position.distance_to(crab_at)>.01,"crabs scuttle inside the rising cage")
+	check(game.gear.can_release(),"the haul can be let go while it hangs beside the boat")
+	var released: String=game.gear.release_haul()
+	check(game.inventory.count()==catches and game.gear._released.size()>=1,"X releases the trap animals: nothing stays in the hold (%s)"%released)
+	await frames(330)
+	check(game.gear._released.is_empty(),"released animals swim or sink away and are gone")
 	# A turtle comes up to breathe.
 	var t: Dictionary=c.turtles[0]
 	game.boat.global_position=(t.node as Node3D).position+Vector3(0,0,10);await frames(5)

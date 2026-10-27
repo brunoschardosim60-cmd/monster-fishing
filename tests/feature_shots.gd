@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -219,3 +219,76 @@ func _marks() -> void:
 		var at: Vector3=m.pos
 		var eye:=at+Vector3(70,35,70)
 		await shot("mark_"+str(m.kind),eye,at+Vector3(0,8,0),3)
+
+func _helm() -> void:
+	var b: CharacterBody3D=game.boat
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.rudder=.6
+	b.helm_wheel.rotation.y=-.6*PI*1.5
+	var w: Vector3=b.helm_wheel.global_position
+	await shot("helm_wheel",w+b.global_basis.z*1.6+Vector3(.6,.5,0),w,6)
+	await shot("helm_boat",b.global_position+Vector3(9,5,11),b.global_position+Vector3(0,1.5,0),4)
+
+func _classes() -> void:
+	var b: CharacterBody3D=game.boat
+	var Econ=load("res://scripts/inventory/harbor_economy.gd")
+	for id: String in ["canoa","veleiro","escuna"]:
+		game.inventory.owned_boats.append(id);game.inventory.boat_id=id;Econ.apply(game.inventory,b,game.fishing)
+		b.global_position=_sea_point();b.rotation=Vector3(0,.4,0);b.set_occupied(true);b.sail_target=1.
+		for i: int in 90:await process_frame
+		var L: float=float(b.hull_spec.length)
+		await shot("class_"+id,b.global_position+b.global_basis*Vector3(L*.9,L*.35+2.,L*.6),b.global_position+Vector3(0,L*.15,0),4)
+		var helm: Vector3=b._hull.to_global(b.hull_spec.helm)
+		await shot("class_"+id+"_helm",helm+b.global_basis*Vector3(.5,1.7,1.4),helm+b.global_basis*Vector3(0,1.,-3.),4)
+	b.set_occupied(false)
+
+func _escuna() -> void:
+	var b: CharacterBody3D=game.boat
+	var Econ=load("res://scripts/inventory/harbor_economy.gd")
+	game.inventory.owned_boats.append("escuna");game.inventory.boat_id="escuna";Econ.apply(game.inventory,b,game.fishing)
+	b.global_position=_sea_point();b.rotation=Vector3(0,.4,0);b.set_occupied(true);b.sail_target=1.
+	for i: int in 40:await process_frame
+	await shot("class_escuna",b.global_position+b.global_basis*Vector3(20.,9.,14.),b.global_position+Vector3(0,4,0),3)
+	var helm: Vector3=b._hull.to_global(b.hull_spec.helm)
+	await shot("class_escuna_helm",helm+b.global_basis*Vector3(.5,1.7,1.4),helm+b.global_basis*Vector3(0,1.,-3.),3)
+	b.set_occupied(false)
+	game.inventory.boat_id="aurora";Econ.apply(game.inventory,b,game.fishing)
+
+func _fight() -> void:
+	var b: CharacterBody3D=game.boat
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for i: int in 5:await process_frame
+	var f=game.fishing
+	game.fishing_visual.target=b.global_position+Vector3(2,0,-9);game.fishing_visual.cast_start=game.player.rod_tip()
+	f.start_cast("coast");f.advance(1.);f.advance(8.);f.strike()
+	Input.action_press("fish")
+	for i: int in 50:await process_frame
+	Input.action_release("fish")
+	var p: Vector3=game.player.global_position
+	var h: Vector3=game.hooked.global_position
+	var log:=FileAccess.open(out_dir+"/fight_log.txt",FileAccess.WRITE)
+	log.store_line("player %s fish %s state %d bend %.2f visible %s mode %s"%[p,h,f.state,game.player.visual._bend_now,game.hooked.visible,game.hooked.mode])
+	var mid: Vector3=(p+h)*.5
+	await shot("fight_side",mid+Vector3(9,6,3),mid,2)
+	await shot("fight_fish",Vector3(h.x+2.5,1.6,h.z+2.5),h,2)
+	f.progress=.99;f.tension=.3;Input.action_press("fish")
+	for i: int in 30:
+		await process_frame
+		if f.state!=f.State.REELING:break
+	Input.action_release("fish")
+	log.store_line("after reel: state %d pending %s hooked %s %s"%[f.state,not game.pending_catch.is_empty(),game.hooked.mode,game.hooked.global_position])
+	for i: int in 12:await process_frame
+	await shot("fight_landing",p+Vector3(6,3,-5),p+Vector3(0,1.,-2),1)
+	for i: int in 40:await process_frame
+	await shot("fight_held",p+Vector3(1.2,1.8,-2.6),p+Vector3(0,1.2,0),1)
+	game.finish_catch(true)
+	for i: int in 45:await process_frame
+	var r: Vector3=game.hooked.global_position
+	log.store_line("release: %s %s %s"%[game.hooked.mode,game.hooked.visible,r]);log.close()
+	await shot("fight_release",Vector3(r.x-3.,3.,r.z+3.),r,1)
+
+func _reef() -> void:
+	var life=game.world.get_node("VidaNoFundo")
+	for i: int in mini(life.reefs.size(),4):
+		var c: Vector3=life.reefs[i]
+		await shot("reef_%d_%s"%[i,life.reef_biomes[i]],c+Vector3(7,3.5,7),c+Vector3(0,.6,0),4)

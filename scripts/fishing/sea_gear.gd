@@ -29,6 +29,14 @@ var net_point: Vector3
 var net_node: Node3D
 var last_haul: Array[Dictionary]=[]
 var _rng:=RandomNumberGenerator.new()
+## What came up last (net or trap) and can still be let go with X while it hangs beside the boat:
+## {"kind":"net"/"trap","first":index in inventory.catches,"count":n,"animals":[Node3D],"clock":s}
+var fresh_haul: Dictionary={}
+const RELEASE_WINDOW: float=6.
+## Animals let go: they drop to the water and swim or sink away, then are freed.
+var _released: Array[Dictionary]=[]
+var _clock: float=0.
+var net_catch: Node3D
 
 func _ready() -> void:
 	_rng.randomize()
@@ -104,9 +112,20 @@ func _update_net(delta: float) -> void:
 			var back: Vector3=net_point.lerp(game.boat.global_position,t)
 			net_node.position=Vector3(back.x,lerpf(surface-2.4,surface+.6,t),back.z)
 			var r:=lerpf(4.,.35,t);net_node.scale=Vector3(r,1.8-t,r)
+			if is_instance_valid(net_catch):net_catch.global_position=net_node.position+Vector3(0,-.15,0)
 			if t>=1.:
+				net_state="pendurada";net_clock=0.
+				game.hud.notify(_haul_text()+("    X · Soltar" if not last_haul.is_empty() else ""))
+		"pendurada":
+			# Hangs dripping from the gunwale while the catch is sorted; then it is emptied into the hold.
+			var side: Vector3=game.boat.global_position+game.boat.global_basis.x*(float(game.boat.hull_spec.beam)*.5*game.boat.size_factor+.3)
+			var hang:=Vector3(side.x,Waves.height_at(side)+1.1+sin(net_clock*2.)*.05,side.z)
+			net_node.position=hang;net_node.scale=Vector3(.35,.8,.35)
+			if is_instance_valid(net_catch):net_catch.global_position=hang+Vector3(0,-.2,0)
+			if net_clock>RELEASE_WINDOW:
 				net_node.queue_free();net_node=null;net_state="pronta";net_cooldown=NET_COOLDOWN
-				game.hud.notify(_haul_text())
+				if is_instance_valid(net_catch):net_catch.queue_free()
+				if fresh_haul.get("kind","")=="net":fresh_haul={}
 
 ## Fish under the net come up with it; the boat's hold size limits the haul.
 func _haul() -> void:
@@ -123,9 +142,18 @@ func _haul() -> void:
 		var take:=mini(int(ceil(float(under[species])*.5)),room-last_haul.size())
 		for i: int in take:last_haul.append(make_catch(species))
 		if last_haul.size()>=room:break
+	var first: int=game.inventory.catches.size();var added: int=0
 	for c: Dictionary in last_haul:
-		game.inventory.record(c);game.inventory.add_catch(c)
-
+		game.inventory.record(c)
+		if game.inventory.add_catch(c):added+=1
+	# The fish are visible in the mesh as it comes up, flapping.
+	if is_instance_valid(net_catch):net_catch.queue_free()
+	net_catch=Node3D.new();net_catch.name="PeixesNaTarrafa";add_child(net_catch)
+	var animals: Array=[]
+	for i: int in mini(last_haul.size(),12):
+		var fish:=_net_fish(str(last_haul[i].id));net_catch.add_child(fish);animals.append(fish)
+		fish.position=Vector3(_rng.randf_range(-.25,.25),_rng.randf_range(-.15,.1),_rng.randf_range(-.25,.25));fish.rotation=Vector3(_rng.randf()*.6,_rng.randf()*TAU,_rng.randf_range(-1.,1.))
+	fresh_haul={"kind":"net","first":first,"count":added,"animals":animals,"clock":-2.}
 func _haul_text() -> String:
 	if last_haul.is_empty():return "A tarrafa voltou vazia. Jogue ração (C) para juntar o cardume antes."
 	var names: Dictionary={}
@@ -178,14 +206,19 @@ func _collect(t: Dictionary) -> String:
 	if not t.has("haul"):_fill(t)
 	var haul: Array[Dictionary]=[]
 	for id: String in t.haul:haul.append(make_catch(id))
-	for c: Dictionary in haul:game.inventory.record(c);game.inventory.add_catch(c)
+	var first: int=game.inventory.catches.size();var added: int=0
+	for c: Dictionary in haul:
+		game.inventory.record(c)
+		if game.inventory.add_catch(c):added+=1
 	traps.erase(t);game.inventory.stats.traps=int(game.inventory.stats.traps)+1
 	hauling.append({"node":t.node,"bottom":t.bottom,"clock":0.})
+	var cage: Node3D=(t.node as Node3D).get_node("Gaiola")
+	fresh_haul={"kind":"trap","first":first,"count":added,"animals":cage.get_children().filter(func(n: Node) -> bool:return n.has_meta("critter")),"clock":0.}
 	game.inventory.traps+=1;game.inventory.changed.emit()
 	game.audio.cue("chain")
 	var names: Array[String]=[]
 	for c: Dictionary in haul:names.append(str(c.name))
-	return "Covo recolhido: "+", ".join(names)
+	return "Covo recolhido: "+", ".join(names)+"    X · Soltar os animais"
 
 func _build_trap(at: Vector3,bottom: float) -> Node3D:
 	var root:=Node3D.new();root.name="Covo_%d"%traps.size();root.position=Vector3(at.x,0,at.z);add_child(root)
@@ -217,7 +250,7 @@ func _fill(t: Dictionary) -> void:
 
 static var _painted_mat: ShaderMaterial
 func _trap_animal(id: String) -> Node3D:
-	var root:=Node3D.new();root.name=id.capitalize()
+	var root:=Node3D.new();root.name=id.capitalize();root.set_meta("critter",id);root.set_meta("phase",_rng.randf()*TAU)
 	match id:
 		"caranguejo":
 			# Crab from Bruno's marine pack, painted by the pipeline.
@@ -226,17 +259,26 @@ func _trap_animal(id: String) -> Node3D:
 			var s:=_rng.randf_range(.26,.34);crab.scale=Vector3.ONE*s;crab.position.y=.04;crab.set_instance_shader_parameter("model_scale",s);root.add_child(crab)
 		"lagosta":
 			var shell:=G.material(Color("8a3a22"),.45);var pale:=G.material(Color("d98a52"),.5)
-			for k: int in 6:G.ellipsoid(root,Vector3(0,.05,-.12+float(k)*.06),Vector3(.09-float(k)*.008,.07,.08),shell if k%2==0 else pale,8)
-			G.ellipsoid(root,Vector3(0,.04,.24),Vector3(.14,.03,.07),shell,8)
+			for k: int in 3:G.ellipsoid(root,Vector3(0,.05,-.12+float(k)*.06),Vector3(.09-float(k)*.008,.07,.08),shell if k%2==0 else pale,8)
+			# Tail on a hinge: it flicks under the body when the lobster struggles.
+			var tail:=Node3D.new();tail.name="Cauda";tail.position=Vector3(0,.05,.05);root.add_child(tail)
+			for k: int in 3:G.ellipsoid(tail,Vector3(0,0,.04+float(k)*.06),Vector3(.075-float(k)*.008,.065,.075),pale if k%2==0 else shell,8)
+			G.ellipsoid(tail,Vector3(0,-.01,.22),Vector3(.14,.03,.07),shell,8)
 			for side: float in [-1.,1.]:
 				var antenna:=G.beam(root,Vector3(side*.03,.07,-.15),Vector3(side*.18,.12,-.48),.006,shell);antenna.name="Antena"
 				G.ellipsoid(root,Vector3(side*.11,.04,-.2),Vector3(.05,.04,.1),shell,8)
 		"polvo":
 			var skin:=G.material(Color("b46a5a"),.35)
 			G.ellipsoid(root,Vector3(0,.12,.05),Vector3(.16,.14,.2),skin,12)
+			var eye:=G.material(Color("e8d27a"),.3)
+			for side: float in [-1.,1.]:G.ellipsoid(root,Vector3(side*.06,.14,-.04),Vector3(.035,.035,.035),eye,6)
+			# Eight arms, each two joints, curling and reaching through the mesh.
 			for k: int in 8:
 				var a:=float(k)*TAU/8.
-				G.beam(root,Vector3(cos(a)*.06,.03,sin(a)*.06),Vector3(cos(a)*.24,.0,sin(a)*.24+.04*sin(float(k))),.022,skin)
+				var arm:=Node3D.new();arm.name="Braco";arm.position=Vector3(cos(a)*.05,.04,sin(a)*.05);arm.rotation.y=-a;root.add_child(arm)
+				G.beam(arm,Vector3.ZERO,Vector3(.11,-.01,0),.02,skin)
+				var tip:=Node3D.new();tip.name="Ponta";tip.position=Vector3(.11,-.01,0);arm.add_child(tip)
+				G.beam(tip,Vector3.ZERO,Vector3(.11,-.01,0),.012,skin)
 	return root
 
 func _update_traps(delta: float) -> void:
@@ -266,5 +308,93 @@ func _update_traps(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	if game==null:return
+	_clock+=delta
 	_update_net(delta)
 	_update_traps(delta)
+	_update_haul_life(delta)
+
+## Animals in a cage or net are alive: crabs scuttle sideways and raise their claws, the octopus curls
+## and reaches, a lobster flicks its tail; netted fish flap.
+func _animate_critter(animal: Node3D,delta: float,lively: float) -> void:
+	var ph: float=float(animal.get_meta("phase",0.))+_clock
+	match str(animal.get_meta("critter","")):
+		"caranguejo":
+			var home: Vector3=animal.get_meta("home",animal.position);animal.set_meta("home",home)
+			animal.position=home+animal.basis.x*sin(ph*1.7)*.12*lively
+			animal.rotation.z=sin(ph*11.)*.08*lively
+			animal.position.y=home.y+absf(sin(ph*11.))*.02*lively
+		"lagosta":
+			var tail: Node3D=animal.get_node_or_null("Cauda")
+			if tail!=null:tail.rotation.x=maxf(0.,sin(ph*3.))*1.1*lively
+			animal.rotation.y+=sin(ph*.7)*delta*.6*lively
+		"polvo":
+			for arm: Node in animal.get_children():
+				if arm.name.begins_with("Braco"):
+					var k: float=float(arm.get_index())
+					(arm as Node3D).rotation.z=sin(ph*1.6+k*.8)*.45*lively
+					var tip: Node3D=arm.get_node("Ponta");tip.rotation.z=sin(ph*2.1+k*1.3)*.8*lively;tip.rotation.y=cos(ph*1.3+k)*.4*lively
+		"peixe":
+			animal.rotation.z=sin(ph*14.)*.6*lively;animal.rotation.x=sin(ph*7.)*.3*lively
+
+func _net_fish(id: String) -> Node3D:
+	var root:=Node3D.new();root.name="Peixe";root.set_meta("critter","peixe");root.set_meta("phase",_rng.randf()*TAU)
+	var Forms=preload("res://scripts/creatures/fish_forms.gd")
+	var form_id: String=id if Forms.has_form(id) else "sardine"
+	var mesh:=MeshInstance3D.new();mesh.mesh=Forms.mesh(form_id);mesh.material_override=Forms.material(form_id,true)
+	mesh.scale=Vector3.ONE*clampf(Forms.length_of(form_id),.18,.5);root.add_child(mesh)
+	return root
+
+func _update_haul_life(delta: float) -> void:
+	for t: Dictionary in traps:
+		if t.has("haul"):
+			for animal: Node in (t.node as Node3D).get_node("Gaiola").get_children():
+				if animal.has_meta("critter"):_animate_critter(animal,delta,.6)
+	for h: Dictionary in hauling:
+		if is_instance_valid(h.node):
+			for animal: Node in (h.node as Node3D).get_node("Gaiola").get_children():
+				if animal.has_meta("critter"):_animate_critter(animal,delta,1.)
+	if is_instance_valid(net_catch):
+		for fish: Node in net_catch.get_children():_animate_critter(fish,delta,1.)
+	if not fresh_haul.is_empty():
+		fresh_haul.clock=float(fresh_haul.clock)+delta
+		if float(fresh_haul.clock)>RELEASE_WINDOW+1.:fresh_haul={}
+	for r: Dictionary in _released.duplicate():
+		var node: Node3D=r.node
+		if not is_instance_valid(node):_released.erase(r);continue
+		r.clock=float(r.clock)+delta
+		var surface: float=Waves.height_at(node.global_position)
+		var v: Vector3=r.vel
+		if node.global_position.y>surface:v.y-=9.8*delta
+		else:
+			# In the water: crabs and lobsters sink, fish and octopus swim off and down.
+			var swim: Vector3=r.dir
+			v=v.lerp(swim*(1.6 if r.kind!="caranguejo" else .3)+Vector3.DOWN*(.5 if r.kind in ["peixe","polvo"] else 1.2),1.-exp(-delta*2.))
+			if not r.splashed:r.splashed=true;game.world.ocean.effects.splash(node.global_position,.35,true)
+		r.vel=v;node.global_position+=v*delta
+		var dir: Vector3=r.dir
+		if str(r.kind)=="peixe":node.global_basis=Basis(Vector3.UP,atan2(-dir.z,dir.x))*Basis(Vector3.RIGHT,sin(float(r.clock)*12.)*.3)
+		elif str(r.kind)!="caranguejo":_animate_critter(node,delta,1.)
+		if float(r.clock)>4.5:node.queue_free();_released.erase(r)
+
+func can_release() -> bool:
+	return not fresh_haul.is_empty() and float(fresh_haul.clock)<=RELEASE_WINDOW and (fresh_haul.animals as Array).size()>0
+
+## X while the trap or net hangs beside the boat: everything that came up goes back alive.
+func release_haul() -> String:
+	if not can_release():return ""
+	var inv=game.inventory
+	var first: int=int(fresh_haul.first);var count: int=int(fresh_haul.count)
+	if count>0 and inv.catches.size()>=first+count:
+		for i: int in count:inv.catches.remove_at(first)
+		inv.changed.emit()
+	var away: Vector3=game.boat.global_basis.x if game.player.in_boat else Vector3.FORWARD
+	for animal: Node3D in fresh_haul.animals:
+		if not is_instance_valid(animal):continue
+		var at: Vector3=animal.global_position
+		animal.reparent(self,false);animal.global_position=at
+		var dir:=(away+Vector3(_rng.randf_range(-.6,.6),0.,_rng.randf_range(-.6,.6))).normalized()
+		_released.append({"node":animal,"vel":away*1.2+Vector3.UP*1.2,"dir":dir,"clock":0.,"kind":str(animal.get_meta("critter","")),"splashed":false})
+	var kind: String=str(fresh_haul.kind)
+	fresh_haul={}
+	if kind=="net" and net_state=="pendurada":net_clock=RELEASE_WINDOW-.5
+	return "Você soltou os animais de volta ao mar."

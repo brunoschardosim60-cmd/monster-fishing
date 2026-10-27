@@ -165,8 +165,14 @@ static func _sail(root: Node3D,corners: Array,color: Color,belly: float) -> Mesh
 	var mat:=StandardMaterial3D.new();mat.albedo_color=color;mat.vertex_color_use_as_albedo=true;mat.roughness=.85;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
 	mat.backlight_enabled=true;mat.backlight=Color(.35,.33,.3)
 	var node:=MeshInstance3D.new();node.name="Vela";node.mesh=st.commit();node.material_override=mat;root.add_child(node)
+	node.set_meta("tack",corners[0])
 	(root.get_meta("sails") as Array).append(node)
 	return node
+
+## A spar that swings with the sail hung beside it (boom, gaff): sail_rig.gd matches it by its foot.
+static func _boom(root: Node3D,a: Vector3,b: Vector3,thickness: float,mat: Material) -> void:
+	var spar:=G.beam(root,a,b,thickness,mat);_detail(spar);spar.set_meta("from",a)
+	var list: Array=root.get_meta("booms",[]);list.append(spar);root.set_meta("booms",list)
 
 static func _line(root: Node3D,a: Vector3,b: Vector3,mat: Material,thickness: float=.018) -> void:
 	_detail(G.beam(root,a,b,thickness,mat))
@@ -303,7 +309,7 @@ static func _veleiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var mast_z:=-L*.12;var mast_h:=L*1.25
 	var spar:=_mat(Color("c9ccd0"),.35,.6)
 	G.cylinder(root,Vector3(0,f+mast_h*.5,mast_z),.07,mast_h,spar)
-	_detail(G.beam(root,Vector3(0,f+1.,mast_z),Vector3(0,f+1.1,mast_z+L*.42),.06,spar))
+	_boom(root,Vector3(0,f+1.,mast_z),Vector3(0,f+1.1,mast_z+L*.42),.06,spar)
 	var cloth: Color=_pick(rng,[Color("f7f4ec"),Color("f7f4ec"),Color("efe6d2"),Color("e9e3d6")])
 	_sail(root,[Vector3(0,f+1.1,mast_z+.1),Vector3(0,f+1.15,mast_z+L*.41),Vector3(0,f+mast_h*.95,mast_z+.1)],cloth,L*.035)
 	_sail(root,[Vector3(0,f+.4,-L*.46),Vector3(0,f+.6,mast_z-.15),Vector3(0,f+mast_h*.86,mast_z-.05)],cloth,L*.03)
@@ -330,8 +336,8 @@ static func _escuna(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	for mast: Array in [[-L*.2,L*.95],[L*.08,L*1.05]]:
 		var z: float=mast[0];var h: float=mast[1]
 		G.cylinder(root,Vector3(0,f+h*.5,z),.16,h,spar)
-		_detail(G.beam(root,Vector3(0,f+1.4,z+.2),Vector3(0,f+1.6,z+L*.24),.09,spar))
-		_detail(G.beam(root,Vector3(0,f+h*.62,z+.2),Vector3(0,f+h*.86,z+L*.22),.08,spar))
+		_boom(root,Vector3(0,f+1.4,z+.2),Vector3(0,f+1.6,z+L*.24),.09,spar)
+		_boom(root,Vector3(0,f+h*.62,z+.2),Vector3(0,f+h*.86,z+L*.22),.08,spar)
 		_sail(root,[Vector3(0,f+1.5,z+.25),Vector3(0,f+1.6,z+L*.23),Vector3(0,f+h*.84,z+L*.21),Vector3(0,f+h*.6,z+.25)],cloth,L*.03)
 		for side: float in [-1.,1.]:
 			_line(root,Vector3(0,f+h*.9,z),Vector3(side*L*.12,f,z+1.),rope);_line(root,Vector3(0,f+h*.9,z),Vector3(side*L*.12,f,z-1.),rope)

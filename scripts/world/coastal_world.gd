@@ -5,6 +5,8 @@ const OCEAN = preload("res://assets/shaders/ocean.gdshader")
 const Materials = preload("res://scripts/visuals/materials.gd")
 const Details = preload("res://scripts/world/coastal_details.gd")
 const Waves = preload("res://scripts/world/wave_field.gd")
+## Wind-blown spray off crests and over the bow (wind_spray.gd).
+var spray: Node3D
 var ocean_material: ShaderMaterial
 var environment: Environment
 var sky_material: ShaderMaterial
@@ -75,6 +77,7 @@ func _ready() -> void:
 	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
 	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
+	spray=preload("res://scripts/ocean/wind_spray.gd").new();spray.name="BorrifosDoVento";add_child(spray)
 	traffic=preload("res://scripts/world/maritime_traffic.gd").new();traffic.name="TrafegoMaritimo";add_child(traffic)
 	sea_events=preload("res://scripts/world/sea_events.gd").new();sea_events.name="EventosMarinhos";add_child(sea_events)
 	var meadows:=preload("res://scripts/world/home_meadows.gd").new();meadows.name="CamposDaAurora";add_child(meadows)

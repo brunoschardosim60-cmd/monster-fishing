@@ -10,6 +10,13 @@ var shore_layer: AudioStreamPlayer3D
 var hull_layer: AudioStreamPlayer3D
 var splash_layer: AudioStreamPlayer3D
 var thunder_layer: AudioStreamPlayer3D
+## Boat sounds: engine hum (pitch follows the throttle), wind in the rigging, and one-shot creaks,
+## sail flogging and bow slaps triggered by what the hull is doing.
+var engine_layer: AudioStreamPlayer3D
+var rigging_layer: AudioStreamPlayer
+var _creak_clock: float=3.
+var _flap_clock: float=0.
+var _last_roll: float=0.
 ## Synthesized one-shots by name, built once. Positional ones play from a small pool of 3D players.
 var _cues: Dictionary={}
 var _pool: Array[AudioStreamPlayer3D]=[]
@@ -34,6 +41,8 @@ func _ready() -> void:
 	splash_layer=_spatial(_noise_sound(64,.2,.8,false),false)
 	thunder_layer=_spatial(_noise_sound(65,.004,5.,false),false)
 	thunder_layer.unit_size=250.; thunder_layer.max_distance=1500.
+	engine_layer=_spatial(_engine_sound(),true);engine_layer.volume_db=-80.
+	rigging_layer=_layer(_noise_sound(66,.5,6.,true))
 	thunder_layer.volume_db=-5.
 
 func _layer(stream: AudioStream) -> AudioStreamPlayer:
@@ -53,6 +62,33 @@ func configure(sea: Node3D, vessel: CharacterBody3D) -> void:
 		splash_layer.global_position=at; splash_layer.volume_db=-23.+strength*3.; splash_layer.play())
 	ocean.thunder.connect(func(at: Vector3) -> void: thunder_layer.global_position=at; thunder_layer.play())
 
+func _boat_sounds(delta: float,muffled: float) -> void:
+	if boat==null or not "engine_rpm" in boat:return
+	var rpm: float=absf(float(boat.engine_rpm))
+	var aboard: bool=boat.occupied or (boat.global_position.distance_to(ocean.get_viewport().get_camera_3d().global_position)<25.)
+	var outboard: bool=str(boat.hull_model)=="canoa"
+	engine_layer.global_position=boat.global_position+boat.global_basis.z*float(boat.hull_spec.length)*.4
+	engine_layer.volume_db=(-80. if rpm<.02 else -30.+rpm*12.+(4. if outboard else 0.))-muffled
+	engine_layer.pitch_scale=(.55+rpm*.75)*(1.7 if outboard else 1.)+(.25 if boat.boost>0. else 0.)
+	var sails: bool=boat.has_method("has_sails") and boat.has_sails()
+	var hoisted: float=float(boat.sail_rig.hoist) if sails else 0.
+	rigging_layer.volume_db=(-70. if not (sails and aboard) else -52.+ocean.weather.wind*26.+hoisted*4.)-muffled
+	rigging_layer.pitch_scale=.8+ocean.weather.wind*.6
+	if not aboard:return
+	# Wooden hulls creak as they roll; more in a seaway.
+	var hull: Node3D=boat._hull
+	var roll: float=hull.rotation.z if is_instance_valid(hull) else 0.
+	var roll_rate: float=absf(roll-_last_roll)/maxf(delta,.001);_last_roll=roll
+	_creak_clock-=delta*(.4+roll_rate*6.+ocean.weather.energy)
+	if _creak_clock<=0.:
+		_creak_clock=randf_range(2.5,6.)
+		cue_at("creak",boat.global_position+Vector3.UP,-4. if str(boat.hull_model)=="tripo" else 0.)
+	# Sails flogging when pointed into the wind.
+	if sails and hoisted>.3:
+		_flap_clock-=delta
+		if boat.sail_speed<.25 and float(boat.sail_rig.fill)<.45 and _flap_clock<=0.:
+			_flap_clock=.7;cue_at("flap",boat.global_position+Vector3.UP*4.,-2.)
+
 func _process(_delta: float) -> void:
 	if ocean==null: return
 	var camera:=ocean.get_viewport().get_camera_3d()
@@ -69,7 +105,8 @@ func _process(_delta: float) -> void:
 	hull_layer.global_position=boat.global_position
 	hull_layer.volume_db=-34.+ocean.weather.energy*8.+boat.wake_strength*13.-muffled
 	hull_layer.pitch_scale=.8+boat.wake_strength*.35
-	for player: AudioStreamPlayer3D in [shore_layer,hull_layer,splash_layer,thunder_layer]:
+	_boat_sounds(_delta,muffled)
+	for player: AudioStreamPlayer3D in [shore_layer,hull_layer,splash_layer,thunder_layer,engine_layer]:
 		player.attenuation_filter_cutoff_hz=1200. if ocean.underwater else 8000.
 
 func stop_all() -> void:
@@ -112,7 +149,7 @@ func _stream(kind: String) -> AudioStreamWAV:
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = 22050
 	var seconds: Dictionary={"catch":.41,"chain":1.36,"splash":.64,"horn":1.36,"bite":.18,"roar":2.6,"slam":1.6,"breach":2.4,"axe":.5,"hammer":.25,
-		"knock":.3,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5,"ping":1.6}
+		"knock":.3,"creak":.9,"flap":.6,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5,"ping":1.6}
 	var length: int=int(22050.*float(seconds.get(kind,.2)))
 	var samples := PackedByteArray()
 	samples.resize(length * 2)
@@ -203,6 +240,17 @@ func _stream(kind: String) -> AudioStreamWAV:
 				var e1:=sin(t*TAU*1480.)*exp(-t*9.)
 				var e2: float=sin((t-.45)*TAU*1480.)*exp(-maxf(t-.45,0.)*7.)*.35*(1. if t>.45 else 0.)
 				value=(e1+e2)*.32
+			"creak":
+				# Wood working against wood: a slow, rubbing, pitch-gliding groan.
+				var f:=lerpf(110.,70.,t/.9)+sin(t*21.)*8.
+				phase+=f/22050.
+				var stick:=pow(.5+.5*sin(t*TAU*23.),6.)
+				low=lerpf(low,(fposmod(phase,1.)*2.-1.)*(.4+stick),.12)
+				value=low*sin(PI*clampf(t/.9,0.,1.))*.5
+			"flap":
+				# Loose canvas cracking in the wind: noise bursts at a flutter rate.
+				low=lerpf(low,rng.randf_range(-1.,1.),.45)
+				value=low*pow(maxf(0.,sin(t*TAU*11.)),4.)*exp(-t*3.)*.9
 			"coins":
 				var n2:=floorf(t/.07);var tt2:=t-n2*.07
 				value=sin(tt2*TAU*(2600.+n2*180.))*exp(-tt2*60.)*.25
@@ -233,4 +281,19 @@ func _wave_sound() -> AudioStreamWAV:
 		var fade := minf(1.0, minf(t, 8.0-t) * 4.0)
 		data.encode_s16(i * 2, int(low * swell * fade * 26000))
 	stream.data = data
+	return stream
+
+## Marine diesel at idle: firing pulses with a low hull resonance and a little exhaust noise. Pitch
+## scaling (engine_layer.pitch_scale) turns it into higher revs.
+func _engine_sound() -> AudioStreamWAV:
+	var stream:=AudioStreamWAV.new();stream.format=AudioStreamWAV.FORMAT_16_BITS;stream.mix_rate=22050
+	var count: int=22050*2;var data:=PackedByteArray();data.resize(count*2)
+	var rng:=RandomNumberGenerator.new();rng.seed=909;var low:=0.;var body:=0.
+	for i: int in count:
+		var t:=float(i)/22050.
+		var fire:=pow(.5+.5*sin(t*TAU*24.),5.)
+		low=lerpf(low,rng.randf_range(-1.,1.),.3)
+		body=lerpf(body,sin(t*TAU*48.)*.6+sin(t*TAU*72.)*.3+low*.3,.25)
+		data.encode_s16(i*2,int(clampf((body*(.4+fire*.8))*.45,-1.,1.)*32767))
+	stream.data=data;stream.loop_mode=AudioStreamWAV.LOOP_FORWARD;stream.loop_end=count
 	return stream

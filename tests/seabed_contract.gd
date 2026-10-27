@@ -21,6 +21,10 @@ func run() -> void:
 			kinds[String(child.name).get_slice("_",0)]=true
 	check(kinds.size()>=6,"%d kinds of sea-floor life (rock, brain and branch coral, kelp, starfish, urchin)"%kinds.size())
 	check(pieces>=500,"%d pieces of reef life"%pieces)
+	check(kinds.has("fan") and kinds.has("sponge") and kinds.has("anemone"),"sea fans, sponges and anemones grow on the reefs (%s)"%", ".join(kinds.keys()))
+	var biomes:={}
+	for b: String in life.reef_biomes:biomes[b]=int(biomes.get(b,0))+1
+	check(biomes.size()>=3,"reefs differ by sea: %s"%str(biomes))
 	# Kelp must stay below the surface (MultiMesh data is not kept by the headless renderer, so use the record).
 	var dry:=0
 	for top: float in life.kelp_tops:

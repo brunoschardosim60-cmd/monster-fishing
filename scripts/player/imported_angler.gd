@@ -26,6 +26,11 @@ var fishing_state: int=0
 var cast_power: float=0.
 var locomotion_phase: float=0.
 var _rod: Node3D
+## Load on the rod, 0 straight … 1 bent hard (set by the game from line tension).
+var rod_bend: float=0.
+const ROD_JOINTS: int=7
+var _rod_joints: Array[Node3D]=[]
+var _bend_now: float=0.
 var _tip: Marker3D
 var current: String=""
 var gait_speed: float=0.
@@ -62,14 +67,24 @@ func _ready() -> void:
 	_rod=Node3D.new();add_child(_rod)
 	var carbon:=G.material(Color("243d42"),.34);var cork:=G.material(Color("bb9661"));var steel:=G.material(Color("bdc3bb"),.2)
 	G.beam(_rod,Vector3(0,-.12,.1),Vector3(0,.28,-.23),.026,cork)
-	G.beam(_rod,Vector3(0,.28,-.23),Vector3(0,1.35,-1.25),.013,carbon)
-	G.beam(_rod,Vector3(0,1.35,-1.25),Vector3(0,1.72,-1.8),.006,carbon)
 	G.cylinder(_rod,Vector3(.05,.04,-.04),.055,.08,steel,.055,18).rotation.z=PI*.5
 	G.beam(_rod,Vector3(.08,.04,-.04),Vector3(.14,.1,-.04),.012,steel)
-	for t: float in [.25,.48,.72,.92]:
-		var ring:=TorusMesh.new();ring.inner_radius=.014;ring.outer_radius=.019;ring.rings=12;ring.ring_segments=6
-		var guide:=G.mesh_node(_rod,ring,steel,Vector3(0,.28,-.23).lerp(Vector3(0,1.72,-1.8),t));guide.rotation.x=-.7
-	_tip=Marker3D.new();_tip.position=Vector3(0,1.72,-1.8);_rod.add_child(_tip)
+	# The blank is a chain of joints from butt to tip, so it can bend under load (rod_bend), most at the tip.
+	var butt:=Vector3(0,.28,-.23);var tip_rest:=Vector3(0,1.72,-1.8)
+	var along:=(tip_rest-butt).normalized();var seg: float=butt.distance_to(tip_rest)/float(ROD_JOINTS)
+	var joint:=Node3D.new();joint.position=butt
+	joint.basis=Basis(Vector3.RIGHT,along,Vector3.RIGHT.cross(along)).orthonormalized()
+	_rod.add_child(joint)
+	_rod_joints.clear()
+	for i: int in ROD_JOINTS:
+		var radius: float=lerpf(.014,.005,float(i)/float(ROD_JOINTS-1))
+		G.beam(joint,Vector3.ZERO,Vector3(0,seg,0),radius,carbon)
+		if i%2==1:
+			var ring:=TorusMesh.new();ring.inner_radius=.012;ring.outer_radius=.017;ring.rings=12;ring.ring_segments=6
+			G.mesh_node(joint,ring,steel,Vector3(0,seg*.9,-.02))
+		_rod_joints.append(joint)
+		var next:=Node3D.new();next.position=Vector3(0,seg,0);joint.add_child(next);joint=next
+	_tip=Marker3D.new();joint.add_child(_tip)
 	update_animation(0.,false,.01)
 ## Cosmetic variation for NPCs. Keys: cloth_hue, cloth_sat_mul, cloth_sat_add, cloth_val_mul, skin (Vector3),
 ## hair (Vector3), headwear ("fisher", "beanie", "straw", "bandana", "none"), headwear_tint, backpack (bool), height, build.
@@ -133,6 +148,10 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 	if _rod.visible:
 		var hand: Transform3D=skeleton.global_transform*_bone_global(rod_hand)
 		_rod.global_transform=Transform3D(hand.basis*rod_grip_basis,hand.origin)
+		# Bend toward the line: each joint turns a little more than the one below it.
+		_bend_now=lerpf(_bend_now,rod_bend,1.-exp(-delta*9.))
+		for i: int in _rod_joints.size():
+			_rod_joints[i].rotation.x=-_bend_now*.32*pow(float(i+1)/float(ROD_JOINTS),1.6) if i>0 else _rod_joints[i].rotation.x
 ## Bone pose in skeleton space, composed from the local poses so it is always current after a manual advance.
 func _bone_global(i: int) -> Transform3D:
 	var t:=skeleton.get_bone_pose(i);var p:=skeleton.get_bone_parent(i)
@@ -147,4 +166,10 @@ func _place_props() -> void:
 	var hand: Transform3D=skeleton.global_transform*_bone_global(rod_hand)
 	for entry: Array in _props:(entry[0] as Node3D).global_transform=hand*(entry[1] as Transform3D)
 func rod_tip() -> Vector3:return _tip.global_position
+## Between both hands, a little low: where a big fish is held across the body.
+func two_hand_point() -> Vector3:
+	var right:=skeleton.find_bone("RightHand")
+	var a:=(skeleton.global_transform*_bone_global(left_hand)).origin
+	var b:=(skeleton.global_transform*_bone_global(right)).origin if right>=0 else a
+	return (a+b)*.5+Vector3(0,-.12,0)
 func catch_hand_transform() -> Transform3D:return skeleton.global_transform*_bone_global(left_hand)

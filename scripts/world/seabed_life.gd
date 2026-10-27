@@ -92,14 +92,39 @@ func _scatter(centre: Vector3,radius: float) -> Vector3:
 	if h>-1.:return Vector3.INF
 	return Vector3(p.x,h,p.y)
 
+## How many of each piece a reef gets in each sea: warm water grows coral gardens with fans and plate
+## corals; cold water grows kelp forests with sponges and anemones; volcanic rock carries sponges.
+## [rock, brain, branch, kelp, fan, table, sponge, anemone] as [min,max] counts.
+const BIOME_MIX: Dictionary={
+	"tropical":[[5,8],[12,18],[14,20],[0,2],[4,7],[3,6],[2,4],[4,7]],
+	"harbor":[[7,11],[9,15],[10,16],[5,9],[1,3],[0,2],[2,4],[2,4]],
+	"frost":[[9,13],[0,0],[0,0],[16,24],[0,0],[0,0],[3,6],[5,8]],
+	"volcanic":[[11,15],[2,4],[3,5],[2,4],[0,2],[0,1],[5,8],[3,5]],
+	"storm":[[10,14],[3,6],[3,6],[9,14],[0,1],[0,0],[3,5],[2,4]],
+	"shadow":[[10,14],[2,4],[2,4],[8,12],[1,2],[0,0],[4,6],[2,3]],
+	"desert":[[6,9],[8,12],[8,12],[2,4],[2,4],[2,4],[2,3],[2,4]]}
+const SPONGE: Array[Color]=[Color("e9a23b"),Color("d9603b"),Color("b24a8c"),Color("e6cf5a"),Color("8e6bd1")]
+const ANEMONE: Array[Color]=[Color("ff8fa3"),Color("f4e3c1"),Color("7ad3c9"),Color("ffb26b"),Color("c58cff")]
+## Biome of each reef, in order (kept for checks).
+var reef_biomes: Array[String]=[]
+
 func _reef(centre: Vector3) -> void:
 	reefs.append(centre);_begin_group(centre)
+	var biome: String=str(Layout.region_at(Vector2(centre.x,centre.z)).get("biome","harbor"))
+	if not BIOME_MIX.has(biome):biome="harbor"
+	reef_biomes.append(biome)
+	var mix: Array=BIOME_MIX[biome]
 	var radius:=rng.randf_range(11.,17.)
 	var palette:=[CORAL[rng.randi()%CORAL.size()],CORAL[rng.randi()%CORAL.size()],CORAL[rng.randi()%CORAL.size()]]
-	for i: int in rng.randi_range(7,11):_put("rock",centre,radius,rng.randf_range(.7,2.4),ROCK[rng.randi()%ROCK.size()].lerp(Color("3d5a3a"),rng.randf()*.3),.25)
-	for i: int in rng.randi_range(9,15):_put("brain",centre,radius*.8,rng.randf_range(.35,.9),palette[rng.randi()%3],.05)
-	for i: int in rng.randi_range(10,16):_put("branch",centre,radius*.85,rng.randf_range(.6,1.35),palette[rng.randi()%3],0.)
-	for i: int in rng.randi_range(5,9):_put("kelp",centre,radius*1.15,rng.randf_range(.8,1.5),KELP[rng.randi()%KELP.size()],0.)
+	var rock_tint: Color=Color("2b2a2c") if biome=="volcanic" else (Color("8a9aa3") if biome=="frost" else Color("3d5a3a"))
+	for i: int in rng.randi_range(mix[0][0],mix[0][1]):_put("rock",centre,radius,rng.randf_range(.7,2.4),ROCK[rng.randi()%ROCK.size()].lerp(rock_tint,rng.randf()*.45),.25)
+	for i: int in rng.randi_range(mix[1][0],mix[1][1]):_put("brain",centre,radius*.8,rng.randf_range(.35,.9),palette[rng.randi()%3],.05)
+	for i: int in rng.randi_range(mix[2][0],mix[2][1]):_put("branch",centre,radius*.85,rng.randf_range(.6,1.35),palette[rng.randi()%3],0.)
+	for i: int in rng.randi_range(mix[3][0],mix[3][1]):_put("kelp",centre,radius*1.15,rng.randf_range(.8,1.5)*(1.3 if biome=="frost" else 1.),KELP[rng.randi()%KELP.size()],0.)
+	for i: int in rng.randi_range(mix[4][0],mix[4][1]):_put("fan",centre,radius*.9,rng.randf_range(.8,1.6),[Color("c74b8b"),Color("e8a33d"),Color("8d5cc4"),Color("d4573f")][rng.randi()%4],0.)
+	for i: int in rng.randi_range(mix[5][0],mix[5][1]):_put("table",centre,radius*.8,rng.randf_range(.7,1.5),palette[rng.randi()%3].lerp(Color("c9b98a"),.4),0.)
+	for i: int in rng.randi_range(mix[6][0],mix[6][1]):_put("sponge",centre,radius,rng.randf_range(.5,1.2),SPONGE[rng.randi()%SPONGE.size()],.03)
+	for i: int in rng.randi_range(mix[7][0],mix[7][1]):_put("anemone",centre,radius*.9,rng.randf_range(.6,1.1),ANEMONE[rng.randi()%ANEMONE.size()],0.)
 	for i: int in rng.randi_range(4,7):_put("star",centre,radius*1.2,rng.randf_range(.16,.28),[Color("ff7a3d"),Color("e8443a"),Color("ffb347"),Color("b05cff")][rng.randi()%4],-.02)
 	for i: int in rng.randi_range(3,6):_put("urchin",centre,radius,rng.randf_range(.14,.24),Color("3a1f4a"),.05)
 	for i: int in rng.randi_range(2,3):
@@ -116,7 +141,7 @@ func _put(kind: String,centre: Vector3,radius: float,size: float,color: Color,si
 		size=minf(size,-p.y*.8/4.6)
 		kelp_tops.append(p.y+size*4.6)
 	var basis:=Basis(Vector3.UP,rng.randf()*TAU)
-	if kind in ["branch","brain","rock"]:basis=Basis(Vector3(rng.randf_range(-1.,1.),0,rng.randf_range(-1.,1.)).normalized(),rng.randf_range(0.,.18))*basis
+	if kind in ["branch","brain","rock","sponge","table"]:basis=Basis(Vector3(rng.randf_range(-1.,1.),0,rng.randf_range(-1.,1.)).normalized(),rng.randf_range(0.,.18))*basis
 	basis=basis.scaled(Vector3.ONE*size)
 	(batch.items as Array).append([variant,Transform3D(basis,p-Vector3(0,sink*size,0)),color.lerp(Color.WHITE,rng.randf_range(0.,.12)),_group])
 
@@ -153,6 +178,11 @@ func _prepare_meshes() -> void:
 	_batches["kelp"]={"meshes":[_kelp(101),_kelp(113)],"material":weed,"items":[]}
 	_batches["star"]={"meshes":[_starfish()],"material":solid,"items":[]}
 	_batches["urchin"]={"meshes":[_urchin(131)],"material":glossy,"items":[]}
+	var tentacles:=ShaderMaterial.new();tentacles.shader=SEAWEED;tentacles.set_shader_parameter("sway",.09);tentacles.set_shader_parameter("speed",1.9)
+	_batches["fan"]={"meshes":[_fan(151),_fan(163)],"material":glossy,"items":[]}
+	_batches["table"]={"meshes":[_table(171),_table(181)],"material":glossy,"items":[]}
+	_batches["sponge"]={"meshes":[_sponge(191,false),_sponge(193,true),_sponge(197,false)],"material":solid,"items":[]}
+	_batches["anemone"]={"meshes":[_anemone(211),_anemone(223)],"material":tentacles,"items":[]}
 
 ## Orders a triangle so its face points along `outward`, then adds it with smooth normals.
 func _tri(st: SurfaceTool,a: Vector3,b: Vector3,c: Vector3,na: Vector3,nb: Vector3,nc: Vector3,ca: Color,cb: Color,cc: Color,outward: Vector3) -> void:
@@ -362,3 +392,97 @@ func _wreck(at: Vector3,kind: String,length_m: float) -> void:
 	for i: int in 10:_put("kelp",at,length_m*.7,rng.randf_range(.7,1.2),KELP[rng.randi()%KELP.size()],0.)
 	for i: int in 8:_put("brain",at,length_m*.6,rng.randf_range(.3,.6),CORAL[rng.randi()%CORAL.size()],.05)
 	for i: int in 5:_put("rock",at,length_m*.8,rng.randf_range(.6,1.4),ROCK[rng.randi()%ROCK.size()],.25)
+
+## Sea fan (gorgonian): a flat lattice of thin branches fanning out in one vertical plane.
+func _fan(seed_value: int) -> ArrayMesh:
+	var local:=RandomNumberGenerator.new();local.seed=seed_value
+	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_fan_branch(st,local,Vector3.ZERO,Vector3(0,1,0),.32,.03,0)
+	return st.commit()
+func _fan_branch(st: SurfaceTool,local: RandomNumberGenerator,start: Vector3,dir: Vector3,length: float,radius: float,depth: int) -> void:
+	var finish:=start+dir*length
+	_tube(st,start,finish,radius,radius*.75,Color(.75,.75,.75).lerp(Color.WHITE,float(depth)/5.),Color(.75,.75,.75).lerp(Color.WHITE,float(depth+1)/5.))
+	if depth>=5:return
+	for i: int in 2:
+		var turn:=local.randf_range(.25,.6)*(-1. if i==0 else 1.)
+		var child:=Vector3(dir.x*cos(turn)-dir.y*sin(turn),dir.x*sin(turn)+dir.y*cos(turn),0.).normalized()
+		if child.y<.15:child=(child+Vector3.UP*.5).normalized()
+		_fan_branch(st,local,finish,child,length*local.randf_range(.72,.88),radius*.75,depth+1)
+
+## Plate (table) coral: a wide, thin, slightly cupped disc on a short stalk; lathed with a wavy rim.
+func _table(seed_value: int) -> ArrayMesh:
+	var local:=RandomNumberGenerator.new();local.seed=seed_value
+	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_tube(st,Vector3.ZERO,Vector3(0,.32,0),.07,.06,Color(.7,.7,.7),Color(.8,.8,.8))
+	var n:=18;var wob:=local.randf()*TAU
+	for i: int in n:
+		var a0:=TAU*float(i)/float(n);var a1:=TAU*float(i+1)/float(n)
+		var r0:=.55+.07*sin(a0*3.+wob);var r1:=.55+.07*sin(a1*3.+wob)
+		var c:=Vector3(0,.34,0)
+		var p0:=Vector3(cos(a0)*r0,.4+.04*sin(a0*5.),sin(a0)*r0);var p1:=Vector3(cos(a1)*r1,.4+.04*sin(a1*5.),sin(a1)*r1)
+		_tri(st,c,p0,p1,Vector3.UP,Vector3.UP,Vector3.UP,Color(.85,.85,.85),Color.WHITE,Color.WHITE,Vector3.UP)
+		_tri(st,c-Vector3(0,.03,0),p1-Vector3(0,.03,0),p0-Vector3(0,.03,0),Vector3.DOWN,Vector3.DOWN,Vector3.DOWN,Color(.6,.6,.6),Color(.7,.7,.7),Color(.7,.7,.7),Vector3.DOWN)
+	return st.commit()
+
+## Barrel sponge (open, thick-walled vase) or a cluster of tube sponges.
+func _sponge(seed_value: int,tubes: bool) -> ArrayMesh:
+	var local:=RandomNumberGenerator.new();local.seed=seed_value
+	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	if tubes:
+		for k: int in local.randi_range(3,5):
+			var base:=Vector3(local.randf_range(-.18,.18),0,local.randf_range(-.18,.18))
+			var top:=base+Vector3(local.randf_range(-.12,.12),local.randf_range(.45,.9),local.randf_range(-.12,.12))
+			var r:=local.randf_range(.05,.08)
+			_tube(st,base,top,r,r*1.15,Color(.7,.7,.7),Color.WHITE)
+			_tube(st,top,top-Vector3(0,.25,0),r*.8,r*.8,Color(.35,.35,.35),Color(.25,.25,.25))
+		return st.commit()
+	var rings: Array=[]
+	var steps:=7;var sides:=14
+	for j: int in steps+1:
+		var t:=float(j)/float(steps)
+		var r:=.22+.18*sin(t*PI*.85)+.04*t;var y:=t*.75
+		var ring: Array=[]
+		for i: int in sides:
+			var a:=TAU*float(i)/float(sides)
+			var bump:=1.+.08*sin(a*5.+t*7.+float(seed_value))
+			ring.append(Vector3(cos(a)*r*bump,y,sin(a)*r*bump))
+		rings.append(ring)
+	for j: int in steps:
+		for i: int in sides:
+			var i2:=(i+1)%sides
+			var a: Vector3=rings[j][i];var b: Vector3=rings[j][i2];var c: Vector3=rings[j+1][i2];var d: Vector3=rings[j+1][i]
+			var out:=Vector3(a.x+b.x,0,a.z+b.z).normalized()
+			var ca:=Color(.65,.65,.65).lerp(Color.WHITE,float(j)/float(steps));var cb:=Color(.65,.65,.65).lerp(Color.WHITE,float(j+1)/float(steps))
+			_tri(st,a,b,c,out,out,out,ca,ca,cb,out);_tri(st,a,c,d,out,out,out,ca,cb,cb,out)
+			# Inner wall, dark: the sponge is hollow.
+			var inner:=.82
+			_tri(st,a*Vector3(inner,1,inner),c*Vector3(inner,1,inner),b*Vector3(inner,1,inner),-out,-out,-out,Color(.25,.22,.2),Color(.25,.22,.2),Color(.25,.22,.2),-out)
+			_tri(st,a*Vector3(inner,1,inner),d*Vector3(inner,1,inner),c*Vector3(inner,1,inner),-out,-out,-out,Color(.25,.22,.2),Color(.25,.22,.2),Color(.25,.22,.2),-out)
+	return st.commit()
+
+## Sea anemone: a short column crowned with a ring of tentacles that sway (UV.y = 0 base … 1 tip).
+func _anemone(seed_value: int) -> ArrayMesh:
+	var local:=RandomNumberGenerator.new();local.seed=seed_value
+	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var count:=local.randi_range(22,30)
+	for k: int in count:
+		var a:=TAU*float(k)/float(count)+local.randf()*.1
+		var ring:=.08+.06*float(k%2)
+		var base:=Vector3(cos(a)*ring,.12,sin(a)*ring)
+		var out:=Vector3(cos(a),0,sin(a))
+		var length:=local.randf_range(.18,.28);var width:=.018
+		var side:=Vector3(-sin(a),0,cos(a))*width
+		for i: int in 4:
+			var t0:=float(i)/4.;var t1:=float(i+1)/4.
+			var p0:=base+out*length*t0*.8+Vector3.UP*length*(t0-t0*t0*.4)
+			var p1:=base+out*length*t1*.8+Vector3.UP*length*(t1-t1*t1*.4)
+			var w0:=1.-t0*.7;var w1:=1.-t1*.7
+			for v: Array in [[p0-side*w0,t0],[p0+side*w0,t0],[p1+side*w1,t1],[p0-side*w0,t0],[p1+side*w1,t1],[p1-side*w1,t1]]:
+				st.set_normal((out+Vector3.UP).normalized());st.set_uv(Vector2(0,v[1]));st.set_color(Color.WHITE.lerp(Color(1,1,1),v[1]));st.add_vertex(v[0])
+	# Column: a stubby cylinder, not swaying (UV.y = 0).
+	for i: int in 10:
+		var a0:=TAU*float(i)/10.;var a1:=TAU*float(i+1)/10.
+		var d0:=Vector3(cos(a0),0,sin(a0));var d1:=Vector3(cos(a1),0,sin(a1))
+		for v: Array in [[d0*.11,d0],[d1*.11,d1],[d1*.13+Vector3.UP*.13,d1],[d0*.11,d0],[d1*.13+Vector3.UP*.13,d1],[d0*.13+Vector3.UP*.13,d0]]:
+			st.set_normal(v[1]);st.set_uv(Vector2.ZERO);st.set_color(Color(.7,.7,.7));st.add_vertex(v[0])
+	return st.commit()
