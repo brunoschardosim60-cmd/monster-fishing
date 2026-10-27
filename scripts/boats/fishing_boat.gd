@@ -60,6 +60,8 @@ const HullClasses=preload("res://scripts/boats/hull_classes.gd")
 const VesselModels=preload("res://scripts/boats/vessel_models.gd")
 var _tripo_propeller: Node3D
 signal warning(text: String)
+## The hull class changed (new model, deck, holders…).
+signal hull_changed
 var hull_model: String="tripo"
 var hull_spec: Dictionary=HullClasses.SPECS.tripo
 var sail_rig: RefCounted
@@ -619,6 +621,7 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 	if searchlight!=null:searchlight.position=Vector3(0,float(hull_spec.deck.y)+(2.1 if tripo else 1.4),-float(hull_spec.length)*(.15 if tripo else .4))
 	var half: float=float(hull_spec.beam)*.5;var stern: float=float(hull_spec.length)*.48
 	_foam_left.position=Vector3(-half,0,stern);_foam_right.position=Vector3(half,0,stern)
+	hull_changed.emit.call_deferred()
 	if _bow_left!=null:
 		var bow_z: float=-float(hull_spec.length)*.42*size_factor
 		_bow_left.position=Vector3(-half*.5,0,bow_z);_bow_right.position=Vector3(half*.5,0,bow_z)

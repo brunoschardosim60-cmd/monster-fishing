@@ -54,6 +54,7 @@ const CATALOG: Dictionary={
 	"craft_bait":{"title":"Preparar 6 iscas · 1 material","price":0,"service":"workshop","craft":{"materials":1,"goods":{},"result":{"bait":6}}},
 	"feed":{"title":"Saco de ração · 5 punhados para atrair cardumes (tecla C)","price":15,"service":"gear"},
 	"net":{"title":"Rede de arremesso · tecla N no barco","price":90,"service":"gear"},
+	"bell":{"title":"Sino de vara · toca quando um peixe pega na vara do suporte","price":20,"service":"gear"},
 	"trap":{"title":"Covo para caranguejo e lagosta · tecla B em água rasa","price":40,"service":"gear"},
 	"flares":{"title":"3 sinalizadores · tecla Y espanta monstros por um tempo","price":25,"service":"gear"},
 	"harpoon_gun":{"title":"Arpão de proa · tecla H enfrenta monstros · com 4 arpões","price":140,"service":"workshop"},

@@ -149,7 +149,7 @@ func _stream(kind: String) -> AudioStreamWAV:
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = 22050
 	var seconds: Dictionary={"catch":.41,"chain":1.36,"splash":.64,"horn":1.36,"bite":.18,"roar":2.6,"slam":1.6,"breach":2.4,"axe":.5,"hammer":.25,
-		"knock":.3,"creak":.9,"flap":.6,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5,"ping":1.6}
+		"knock":.3,"creak":.9,"flap":.6,"bell":1.,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5,"ping":1.6}
 	var length: int=int(22050.*float(seconds.get(kind,.2)))
 	var samples := PackedByteArray()
 	samples.resize(length * 2)
@@ -240,6 +240,10 @@ func _stream(kind: String) -> AudioStreamWAV:
 				var e1:=sin(t*TAU*1480.)*exp(-t*9.)
 				var e2: float=sin((t-.45)*TAU*1480.)*exp(-maxf(t-.45,0.)*7.)*.35*(1. if t>.45 else 0.)
 				value=(e1+e2)*.32
+			"bell":
+				# A small brass rod bell, shaken by the bending rod: a few bright, ringing strikes.
+				var n:=floorf(t/.12);var tt:=t-n*.12
+				value=(sin(tt*TAU*2350.)*.6+sin(tt*TAU*3510.)*.3+sin(tt*TAU*5120.)*.1)*exp(-tt*9.)*.32*(1.-smoothstep(.8,1.,t))
 			"creak":
 				# Wood working against wood: a slow, rubbing, pitch-gliding groan.
 				var f:=lerpf(110.,70.,t/.9)+sin(t*21.)*8.

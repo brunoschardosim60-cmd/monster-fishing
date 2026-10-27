@@ -26,6 +26,8 @@ var catch_display: Node3D
 var surface_fish: Node3D
 ## The fish on the line, in the water, then lifted out or put back (hooked_fish.gd).
 var hooked: Node3D
+## Rod holders on the boat's rail (rod_holders.gd): set a line, do something else, come back for the fish.
+var holders: Node3D
 var pending_catch: Dictionary={}
 var stowing: bool=false
 var stow_tween: Tween
@@ -110,6 +112,10 @@ func _ready() -> void:
 	hooked=preload("res://scripts/fishing/hooked_fish.gd").new();hooked.name="PeixeFisgado";_add_system(hooked)
 	hooked.thrash.connect(func(at: Vector3,strength: float) -> void:world.ocean.effects.splash(at,strength,true))
 	fishing_visual.hooked=hooked
+	holders=preload("res://scripts/fishing/rod_holders.gd").new();holders.name="SuportesDeVara";holders.game=self;holders.boat=boat;_add_system(holders)
+	holders.rebuild.call_deferred()
+	boat.hull_changed.connect(func() -> void:holders.rebuild())
+	holders.strike.connect(_on_holder_strike)
 	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
 	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
 	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
@@ -376,6 +382,7 @@ func fish_action() -> void:
 func interact() -> void:
 	aiming=false
 	if diving!=null and diving.try_open():return
+	if player.in_boat and player.on_deck and _holder_action():return
 	if fishing.active():
 		fishing.cancel()
 	if player.in_boat:
@@ -473,6 +480,14 @@ func _interaction_hint() -> String:
 	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V · Observar"
 	if aiming:return "%.0f m · Solte para lançar"%cast_distance
 	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
+	if player.in_boat and player.on_deck and holders!=null:
+		var i: int=holders.nearest(player.global_position)
+		if i>=0:
+			match str(holders.holders[i].state):
+				"empty":
+					if fishing.state==Fishing.State.WAITING:return "E · Pôr a vara no suporte"
+				"biting":return "E · Pegar a vara · PEIXE!"
+				_:return "E · Recolher a vara do suporte"
 	if fishing.active():return ""
 	if player.in_boat:
 		if lairs!=null and lairs.encounter():return "SHIFT · Turbo    Y · Sinalizador (%d)    H · Arpão (%d)"%[inventory.flares,inventory.harpoons if inventory.equipment.get("harpoon",0)>0 else 0]
@@ -663,9 +678,9 @@ func _wind_factor() -> float:
 
 ## What the fish under the float think of this moment (fishing_system.conditions): time of day, weather,
 ## the school beneath, the boat's noise and the depth all change how soon something bites.
-func _fishing_conditions() -> Dictionary:
+func _fishing_conditions(at: Vector3=Vector3.INF,trolling: bool=false) -> Dictionary:
 	var Waves=preload("res://scripts/world/wave_field.gd")
-	var at: Vector3=fishing_visual.target
+	if at==Vector3.INF:at=fishing_visual.target
 	var depth: float=Waves.depth_at(Vector2(at.x,at.z))
 	var hour: float=world.ocean.hour
 	var rate:=1.
@@ -678,7 +693,41 @@ func _fishing_conditions() -> Dictionary:
 	if marine.school_at(at)!="":rate*=3.
 	elif marine.fish_near(at,10.)>5:rate*=1.5
 	if player.in_boat:
-		rate*=.25 if absf(boat.speed)>1. else 1.
+		# A rod left in a holder can troll slowly behind the boat; a hand line wants the boat still.
+		if trolling:rate*=.6 if absf(boat.speed)>1. and absf(boat.speed)<3.5 else (.15 if absf(boat.speed)>=3.5 else 1.)
+		else:rate*=.25 if absf(boat.speed)>1. else 1.
 		rate*=1.-.6*clampf(absf(float(boat.engine_rpm)),0.,1.)
 	if depth<1.5:rate*=.5
 	return {"rate":rate,"depth":depth,"hour":hour}
+
+func _holder_rate(at: Vector3) -> float:
+	return float(_fishing_conditions(at,true).rate)
+
+## E on deck by a holder: put the rod you are fishing with in it, take a rod with a fish on, or reel one in.
+func _holder_action() -> bool:
+	var i: int=holders.nearest(player.global_position)
+	if i<0:return false
+	var h: Dictionary=holders.holders[i]
+	match str(h.state):
+		"empty":
+			if fishing.state!=Fishing.State.WAITING:hud.notify("Lance a linha e traga a vara até o suporte (E).");return true
+			holders.set_rod(i,fishing_visual.target,fishing.region_current,fishing._school)
+			fishing._change_state(Fishing.State.IDLE)
+			hud.notify("Vara no suporte · a linha continua pescando.")
+			return true
+		"biting":
+			if fishing.active() or not pending_catch.is_empty():hud.notify("Termine a pescaria em curso primeiro.");return true
+			var fish: Dictionary=holders.take_rod(i)
+			fishing_visual.target=fish.water;fishing_visual.cast_start=player.rod_tip()
+			fishing.hook_external(fish.species,float(fish.weight),str(fish.region))
+			hud.notify("Você pegou a vara · %s na linha!"%str(fish.species.display_name))
+			return true
+		_:
+			holders.take_rod(i)
+			hud.notify("Vara recolhida do suporte.")
+			return true
+
+func _on_holder_strike(i: int) -> void:
+	if int(inventory.equipment.get("bell",0))>0:
+		audio.cue_at("bell",(holders.holders[i].node as Node3D).global_position,4.)
+		hud.notify("O sino tocou · peixe na vara do suporte!")

@@ -143,6 +143,13 @@ func strike() -> void:
 	elif state == State.WAITING or state == State.CASTING:
 		_message("Espere a boia afundar antes de fisgar.")
 
+## A fish already hooked on a rod left in a holder: the angler takes the rod and the fight begins.
+func hook_external(species: Resource,weight: float,region: String) -> void:
+	_reeling=false;tension=0.;progress=0.
+	species_current=species;fish_weight=weight;region_current=region
+	_change_state(State.BITE)
+	strike()
+
 func cancel() -> void:
 	if active():
 		_reeling = false
