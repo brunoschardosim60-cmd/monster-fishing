@@ -55,6 +55,11 @@ vec3 sea_surface(vec2 p) {
 	}
 	result.y+=tide;
 	result.y+=(sin(c.x*.85-sea_time*1.15)*.12*(.3+swell_energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x))*lod;
+	// Swash: every few seconds a wave runs up the beach and drains back, quick up, slow down, never in
+	// step along the whole shore. Reaches some metres inland on a gentle beach (wave_field.gd mirrors it).
+	float swash_s=fract(sea_time/7.5+sin(p.x*.031)*.35+cos(p.y*.027)*.35-c.x*.012);
+	float swash=smoothstep(0.,.18,swash_s)*(1.-smoothstep(.18,1.,swash_s));
+	result.y+=swash*.5*(.35+swell_energy)*smoothstep(-9.,-1.,c.x)*(1.-smoothstep(2.,14.,c.x))*lod;
 	result.y+=sin(p.y*1.8-sea_time*1.5)*.08*channel*shore*lod;
 	result.z-=cos(p.y*1.8-sea_time*1.5)*.144*channel*shore*lod;
 	return result;

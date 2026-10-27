@@ -17,7 +17,8 @@ var boat_paint: int=0
 var crew: Array=[]
 ## Fish feed handfuls, crab traps carried aboard.
 var feed: int=3
-var traps: int=0
+## Two crab traps (covos) come with the boat; more at the fishing shop.
+var traps: int=2
 ## Harpoons for the bow harpoon gun (H) and distress flares that scare monsters away (Y).
 var harpoons: int=0
 var flares: int=0

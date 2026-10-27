@@ -85,5 +85,33 @@ func run() -> void:
 	check(game.inventory.count()==before,"X lets them go")
 	await frames(400)
 	check(gear.gillnet.is_empty(),"the net is stowed")
+	# Throws go where the angler faces, clear of the hull.
+	boat.global_position=Vector3(250,0,-300);boat.rotation=Vector3.ZERO;boat.speed=0.;await frames(3)
+	game.player.yaw=-PI*.5;await frames(2)
+	var fwd:=Vector3(-sin(game.player.yaw),0,-cos(game.player.yaw))
+	var tp: Vector3=gear.throw_point(5.)
+	var rel: Vector3=tp-game.player.global_position;rel.y=0.
+	check(rel.normalized().dot(fwd)>.98 and rel.length()>float(boat.hull_spec.beam)*.5,"throws land in front of the angler, beyond the rail (%.1f m)"%rel.length())
+	game.inventory.feed=3
+	var fed: String=gear.throw_feed()
+	await frames(50)
+	var landed: bool=false
+	for f: Dictionary in game.marine.feed:
+		if Vector2(f.at.x-tp.x,f.at.z-tp.z).length()<1.:landed=true
+	check(landed,"feed flies out in an arc and lands there (%s)"%fed)
+	# Cast net: let go in the green band and it opens wide; off the beat it opens badly.
+	game.inventory.equipment["net"]=1;gear.net_cooldown=0.;gear.net_state="pronta"
+	check(gear.begin_net_throw().begins_with("Girando") and gear.net_charge>=0.,"holding N swings the net (meter on)")
+	await frames(10)
+	check(game.hud.throw_meter.visible,"the swing meter shows")
+	gear.net_charge=gear.NET_SWEET
+	var good: String=gear.release_net_throw()
+	check(gear.net_quality>.95 and gear.net_radius>4.,"released in the green: a full circle (%s)"%good)
+	await frames(400)
+	gear.net_state="pronta";gear.net_cooldown=0.
+	if is_instance_valid(gear.net_node):gear.net_node.queue_free()
+	gear.begin_net_throw();gear.net_charge=.2
+	var bad: String=gear.release_net_throw()
+	check(gear.net_quality<.2 and gear.net_radius<2.,"off the beat it falls in a tangle (%s)"%bad)
 	print("GEAR %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

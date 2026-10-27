@@ -51,6 +51,10 @@ func _process(delta: float) -> void:
 		item.node.visible=world.ocean.weather.rain<.55 and world.ocean.daylight>.2 and p.distance_squared_to(camera.global_position)<40000.
 		item.wings[0].rotation.z=sin(clock*(12. if item.small else 4.)+item.phase)*.4
 		item.wings[1].rotation.z=-item.wings[0].rotation.z
+	# Island birds (GPU flocks, group "aves") roost at night and in heavy rain too.
+	if int(clock*2.)!=int((clock-delta)*2.):
+		var flying: bool=world.ocean.daylight>.2 and world.ocean.weather.rain<.55
+		for flock: Node in get_tree().get_nodes_in_group("aves"):(flock as Node3D).visible=flying
 	for p: CPUParticles3D in smoke:p.emitting=camera.global_position.distance_squared_to(p.global_position)<22500.
 	if jump_clock<=0.:
 		jump_clock=17.+fposmod(clock*3.,13.)

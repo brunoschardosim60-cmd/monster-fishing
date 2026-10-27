@@ -18,6 +18,11 @@ uniform vec3 sun_dir = vec3(0.3,0.5,-0.8);
 uniform vec3 sun_color : source_color = vec3(1.0,0.95,0.85);
 uniform float sun_strength = 1.0;
 uniform float sea_glow = 0.0; // luz difusa da água; ocean_environment liga de dia e desliga à noite
+// The player's hull (wave_field.gd hull_*): the sea is cut out inside it, so the boat floats on the
+// water instead of the water running through it; water that comes aboard is drawn by the boat itself.
+uniform mat4 hull_inv=mat4(1.);
+uniform vec4 hull_box=vec4(0.);
+uniform float hull_keel=-1.;
 varying vec3 world_pos;
 varying vec3 wave_normal;
 varying float crest;
@@ -30,6 +35,12 @@ void vertex() {
 	crest=w.y;
 }
 void fragment() {
+	if(hull_box.x>0.){
+		vec3 hl=(hull_inv*vec4(world_pos,1.)).xyz;
+		// Narrowing towards the bow so the cut follows the hull lines.
+		float half_w=hull_box.x*mix(.25,1.,smoothstep(hull_box.y,hull_box.y+(hull_box.z-hull_box.y)*.35,hl.z));
+		if(abs(hl.x)<half_w && hl.z>hull_box.y && hl.z<hull_box.z && hl.y<hull_box.w && hl.y>hull_keel) discard;
+	}
 	vec2 p=world_pos.xz;
 	vec4 coast=coast_data(p);
 	float exposure=sea_exposure(p,coast);

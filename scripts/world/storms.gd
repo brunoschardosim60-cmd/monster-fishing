@@ -36,20 +36,21 @@ func _add(at: Vector2,velocity: Vector2,radius: float,peak: float,life: float,an
 	# top); the rain under it is a few soft vertical veils from afar and a curtain of streaks up close.
 	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/cloud_puff.gdshader")
 	var mm:=MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.use_colors=true;mm.mesh=_puff_mesh;mm.instance_count=70
+	# Most of the mass in a broad, flat, dark base; a lower tower above it spreading into an anvil.
 	for k: int in 70:
-		var h:=_rng.randf();var spread:=lerpf(.55,1.,smoothstep(.55,1.,h))*radius*.85
+		var h:=pow(_rng.randf(),1.7);var spread:=lerpf(.8,1.05,smoothstep(.6,1.,h))*radius*(1.-.35*smoothstep(.2,.6,h)*(1.-smoothstep(.75,1.,h)))
 		var a:=_rng.randf()*TAU;var d:=sqrt(_rng.randf())*spread
-		var size:=_rng.randf_range(radius*.35,radius*.6)*(1.3 if h>.8 else 1.)
-		mm.set_instance_transform(k,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*size),Vector3(cos(a)*d,lerpf(250.,780.,h),sin(a)*d)))
+		var size:=_rng.randf_range(radius*.45,radius*.75)*(1.25 if h>.8 else 1.)
+		mm.set_instance_transform(k,Transform3D(Basis.IDENTITY.scaled(Vector3(size,size*.62,size)),Vector3(cos(a)*d,lerpf(240.,640.,h),sin(a)*d)))
 		var shade:=lerpf(.16,.5,h)*_rng.randf_range(.85,1.1)
 		mm.set_instance_color(k,Color(shade,shade*1.04,shade*1.1,_rng.randf_range(.6,1.)))
 	var deck:=MultiMeshInstance3D.new();deck.multimesh=mm;deck.material_override=mat;deck.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	deck.custom_aabb=AABB(Vector3(-radius*1.5,0,-radius*1.5),Vector3(radius*3.,1100.,radius*3.));node.add_child(deck)
 	var vmat:=ShaderMaterial.new();vmat.shader=preload("res://assets/shaders/cloud_puff.gdshader");vmat.set_shader_parameter("veil",true)
-	var vm:=MultiMesh.new();vm.transform_format=MultiMesh.TRANSFORM_3D;vm.mesh=_veil_mesh;vm.instance_count=9
-	for k: int in 9:
+	var vm:=MultiMesh.new();vm.transform_format=MultiMesh.TRANSFORM_3D;vm.mesh=_veil_mesh;vm.instance_count=14
+	for k: int in 14:
 		var a2:=_rng.randf()*TAU;var d2:=_rng.randf()*radius*.6
-		vm.set_instance_transform(k,Transform3D(Basis.IDENTITY.scaled(Vector3(radius*_rng.randf_range(.45,.7),260.,1.)),Vector3(cos(a2)*d2,130.,sin(a2)*d2)))
+		vm.set_instance_transform(k,Transform3D(Basis.IDENTITY.scaled(Vector3(radius*_rng.randf_range(.6,1.),270.,1.)),Vector3(cos(a2)*d2,125.,sin(a2)*d2)))
 	var veil:=MultiMeshInstance3D.new();veil.multimesh=vm;veil.material_override=vmat;veil.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	veil.custom_aabb=AABB(Vector3(-radius,0,-radius),Vector3(radius*2.,300.,radius*2.));node.add_child(veil)
 	var rain:=MeshInstance3D.new();rain.mesh=_rain_mesh;rain.material_override=_rain_mat;rain.scale=Vector3(radius*.85,200.,radius*.85);rain.position.y=100.
@@ -79,7 +80,12 @@ func _process(delta: float) -> void:
 		_spawn_clock=_rng.randf_range(90.,200.)*(.45 if season==2 else (1.6 if season==0 else 1.))
 		_spawn_roaming(eye)
 	var wind_dir:=Waves.direction
+	# Unshaded clouds and rain take the daylight by hand, or they glow grey at night.
+	var light: float=1.
+	if world!=null and world.ocean!=null:light=lerpf(.1,1.,clampf(float(world.ocean.daylight),0.,1.))
+	_rain_mat.set_shader_parameter("light",light)
 	for c: Dictionary in cells.duplicate():
+		(c.cloud_mat as ShaderMaterial).set_shader_parameter("light",light);(c.veil_mat as ShaderMaterial).set_shader_parameter("light",light)
 		c.age=float(c.age)+delta
 		if c.anchored:
 			c.intensity=float(c.peak)*(.65+.35*sin(float(c.age)*.012+float(c.phase)))

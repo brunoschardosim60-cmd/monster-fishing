@@ -122,7 +122,8 @@ void fragment(){
 	}else if(id==7){
 		c=base*(.8+.3*grime); rough=.6; metal=.35;
 	}else if(id==8){
-		c=base; emit=base*(.15+night*2.2); rough=.1;
+		// Lamp glass: a warm, modest glow at night (strong values bloom into big white blobs).
+		c=base*.6; emit=srgb(vec3(1.,.74,.42))*night*.55; rough=.1;
 	}else if(id==9){
 		c=base*(.88+.22*vnoise(p.xz*1.3+p.y*.9));
 		rough=.32; metal=0.;

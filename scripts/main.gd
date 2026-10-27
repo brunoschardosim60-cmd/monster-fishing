@@ -220,7 +220,10 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("sails") and player.in_boat and boat.has_sails():hud.notify(boat.cycle_sails())
 	if event.is_action_pressed("anchor") and player.in_boat:toggle_anchor()
 	if event.is_action_pressed("feed") and not event.is_echo():hud.notify(gear.throw_feed())
-	if event.is_action_pressed("cast_net") and not event.is_echo():hud.notify(gear.gillnet_action() if Input.is_key_pressed(KEY_SHIFT) else gear.cast_net())
+	if event.is_action_pressed("cast_net") and not event.is_echo():hud.notify(gear.gillnet_action() if Input.is_key_pressed(KEY_SHIFT) else gear.begin_net_throw())
+	if event.is_action_released("cast_net"):
+		var thrown: String=gear.release_net_throw()
+		if not thrown.is_empty():hud.notify(thrown)
 	if event.is_action_pressed("trap") and not event.is_echo():hud.notify(gear.trap_action())
 	if event.is_action_pressed("harpoon") and not event.is_echo():hud.notify(lairs.fire_harpoon())
 	if event.is_action_pressed("flare") and not event.is_echo():
@@ -317,6 +320,7 @@ func _process(delta: float) -> void:
 				if sp.id==school:
 					var off:=Vector2.from_angle(randf()*TAU)*randf_range(3.,8.)
 					surface_fish.breach(fishing_visual.target+Vector3(off.x,0,off.y),sp,.3);break
+	if hud.throw_meter!=null:hud.throw_meter.show_value(gear.net_charge,gear.NET_SWEET,gear.NET_BAND)
 	if hud.fight_gauge!=null:
 		hud.fight_gauge.update_from(fishing,int(inventory.equipment.get("rod",0)),int(inventory.equipment.get("line",0)))
 		hud.fight_gauge.visible=hud.fight_gauge.visible and started
@@ -395,6 +399,11 @@ func interact() -> void:
 		var holder_d: float=(holders.holders[holder].node as Node3D).global_position.distance_to(player.global_position) if holder>=0 else 99.
 		if mate!=null and mate_d<holder_d:hud.notify(crew.cycle_task(mate));return
 		if _holder_action():return
+		# Water on deck: E bails a bucket over the side.
+		if boat.water_fraction()>.03 and not fishing.active():
+			boat.bail();player.visual.play_action("ual/PickUp",.7)
+			world.ocean.effects.splash(boat.global_position+boat.global_basis.x*(float(boat.hull_spec.beam)*.5*boat.size_factor+.4),.25,false)
+			hud.notify("Esgotando… %d%% de água a bordo."%int(boat.water_fraction()*100.));return
 	if fishing.active():
 		fishing.cancel()
 	if player.in_boat:
@@ -502,6 +511,7 @@ func _interaction_hint() -> String:
 				_:return "E · Recolher a vara do suporte"
 		var mate: Node3D=crew.near(player.global_position) if crew!=null else null
 		if mate!=null:return "E · %s (tarefa: %s)"%[mate.sailor_name,str(mate.get_meta("task","convés"))]
+		if boat.water_fraction()>.03 and not fishing.active():return "E · Esgotar a água (%d%%)"%int(boat.water_fraction()*100.)
 	if fishing.active():return ""
 	if player.in_boat:
 		if lairs!=null and lairs.encounter():return "SHIFT · Turbo    Y · Sinalizador (%d)    H · Arpão (%d)"%[inventory.flares,inventory.harpoons if inventory.equipment.get("harpoon",0)>0 else 0]
@@ -512,10 +522,12 @@ func _interaction_hint() -> String:
 		if not trap.is_empty():return "B · Recolher covo" if float(trap.soak)>=gear.TRAP_SOAK else "Covo na água · %d s"%int(gear.TRAP_SOAK-float(trap.soak))
 		if player.on_deck:
 			var ladder: String=player.ladder_hint()
-			return ("%s    "%ladder if ladder!="" else "")+"R · Leme    E · Sair    C · Ração    N · Tarrafa    "+anchor_hint
+			var trap_hint: String=("    B · Covo (%d)"%inventory.traps) if inventory.traps>0 else ""
+			return ("%s    "%ladder if ladder!="" else "")+"R · Leme    E · Sair    C · Ração    N · Tarrafa (segure)"+trap_hint+"    "+anchor_hint
 		var turbo:="TURBO!" if boat.boost>0. else ("SHIFT turbo" if boat.boost_cooldown<=0. else "turbo %ds"%int(ceil(boat.boost_cooldown)))
 		var sails:=("    P · Velas: %s"%boat.point_of_sail()) if boat.has_sails() else ""
-		return "%.0f nós · %d%% casco · %s    R · Convés    %s%s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),turbo,anchor_hint,sails]
+		var water:=("    ÁGUA %d%%"%int(boat.water_fraction()*100.)) if boat.water_fraction()>.03 else ""
+		return "%.0f nós · %d%% casco%s · %s    R · Convés    %s%s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),water,turbo,anchor_hint,sails]
 	if player.global_position.distance_to(boat.global_position+Vector3(0,1,0))<boat.board_radius()-1.:return "E · Embarcar"
 	if near_market():return "E · Vender capturas"
 	var service: String=world.village.nearby_service(player.global_position)

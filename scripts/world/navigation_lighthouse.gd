@@ -99,6 +99,9 @@ func _build_tower() -> float:
 		"amarelo":colours=[M.surface("lime_plaster",Color("f2c84b"),.7),M.surface("lime_plaster",Color("f2c84b"),.7)]
 		_:colours=[plaster,M.surface("lime_plaster",Color("c0392b"),.7)]
 	G.cylinder(self,Vector3(0,.6,0),4.2,1.2,stone,4.4,48)
+	# Foundation: a stone footing that runs down into the ground, so on sloping or uneven ground the
+	# tower never stands on air on the downhill side.
+	G.cylinder(self,Vector3(0,-5.,0),4.4,10.,stone,5.2,40)
 	var bands:=8
 	for i: int in bands:
 		var y0:=1.2+(h-1.2)*float(i)/bands;var y1:=1.2+(h-1.2)*float(i+1)/bands
@@ -130,4 +133,6 @@ func _build_tower() -> float:
 		var rng:=RandomNumberGenerator.new();rng.seed=int(absf(position.x)+absf(position.z))
 		var house:=preload("res://scripts/world/town_house.gd").build("costeira",6.5,5.,rng,1.)
 		house.position=Vector3(-7.5,0.,-3.5);house.rotation.y=PI*.5;add_child(house)
+		# The house stands on a stone plinth that reaches down into the slope.
+		G.box(self,Vector3(-7.5,-4.95,-3.5),Vector3(5.6,10.,7.1),stone)
 	return h

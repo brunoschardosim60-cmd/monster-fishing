@@ -86,5 +86,33 @@ func run() -> void:
 		var local: Vector3=boat._hull.to_local(game.player.global_position)
 		if absf(local.y-float(deck.y))>.6 or absf(local.x)>float(deck.x)+.05:ok=false
 	check(ok,"the player keeps footing on the deck in rough water")
+	# Water over the rail: when the sea stands above the gunwale it pours in; she floats deeper with it,
+	# goes slower, drains through the scuppers and pump, and can be bailed; the sea is not drawn inside her.
+	game.toggle_deck();await frames(3)
+	_sea(.2,.2,Vector2(0,1))
+	boat.global_position=Vector3(250,0,-300);boat.rotation=Vector3.ZERO;boat.speed=0.;boat.water_aboard=0.
+	await _ticks(120)
+	check(Waves.hull_box.x>0. and Waves.hull_inv.origin.distance_to(boat._hull.global_transform.affine_inverse().origin)<.5,"the hull's outline is passed to the sea shader, which leaves its inside dry")
+	var dry_y: float=boat._hull.position.y
+	boat._hull.position.y-=float(boat.hull_spec.gunwale)+.4;boat.heave_velocity=0.
+	await _tick()
+	check(boat.water_aboard>20.,"with the rail under, sea water pours aboard (%.0f kg)"%boat.water_aboard)
+	boat.water_aboard=boat.water_capacity()*.6;boat.engine_rpm=0.
+	var sum:=0.
+	for f: int in 240:
+		boat.water_aboard=boat.water_capacity()*.6
+		await _tick()
+		if f>120:sum+=boat._hull.position.y
+	var wet_y: float=sum/119.
+	check(wet_y<dry_y-.1,"heavy with water she floats deeper (%.2f m lower)"%(dry_y-wet_y))
+	await _ticks(300)
+	check(boat.water_aboard<boat.water_capacity()*.6*.4,"the scuppers drain the deck (%.0f%% left)"%(boat.water_fraction()*100.))
+	var before: float=boat.water_aboard
+	boat.bail()
+	check(boat.water_aboard<before,"a bucket over the side takes some out")
+	boat.water_aboard=boat.water_capacity()*1.05;await _tick()
+	check(boat.sinking,"too much water swamps her")
+	boat.reset_to_dock();await frames(3)
+	check(boat.water_aboard==0. and not boat.sinking,"back at the dock she is pumped dry")
 	print("STORM %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

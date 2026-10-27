@@ -218,11 +218,11 @@ func _animate(delta: float) -> void:
 func set_night(value: float) -> void:
 	night=value
 	var windows: StandardMaterial3D=model.get_meta("windows") if model.has_meta("windows") else null
-	if windows!=null:windows.emission_energy_multiplier=value*2.2
+	if windows!=null:windows.emission_energy_multiplier=value*.8
 	var painted: GeometryInstance3D=model.get_meta("painted") if model.has_meta("painted") else null
 	if painted!=null:painted.set_instance_shader_parameter("night",value)
 	if searchlight!=null:
 		searchlight.light_energy=smoothstep(.35,.8,value)*(3. if length_m<40. else 6.)
-		(searchlight.get_meta("bulb") as StandardMaterial3D).emission_energy_multiplier=smoothstep(.35,.8,value)*6.
+		(searchlight.get_meta("bulb") as StandardMaterial3D).emission_energy_multiplier=smoothstep(.35,.8,value)*1.5
 	var lamp:=hull.get_node_or_null("Luz") as OmniLight3D
 	if lamp!=null:lamp.light_energy=value*(1.8 if length_m<40. else 4.)

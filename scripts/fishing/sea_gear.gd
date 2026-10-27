@@ -48,37 +48,115 @@ const POT_FISH: Array[String]=["sargo","cirurgiao","donzela","baiacu"]
 func _ready() -> void:
 	_rng.randomize()
 
-## Point on the water a few metres ahead of where the player looks.
+## Point on the water `distance` metres in front of the angler (the way they face, like the rod cast),
+## counted from the hull's side when aboard so it never lands on the boat.
 func throw_point(distance: float=7.) -> Vector3:
-	var cam:=get_viewport().get_camera_3d()
 	var from: Vector3=game.player.global_position
-	var fwd:=Vector3(0,0,-1)
-	if cam!=null:fwd=-cam.global_basis.z
-	fwd.y=0.;fwd=fwd.normalized() if fwd.length()>.01 else Vector3(0,0,-1)
-	return from+fwd*distance
+	var yaw: float=float(game.player.yaw)
+	var fwd:=Vector3(-sin(yaw),0.,-cos(yaw))
+	var clear:=0.
+	if game.player.in_boat:
+		var b: CharacterBody3D=game.boat
+		var local: Vector3=b.global_basis.inverse()*fwd
+		# Distance from the angler to the hull's edge along that heading.
+		var half_b: float=float(b.hull_spec.beam)*.5*b.size_factor;var half_l: float=float(b.hull_spec.length)*.5*b.size_factor
+		clear=minf(half_b/maxf(absf(local.x),.05),half_l/maxf(absf(local.z),.05))*.8
+	var at: Vector3=from+fwd*(clear+distance);at.y=0.
+	return at
+
+## Pellets in flight: {"from","to","t","node"}; they land as the feed patch (marine.throw_feed).
+var _feed_flights: Array[Dictionary]=[]
 
 func throw_feed() -> String:
 	var inv=game.inventory
 	if inv.feed<=0:return "Sem ração. A loja de pesca vende 5 porções por 15 moedas."
-	var at:=throw_point(6.5)
-	if not game.marine.throw_feed(at):return "Jogue a ração na água."
+	var at:=throw_point(5.)
+	if Layout.coast(Vector2(at.x,at.z)).x<1.:return "Jogue a ração na água."
 	inv.feed-=1;inv.stats.fed=int(inv.stats.fed)+1;inv.changed.emit()
-	game.audio.cue("splash")
-	return "Ração na água (%d restantes). Os peixes já vêm…"%inv.feed
+	# A sweep of the arm and a handful of pellets flying out in front.
+	if game.player.visual.has_method("play_action"):game.player.visual.play_action("ual/Interact",.7)
+	var hand: Vector3=game.player.global_position+Vector3(0,1.3,0)
+	var node:=Node3D.new();node.name="RacaoNoAr";add_child(node)
+	var pellet:=G.material(Color("b88a4a"),.8)
+	for k: int in 9:G.ellipsoid(node,Vector3(_rng.randf_range(-.25,.25),_rng.randf_range(-.1,.1),_rng.randf_range(-.25,.25)),Vector3.ONE*.035,pellet,4)
+	node.global_position=hand
+	_feed_flights.append({"from":hand,"to":at,"t":0.,"node":node})
+	return "Ração jogada (%d restantes). Os peixes já vêm…"%inv.feed
+
+func _update_feed_flights(delta: float) -> void:
+	for f: Dictionary in _feed_flights.duplicate():
+		f.t=float(f.t)+delta/.6
+		var t: float=minf(float(f.t),1.)
+		var to: Vector3=f.to;to.y=Waves.height_at(to)
+		var p: Vector3=(f.from as Vector3).lerp(to,t)+Vector3(0,sin(t*PI)*1.6,0)
+		(f.node as Node3D).global_position=p;(f.node as Node3D).scale=Vector3.ONE*(1.+t*2.5)
+		if t>=1.:
+			(f.node as Node3D).queue_free();_feed_flights.erase(f)
+			game.marine.throw_feed(f.to);game.audio.cue("splash")
 
 # --- Cast net ------------------------------------------------------------------------------------------
 
-func cast_net() -> String:
+## Throwing the cast net is a knack: hold N and the net swings round (the meter goes up and down);
+## let go in the green band and it flies out and opens into a full circle; too early or too late it
+## opens halfway or falls in a tangle and catches little. How far it goes follows the swing too.
+var net_charge: float=-1.
+var net_quality: float=1.
+var net_radius: float=4.
+var _net_swing: float=0.
+const NET_SWEET: float=.82
+const NET_BAND: float=.07
+
+func _net_blocked() -> String:
 	if int(game.inventory.equipment.get("net",0))<1:return "Você não tem tarrafa. Compre uma na loja de pesca (90 moedas)."
 	if not game.player.in_boat:return "A tarrafa é lançada do barco."
 	if absf(float(game.boat.speed))>1.5:return "Pare o barco para lançar a tarrafa."
-	if net_state!="pronta" or net_cooldown>0.:return "A tarrafa ainda está na água."
-	var at:=throw_point(6.)
+	if net_state!="pronta" or net_cooldown>0. or net_charge>=0.:return "A tarrafa ainda está na água."
+	return ""
+
+## N pressed: start swinging the net.
+func begin_net_throw() -> String:
+	var why:=_net_blocked()
+	if not why.is_empty():return why
+	net_charge=0.;_net_swing=0.
+	return "Girando a tarrafa… solte N na faixa verde."
+
+## N released: the throw.
+func release_net_throw() -> String:
+	if net_charge<0.:return ""
+	var charge: float=net_charge;net_charge=-1.
+	var v=game.player.visual
+	v.cast_hold=-1.;v.hide_rod=false
+	var off: float=absf(charge-NET_SWEET)
+	net_quality=1.-clampf((off-NET_BAND)/.3,0.,1.)
+	net_radius=lerpf(1.1,4.2,net_quality)
+	var at:=throw_point(lerpf(2.5,7.,clampf(charge,0.,1.)))
 	if Layout.coast(Vector2(at.x,at.z)).x<1.:return "Lance a tarrafa na água."
+	v.play_action("ual/FishCast",.8);v.hide_rod=true
 	net_point=at;net_state="abrindo";net_clock=0.
+	net_from=game.player.global_position+Vector3(0,1.5,0)
 	_build_net()
 	game.audio.cue("net")
-	return "Tarrafa lançada!"
+	if net_quality>.8:return "Que lance! A tarrafa abriu redondinha."
+	if net_quality>.4:return "A tarrafa abriu pela metade."
+	return "Saiu embolada: a tarrafa quase não abriu."
+
+## Kept for the dev tools and tests: a clean throw in one go.
+func cast_net() -> String:
+	var why:=begin_net_throw()
+	if not why.begins_with("Girando"):return why
+	net_charge=NET_SWEET
+	return release_net_throw()
+
+var net_from:=Vector3.ZERO
+
+func _update_net_swing(delta: float) -> void:
+	if net_charge<0.:return
+	if not game.player.in_boat:net_charge=-1.;game.player.visual.cast_hold=-1.;game.player.visual.hide_rod=false;return
+	_net_swing+=delta
+	# Up and down over 1.6 s: there is a moment to let go on every swing.
+	net_charge=pingpong(_net_swing/.8,1.)
+	game.player.visual.hide_rod=true
+	game.player.visual.cast_hold=net_charge
 
 func _build_net() -> void:
 	if net_node!=null:net_node.queue_free()
@@ -106,19 +184,23 @@ func _update_net(delta: float) -> void:
 	match net_state:
 		"abrindo":
 			var t:=clampf(net_clock/.9,0.,1.)
-			var arc: Vector3=game.boat.global_position.lerp(net_point,t)
-			net_node.position=Vector3(arc.x,surface+sin(t*PI)*2.2+.2,arc.z)
-			var r:=lerpf(.3,4.,t*t);net_node.scale=Vector3(r,1.,r)
-			if t>=1.:net_state="afundando";net_clock=0.;game.world.ocean.effects.splash(net_point,1.1,true)
+			var arc: Vector3=net_from.lerp(Vector3(net_point.x,surface,net_point.z),t)
+			net_node.position=arc+Vector3(0,sin(t*PI)*2.,0)
+			# A good throw spreads into a full circle in the air; a bad one stays a bundle.
+			var r:=lerpf(.3,net_radius,smoothstep(.1,.85,t));net_node.scale=Vector3(r,1.,r)
+			net_node.rotation.y+=delta*(6.*net_quality+1.)
+			if t>=1.:
+				net_state="afundando";net_clock=0.;game.world.ocean.effects.splash(net_point,.5+net_radius*.2,true)
+				game.player.visual.hide_rod=false
 		"afundando":
 			var t:=clampf(net_clock/2.4,0.,1.)
-			net_node.position=Vector3(net_point.x,surface-t*2.4,net_point.z);net_node.scale=Vector3(4.,1.+t*.8,4.)
+			net_node.position=Vector3(net_point.x,surface-t*2.4,net_point.z);net_node.scale=Vector3(net_radius,1.+t*.8,net_radius)
 			if t>=1.:_haul();net_state="puxando";net_clock=0.
 		"puxando":
 			var t:=clampf(net_clock/1.8,0.,1.)
 			var back: Vector3=net_point.lerp(game.boat.global_position,t)
 			net_node.position=Vector3(back.x,lerpf(surface-2.4,surface+.6,t),back.z)
-			var r:=lerpf(4.,.35,t);net_node.scale=Vector3(r,1.8-t,r)
+			var r:=lerpf(net_radius,.35,t);net_node.scale=Vector3(r,1.8-t,r)
 			if is_instance_valid(net_catch):net_catch.global_position=net_node.position+Vector3(0,-.15,0)
 			if t>=1.:
 				net_state="pendurada";net_clock=0.
@@ -142,7 +224,7 @@ func _haul() -> void:
 		if school.predator or not school.mmi.visible:continue
 		var n:=0
 		for p: Vector3 in school.pos:
-			if Vector2(p.x-net_point.x,p.z-net_point.z).length()<4.5 and p.y>Waves.height_at(net_point)-3.:n+=1
+			if Vector2(p.x-net_point.x,p.z-net_point.z).length()<net_radius+.5 and p.y>Waves.height_at(net_point)-3.:n+=1
 		if n>0:under[school.species]=int(under.get(school.species,0))+n
 	var room:=int(round(6.*float(game.boat.capacity)))
 	for species: String in under:
@@ -216,8 +298,9 @@ func trap_action() -> String:
 	var baited: bool=game.inventory.bait>0
 	if baited:game.inventory.bait-=1
 	game.inventory.changed.emit()
-	traps.append({"at":Vector3(at.x,0,at.z),"bottom":bottom,"placed":Time.get_ticks_msec()/1000.,"soak":0.,"node":_build_trap(at,bottom,pot),"kind":"gaiola" if pot else "covo","baited":baited})
-	game.audio.cue("splash")
+	traps.append({"at":Vector3(at.x,0,at.z),"bottom":bottom,"placed":Time.get_ticks_msec()/1000.,"soak":0.,"node":_build_trap(at,bottom,pot),"kind":"gaiola" if pot else "covo","baited":baited,"drop":0.})
+	game.audio.cue("splash");game.world.ocean.effects.splash(at,.6,false)
+	if game.player.visual.has_method("play_action"):game.player.visual.play_action("ual/PickUp",1.)
 	return "%s baixad%s a %.0f m%s. Volte em uns minutos e pressione B junto à boia."%["Gaiola de peixe" if pot else "Covo","a" if pot else "o",-bottom," com isca" if baited else ""]
 
 ## Winch fitted and the hull can carry one: traps go deeper and everything comes up faster.
@@ -340,6 +423,16 @@ func _trap_animal(id: String) -> Node3D:
 	return root
 
 func _update_traps(delta: float) -> void:
+	# A trap just put over the side sinks down its line to the bottom.
+	for t: Dictionary in traps:
+		if float(t.get("drop",1.))>=1. or not is_instance_valid(t.node):continue
+		t.drop=minf(1.,float(t.drop)+delta/3.5)
+		var root: Node3D=t.node;var cage: Node3D=root.get_node("Gaiola");var rope: Node3D=root.get_node("Cabo")
+		var surface:=Waves.height_at(root.global_position)
+		var y:=lerpf(surface-.3,float(t.bottom)+.25,smoothstep(0.,1.,float(t.drop)))
+		cage.position.y=y;cage.rotation.z=sin(float(t.drop)*9.)*.1*(1.-float(t.drop))
+		var top:=minf(y+.25,0.)
+		rope.position.y=top*.5;rope.scale.y=maxf(.01,-top/maxf(-float(t.bottom)-.5,.1));rope.visible=top<-.05
 	for h: Dictionary in hauling.duplicate():
 		# Up the line in 3 s, a few seconds dripping at the surface, then aboard.
 		h.clock=float(h.clock)+delta*(float(h.get("speed",1.)) if float(h.clock)<3. else 1.)
@@ -367,6 +460,8 @@ func _update_traps(delta: float) -> void:
 func _process(delta: float) -> void:
 	if game==null:return
 	_clock+=delta
+	_update_net_swing(delta)
+	_update_feed_flights(delta)
 	_update_net(delta)
 	_update_traps(delta)
 	_update_haul_life(delta)

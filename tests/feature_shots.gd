@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -454,3 +454,60 @@ func _kit3() -> void:
 	game.crew.cycle_task(s);s.assign("haul",Vector3(-float(b.deck_layout().x)+.1,0.,0.),PI*.5)
 	for i: int in 200:await process_frame
 	await shot("kit_marujo_puxando",s.global_position+b.global_basis*Vector3(1.,1.6,2.6),s.global_position+Vector3(0,1.,0),1)
+
+func _kit4() -> void:
+	var w=game.world;var b: CharacterBody3D=game.boat
+	var Lay=load("res://scripts/world/archipelago_layout.gd")
+	# 1) A beach: swash running up and draining back.
+	var shore:=Vector2(-20,105);var dir:=Vector2(0.6,1.).normalized()
+	for k: int in 600:
+		if Lay.coast(shore).x>0.:break
+		shore+=dir
+	var land:=shore-dir*7.;var hy: float=Lay.height(land)
+	for k: int in 3:
+		for i: int in 75:await process_frame
+		await shot("kit_praia_%d"%k,Vector3(land.x,hy+2.2,land.y),Vector3(shore.x+dir.x*10.,0.,shore.y+dir.y*10.),1)
+	# 2) The lighthouse on its hill.
+	var lh: Node3D=w.lighthouse
+	await shot("kit_farol_base",lh.position+Vector3(28,6,22),lh.position+Vector3(-6,6,0),2)
+	# 3) A storm seen from the sea, by day and by night.
+	var p:=_sea_point()
+	w.storms.spawn_at(p+Vector3(700,0,-700))
+	for i: int in 20:await process_frame
+	await shot("kit_tempestade_dia",p+Vector3(0,6,0),p+Vector3(700,140,-700),2)
+	w.ocean.hour=23.
+	for i: int in 30:await process_frame
+	await shot("kit_tempestade_noite",p+Vector3(0,6,0),p+Vector3(700,140,-700),2)
+	# 4) Ships at night: lamps without blown-out halos.
+	var best: CharacterBody3D=null;var bd:=INF
+	for v: CharacterBody3D in w.traffic.vessels:
+		var d: float=v.global_position.distance_to(p)
+		if d<bd:bd=d;best=v
+	if best!=null:
+		await shot("kit_navio_noite",best.global_position+best.global_basis*Vector3(60,18,40),best.global_position+Vector3(0,8,0),2)
+	w.ocean.hour=15.
+	for i: int in 20:await process_frame
+	# 5) Water aboard.
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for i: int in 10:await process_frame
+	b.water_aboard=b.water_capacity()*.55
+	for i: int in 30:
+		b.water_aboard=b.water_capacity()*.55;await process_frame
+	await shot("kit_agua_no_conves",b.global_position+b.global_basis*Vector3(3.,4.5,6.),b.global_position+Vector3(0,1.,0),1)
+	b.water_aboard=0.
+	# 6) Cast net in the air, then a trap going down.
+	game.toggle_deck();game.player.deck_local=Vector3(.9,1.12,0.);game.player.yaw=b.rotation.y-PI*.5
+	game.inventory.equipment["net"]=1
+	game.gear.begin_net_throw()
+	for i: int in 30:await process_frame
+	var hp: Vector3=game.player.global_position
+	await shot("kit_tarrafa_girando",hp+b.global_basis*Vector3(-2.5,1.2,3.),hp+Vector3(0,1.2,0),1)
+	game.gear.net_charge=game.gear.NET_SWEET;game.gear.release_net_throw()
+	for i: int in 30:await process_frame
+	await shot("kit_tarrafa_voando",hp+b.global_basis*Vector3(-3.,4.,6.),hp+b.global_basis*Vector3(5.,0.,0.),1)
+	for i: int in 300:await process_frame
+	game.inventory.traps=2;game.gear.trap_action()
+	for i: int in 70:await process_frame
+	var tr: Dictionary=game.gear.traps.back() if not game.gear.traps.is_empty() else {}
+	if not tr.is_empty():await shot("kit_covo_descendo",tr.at+b.global_basis*Vector3(4.,1.5,5.),tr.at+Vector3(0,-1.,0),1)

@@ -10,6 +10,12 @@ var water_effects: Node3D
 var imported_model: Node3D
 var bucket: Marker3D
 var integrity: float=1.
+## Sea water that has come aboard (kg): over the rail when a wave rises past it, or with a breaking sea.
+## It weighs the hull down (she floats deeper and lower, rolls heavier and is slower), drains through the
+## scuppers and the bilge pump, can be bailed out (E on deck), and too much of it swamps the boat.
+var water_aboard: float=0.
+var _deck_water: MeshInstance3D
+var _water_note: int=0
 ## Boost (SHIFT at the helm): a few seconds of extra power to outrun a monster, then the engine cools.
 var boost: float=0.
 var boost_cooldown: float=0.
@@ -170,11 +176,11 @@ func _physics_process(delta: float) -> void:
 		speed=move_toward(speed,0.,(2.5 if anchor.holding() else 1.2)*delta)
 	elif engine_rpm > 0.02 or sail_speed>.05:
 		var exposure:=Waves.exposure(Vector2(global_position.x,global_position.z))
-		var limit: float=max_speed*(.55+.45*integrity)*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)
+		var limit: float=max_speed*(.55+.45*integrity)*(1.-hydrodynamics.storm_drag*maxf(0.,Waves.wind-.45)*exposure)*(1.-.45*water_fraction())
 		if boost>0.:limit*=1.45
 		var rpm: float=maxf(engine_rpm,0.)
 		var target: float=limit*rpm+sail_speed*(1.-.4*rpm)
-		var push: float=maxf((5.5 if boost>0. else accel)*rpm,accel*.35*minf(sail_speed/3.,1.))
+		var push: float=maxf((5.5 if boost>0. else accel)*rpm,accel*.35*minf(sail_speed/3.,1.))/(1.+water_fraction()*1.5)
 		speed = move_toward(speed, target, (push if speed<target else 0.85+.5*accel*(1.-rpm)) * delta)
 	elif engine_rpm < -0.02:
 		speed = move_toward(speed, -float(handling.reverse)*absf(engine_rpm), (accel*2. if speed > 0.2 else accel*.66) * delta)
@@ -211,6 +217,7 @@ func _physics_process(delta: float) -> void:
 	impact_cooldown=maxf(0.,impact_cooldown-delta)
 	if is_instance_valid(_hull):
 		_simulate_hull(delta)
+		_publish_hull()
 		if water_effects!=null and impact_cooldown<=0. and _bow_slam>1.1 and absf(speed)>1.5:
 			water_effects.splash(global_position-global_basis.z*float(hull_spec.length)*.45*size_factor,.4+minf(_bow_slam*.3,1.2)+wake_strength*Waves.energy,true)
 			var spray:=get_tree().get_first_node_in_group("wind_spray")
@@ -242,11 +249,96 @@ func _wave_hits(delta: float,here: Vector2) -> void:
 	if _wave_hit_clock>0.:return
 	_wave_hit_clock=randf_range(6.,13.)/rough
 	take_hit((.01+.025*rough)/pow(size_factor,2.)*wave_damage_scale,(.22+.25*rough)/size_factor)
+	# Green water: part of the breaking sea lands on deck.
+	water_aboard+=float(hydrodynamics.mass_kg)*pow(size_factor,3.)*.035*rough*wave_damage_scale
 	if water_effects!=null:water_effects.splash(global_position-global_basis.z*2.+global_basis.x*randf_range(-1.,1.),1.2+rough,true)
 	var game:=get_tree().get_first_node_in_group("game")
 	if game!=null:
 		game.audio.cue_at("slam",global_position-global_basis.z*3.,-9.)
 		if not get_meta("wave_hint",false):set_meta("wave_hint",true);game.hud.notify("Uma onda quebra sobre a proa! Em mar grosso o casco sofre: reduza ou procure abrigo.")
+
+## How full of water she is: 0 dry … 1 swamped.
+func water_fraction() -> float:
+	return clampf(water_aboard/water_capacity(),0.,1.2)
+
+func water_capacity() -> float:
+	return float(hydrodynamics.mass_kg)*pow(size_factor,3.)*.55
+
+## Bailing by hand (E on deck): one bucket over the side.
+func bail() -> float:
+	var out: float=minf(water_aboard,45.*size_factor)
+	water_aboard-=out
+	return out
+
+## Water over the rail: wherever the sea at the hull's edge stands above the rail, it pours in.
+func _ship_water(delta: float,heights: Array[float],xs: Array[float],zs: Array[float],m: float) -> void:
+	var gunwale: float=float(hull_spec.get("gunwale",float(hull_spec.deck.y)+.3))*size_factor
+	var y: float=_hull.position.y;var pitch: float=_hull.rotation.x;var roll: float=_hull.rotation.z
+	var inflow:=0.;var n:=0;var worst:=-1;var worst_over:=0.
+	for z: float in zs:
+		for x: float in xs:
+			if not (x==0. and z==0.):
+				var rail: float=y+(-z)*sin(pitch)+x*sin(roll)+gunwale
+				var over: float=heights[n]-rail
+				if over>0.:
+					inflow+=pow(over,1.5)*1400.*size_factor*(.6 if x==0. else 1.)
+					if over>worst_over:worst_over=over;worst=n
+			n+=1
+	if inflow>0.:
+		water_aboard+=inflow*delta
+		# Water coming over the rail: a burst of white water on that side, and a lurch.
+		if water_effects!=null and impact_cooldown<=0. and worst>=0:
+			var at: Vector3=global_position+global_basis.x*xs[worst%3]*.9+global_basis.z*zs[worst/3]*.9
+			water_effects.splash(at,.6+minf(worst_over*1.5,1.5),true)
+			roll_rate+=signf(xs[worst%3])*-minf(worst_over,.6)*.6;heave_velocity-=minf(worst_over,.5)*.6
+			impact_cooldown=.5
+			var game:=get_tree().get_first_node_in_group("game")
+			if game!=null and occupied:game.audio.cue_at("slam",at,-12.)
+	# Out it goes: scuppers on a decked hull (fast while there is a lot), the bilge pump with an engine.
+	var decked: bool=str(hull_spec.get("kind",""))!="canoa"
+	var drain: float=(water_aboard*.06 if decked else 0.)+(14.*size_factor if decked and engine_rpm>.05 else 0.)
+	water_aboard=maxf(0.,water_aboard-drain*delta)
+	if water_aboard>water_capacity() and not sinking:
+		sinking=true;sink_clock=0.;speed=0.
+		var audio:=get_tree().get_first_node_in_group("audio")
+		if audio!=null:audio.cue("sink")
+	_water_warnings()
+	_update_deck_water()
+
+func _water_warnings() -> void:
+	var wf: float=water_fraction()
+	var level: int=0 if wf<.3 else (1 if wf<.65 else 2)
+	if level>_water_note and occupied:
+		var game:=get_tree().get_first_node_in_group("game")
+		if game!=null:
+			game.hud.notify(["","Água no convés! O barco está mais pesado. Esgote com E no convés ou saia do mar grosso.","O barco está alagando! Esgote a água (E) ou ela afunda."][level])
+	_water_note=level if level>_water_note or wf<.15 else _water_note
+
+## The water on deck: a level sheet inside the hull that rises with what has come aboard and sloshes.
+func _update_deck_water() -> void:
+	if not is_instance_valid(_hull):return
+	var wf: float=water_fraction()
+	if _deck_water==null or not is_instance_valid(_deck_water) or _deck_water.get_parent()!=_hull:
+		_deck_water=MeshInstance3D.new();_deck_water.name="AguaNoConves";_deck_water.mesh=BoxMesh.new()
+		var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.16,.36,.4,.62);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.roughness=.08;mat.metallic_specular=.8
+		_deck_water.material_override=mat;_deck_water.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;_hull.add_child(_deck_water)
+	_deck_water.visible=wf>.01
+	if not _deck_water.visible:return
+	var deck: Dictionary=hull_spec.deck
+	var level: float=lerpf(.03,.38,clampf(wf,0.,1.))
+	(_deck_water.mesh as BoxMesh).size=Vector3(float(deck.x)*2.+.1,level,float(deck.z1)-float(deck.z0))
+	_deck_water.position=Vector3(-sin(_hull.rotation.z)*float(deck.x)*.5*wf,float(deck.y)+level*.5-.02,(float(deck.z0)+float(deck.z1))*.5)
+	# Keep the sheet level with the horizon while the hull pitches and rolls under it.
+	_deck_water.rotation=Vector3(-_hull.rotation.x,0.,-_hull.rotation.z)
+
+## Tells the sea shader where the hull is so it is not drawn inside it.
+func _publish_hull() -> void:
+	if not is_instance_valid(_hull):return
+	var deck: Dictionary=hull_spec.deck
+	var half: float=float(hull_spec.beam)*.5*.9
+	Waves.hull_inv=_hull.global_transform.affine_inverse()
+	Waves.hull_box=Vector4(half,-float(hull_spec.length)*.5,float(hull_spec.length)*.5,float(hull_spec.get("gunwale",float(deck.y)+.3)))
+	Waves.hull_keel=float(hydrodynamics.draft_offset)-float(hull_spec.get("immersion",.35))*1.6-.3
 
 ## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.
 func take_hit(damage: float,kick: float) -> void:
@@ -307,7 +399,7 @@ func seat_position() -> Vector3:
 	return _hull.to_global(Vector3(0.0, 0.95, 0.5)) if is_instance_valid(_hull) else to_global(Vector3(0.0,0.95,0.5))
 
 func reset_to_dock() -> void:
-	sinking=false;sink_clock=0.;boost=0.
+	sinking=false;sink_clock=0.;boost=0.;water_aboard=0.
 	if is_instance_valid(_hull):_hull.rotation=Vector3.ZERO
 	global_position = DOCK_POSITION
 	rotation = Vector3.ZERO
@@ -766,6 +858,9 @@ func _simulate_hull(delta: float) -> void:
 	heel+=(Waves.height_at(here+right*.5)-Waves.height_at(here-right*.5))*chop_gain
 	trim+=(Waves.height_at(here-back*.5)-Waves.height_at(here+back*.5))*chop_gain*.5
 	var max_tilt: float=float(hydrodynamics.maximum_tilt)*1.5
+	# Water aboard: extra weight, and it runs to the low side (free surface), so she rolls further.
+	var m_eff: float=m+water_aboard
+	heel+=water_fraction()*sin(_hull.rotation.z)*1.4
 	var steps:=4;var dt: float=delta/float(steps)
 	var bow_depth:=0.
 	for step: int in steps:
@@ -782,8 +877,8 @@ func _simulate_hull(delta: float) -> void:
 				force+=f;tp+=f*(-z)*cos(pitch);tr+=f*x*cos(roll)
 				if z<0. and x==0.:bow_depth=depth
 				n+=1
-		var drag: float=heave_velocity*absf(heave_velocity)*m*.35
-		heave_velocity+=(force-m*g-ch*heave_velocity-drag)/m*dt
+		var drag: float=heave_velocity*absf(heave_velocity)*m_eff*.35
+		heave_velocity+=(force-m_eff*g-ch*heave_velocity-drag)/m_eff*dt
 		pitch_rate+=(tp+kp*trim-cp*pitch_rate)/ip*dt
 		roll_rate+=(tr+kr*heel-cr*roll_rate)/ir*dt
 		_hull.position.y+=heave_velocity*dt
@@ -792,6 +887,7 @@ func _simulate_hull(delta: float) -> void:
 		# Hard limits for play: past them the motion is stopped, never flipped.
 		if absf(_hull.rotation.x)>max_tilt:_hull.rotation.x=signf(_hull.rotation.x)*max_tilt;pitch_rate*=-.2
 		if absf(_hull.rotation.z)>max_tilt:_hull.rotation.z=signf(_hull.rotation.z)*max_tilt;roll_rate*=-.2
+	_ship_water(delta,heights,xs,zs,m)
 	var mean: float=0.
 	for h: float in heights:mean+=h
 	mean/=9.

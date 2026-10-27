@@ -108,6 +108,13 @@ func _draw() -> void:
 			if zoom_mode==MODE_ISLAND:draw_string(font,p+Vector2(7,-5),item.title,HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("f0e2c0"))
 		var p: Vector3=game.player.global_position;var b: Vector3=game.boat.global_position
 		draw_circle(point(Vector2(b.x,b.z)),5.,Color(.47,.8,.93));draw_circle(point(Vector2(p.x,p.z)),4.,Color.WHITE)
+		# Your gear in the water: trap buoys (green when ready to haul) and the set net.
+		for t: Dictionary in game.gear.traps:
+			var tp:=point(Vector2((t.at as Vector3).x,(t.at as Vector3).z))
+			draw_circle(tp,4.,Color("4caf50") if float(t.soak)>=game.gear.TRAP_SOAK else Color("ef6c1a"))
+			if zoom_mode==MODE_ISLAND:draw_string(font,tp+Vector2(6,-4),"covo" if str(t.get("kind","covo"))=="covo" else "gaiola",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("f0e2c0"))
+		if not game.gear.gillnet.is_empty():
+			draw_line(point(Vector2(game.gear.gillnet.a.x,game.gear.gillnet.a.z)),point(Vector2(game.gear.gillnet.b.x,game.gear.gillnet.b.z)),Color("f2c230"),2.)
 		for ship: CharacterBody3D in game.world.traffic.vessels:
 			var at:=point(Vector2(ship.position.x,ship.position.z));draw_circle(at,3.,Color(.9,.64,.49))
 		# Predators and rare fish are always marked; a kraken or whale is marked only while it is out.

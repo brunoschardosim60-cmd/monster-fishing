@@ -36,6 +36,8 @@ var compass: Label
 var fishing_box: PanelContainer
 ## The fishing instrument in the lower right corner (fight_gauge.gd); replaces the old centre panel.
 var fight_gauge: Control
+## Cast-net swing meter (throw_meter.gd).
+var throw_meter: Control
 var fishing_title: Label
 var fishing_hint: Label
 var tension_bar: ProgressBar
@@ -113,6 +115,7 @@ func _ready() -> void:
 	tension_bar = _bar(fishing_content, GOLD)
 	fishing_box.hide()
 	fight_gauge=preload("res://scripts/ui/fight_gauge.gd").new();fight_gauge.name="InstrumentoDePesca";root.add_child(fight_gauge);fight_gauge.hide()
+	throw_meter=preload("res://scripts/ui/throw_meter.gd").new();throw_meter.name="MedidorTarrafa";root.add_child(throw_meter);throw_meter.hide();hud_controls.append(throw_meter)
 	hud_controls.append(fight_gauge)
 	ledger = _panel(root, Vector2.ZERO, Vector2(470, 340))
 	ledger.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
@@ -297,7 +300,7 @@ func show_pause() -> void:
 	ledger.hide()
 	overlay_title.text = "O mar\npode esperar."
 	overlay_title.add_theme_font_size_override("font_size", 58)
-	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular (e escalar beiradas)\nSHIFT correr  ·  CTRL andar devagar / mergulhar nadando\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa  ·  B covo (armadilha)\nNo leme: SHIFT turbo  ·  H arpão de proa  ·  Y sinalizador (espanta monstros)\nO sonar  ·  F6 modo desenvolvedor (ferramentas de teste; não salva)\nMergulho: CTRL desce, ESPAÇO sobe, E abre baús; o ar e o limite de profundidade dependem do equipamento"
+	overlay_body.text = "Seu progresso desta sessão está aqui.\n\nT voo · ESPAÇO sobe · CTRL desce · SHIFT acelera\nWASD mover  ·  Mouse olhar  ·  ESPAÇO pular (e escalar beiradas)\nSHIFT correr  ·  CTRL andar devagar / mergulhar nadando\nE interagir / embarcar / sair  ·  R convés / leme\nCLIQUE / Q pescar  ·  Botão direito cancelar\nG guardar  ·  X devolver  ·  F câmera  ·  L luzes\nV observar criatura  ·  M mapa  ·  J enciclopédia  ·  TAB capturas\nZ âncora  ·  C jogar ração  ·  N tarrafa (segure, solte na faixa verde)  ·  B covo (armadilha)  ·  E no convés esgota a água\nNo leme: SHIFT turbo  ·  H arpão de proa  ·  Y sinalizador (espanta monstros)\nO sonar  ·  F6 modo desenvolvedor (ferramentas de teste; não salva)\nMergulho: CTRL desce, ESPAÇO sobe, E abre baús; o ar e o limite de profundidade dependem do equipamento"
 	play_button.text = "CONTINUAR  →"
 	return_button.show()
 	overlay.show()

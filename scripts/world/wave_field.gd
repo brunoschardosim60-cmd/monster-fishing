@@ -97,8 +97,16 @@ static func height_at(p: Vector3) -> float:
 		var fade:=(lod_long*(1.+open_sea*1.2) if i<3 else lod*(1.+open_sea*.4))*(1.+storm*(1.5 if i<3 else .35))
 		h+=(sin(phase)+sharp*sin(2.*phase))*w.z*lerpf(.32 if i<3 else .1,1.,exposed)*(1.-channel*(.2 if i<3 else .65))*fade
 	var wash:=sin(c.x*.85-time*1.15)*.12*(.3+energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x)
+	var swash_s:=fposmod(time/7.5+sin(v.x*.031)*.35+cos(v.y*.027)*.35-c.x*.012,1.)
+	wash+=smoothstep(0.,.18,swash_s)*(1.-smoothstep(.18,1.,swash_s))*.5*(.35+energy)*smoothstep(-9.,-1.,c.x)*(1.-smoothstep(2.,14.,c.x))
 	var guided:=sin(v.y*1.8-time*1.5)*.08*channel*shore
 	return h*shore+(wash+guided)*lod+whirl_offset(v)+tide
+
+## The player's hull, so the sea is not drawn inside it (ocean.gdshader): world → hull space, and the
+## box (half beam, bow z, stern z, rail y) plus the keel y, all in hull space.
+static var hull_inv:=Transform3D.IDENTITY
+static var hull_box:=Vector4.ZERO
+static var hull_keel: float=-1.
 
 static func bind(mat: ShaderMaterial) -> void:
 	if waves.is_empty(): advance(0.,wind,energy,rain,direction)
@@ -112,3 +120,6 @@ static func bind(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("wind_strength",wind)
 	mat.set_shader_parameter("swell_energy",energy)
 	mat.set_shader_parameter("rain_strength",rain)
+	mat.set_shader_parameter("hull_inv",hull_inv)
+	mat.set_shader_parameter("hull_box",hull_box)
+	mat.set_shader_parameter("hull_keel",hull_keel)

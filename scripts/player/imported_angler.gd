@@ -36,6 +36,8 @@ var action_time: float=0.
 ## Wind-up before a cast: -1 when not casting, else 0..1 charge. The rod is drawn back along the start of
 ## the cast clip (more charge, further back) and held there; releasing lets the clip run on into the throw.
 var cast_hold: float=-1.
+## Throwing something else (the cast net): the rod is put away for the throw.
+var hide_rod: bool=false
 const CAST_BACK_FROM: float=.12
 const CAST_BACK_TO: float=.5
 const ROD_JOINTS: int=7
@@ -82,6 +84,8 @@ func _ready() -> void:
 	head_bone=skeleton.find_bone("Head");chest_bone=skeleton.find_bone("Chest")
 	headwear=preload("res://assets/characters/accessories/fisher_cap.glb").instantiate();add_child(headwear)
 	backpack=preload("res://assets/characters/accessories/fisher_backpack.glb").instantiate();add_child(backpack)
+	# No pack by default (the angler's catch goes in the boat's hold or a creel); NPC looks may add one.
+	backpack.visible=false
 	_rod=Node3D.new();add_child(_rod)
 	var carbon:=G.material(Color("243d42"),.34);var cork:=G.material(Color("bb9661"));var steel:=G.material(Color("bdc3bb"),.2)
 	G.beam(_rod,Vector3(0,-.12,.1),Vector3(0,.28,-.23),.026,cork)
@@ -120,7 +124,7 @@ func apply_look(look: Dictionary) -> void:
 		headwear.queue_free()
 		headwear=preload("res://scripts/player/character_accessories.gd").headwear(kind,look.get("headwear_tint",Color("40566b"))) if kind!="none" else Node3D.new()
 		add_child(headwear)
-	backpack.visible=bool(look.get("backpack",true))
+	backpack.visible=bool(look.get("backpack",false))
 	scale=Vector3(float(look.get("build",1.)),float(look.get("height",1.)),float(look.get("build",1.)))
 func update_animation(speed: float,fishing: bool,delta: float) -> void:
 	gait_speed=lerpf(gait_speed,speed,1.-exp(-delta*9.))
@@ -173,7 +177,7 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 			index=skeleton.find_bone(side+"LowerLeg");rest=skeleton.get_bone_rest(index).basis.get_rotation_quaternion()
 			skeleton.set_bone_pose_rotation(index,rest.inverse()*Quaternion(Vector3.RIGHT,-maxf(0.,-sin(locomotion_phase)*sign_value)*.5)*rest)
 	_place_props()
-	_rod.visible=(fishing or cast_hold>=0.) and not holding_fish and not swimming
+	_rod.visible=(fishing or cast_hold>=0.) and not holding_fish and not swimming and not hide_rod
 	if _rod.visible:
 		var hand: Transform3D=skeleton.global_transform*_bone_global(rod_hand)
 		_rod.global_transform=Transform3D(hand.basis*rod_grip_basis,hand.origin)
@@ -230,4 +234,4 @@ func set_body_visible(value: bool) -> void:
 	if headwear!=null:headwear.visible=value
 	if backpack!=null:
 		if not value:backpack.set_meta("shown",backpack.visible);backpack.visible=false
-		else:backpack.visible=bool(backpack.get_meta("shown",true))
+		else:backpack.visible=bool(backpack.get_meta("shown",false))

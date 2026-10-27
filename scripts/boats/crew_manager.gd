@@ -159,6 +159,10 @@ func _process(delta: float) -> void:
 				var i: int=sailors.find(p.sailor)
 				if i>=0 and (p.sailor as Node3D).job in ["haul","alert"]:(p.sailor as Node3D).assign("idle",_station(i),0.)
 	_storm_duty()
+	# Deckhands bail when water comes aboard (a bucket every couple of seconds each).
+	if boat.water_aboard>0.:
+		for s: Node3D in sailors:
+			if str(s.get_meta("task",""))=="convés" and s.job in ["idle","secure"]:boat.water_aboard=maxf(0.,boat.water_aboard-12.*delta)
 	_searchlight(delta)
 	_crew_fishing(delta)
 	_helm()

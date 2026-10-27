@@ -191,7 +191,7 @@ static func _flag(root: Node3D,at: Vector3,size: float,rng: RandomNumberGenerato
 
 static func _nav_lights(root: Node3D,port: Vector3,starboard: Vector3,masthead: Vector3) -> void:
 	for data: Array in [[port,Color("ff3b30")],[starboard,Color("34e07a")],[masthead,Color("fff4d6")]]:
-		var m:=_mat(data[1],.4);m.emission_enabled=true;m.emission=data[1];m.emission_energy_multiplier=2.5
+		var m:=_mat(data[1],.4);m.emission_enabled=true;m.emission=data[1];m.emission_energy_multiplier=1.1
 		_detail(G.sphere(root,data[0],Vector3.ONE*.18,m,8))
 
 static func _windows(root: Node3D,centre: Vector3,width: float,height: float,count: int,facing_x: bool=false) -> void:
@@ -345,7 +345,7 @@ static func _escuna(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	_line(root,Vector3(0,f+L*.95,-L*.2),Vector3(0,f+1.6,-L*.68),rope)
 	_line(root,Vector3(0,f+L*1.05,L*.08),Vector3(0,f+L*.9,-L*.2),rope)
 	for side: float in [-1.,1.]:
-		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=1.8
+		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=.9
 		_detail(G.sphere(root,Vector3(side*L*.11,f+1.3,L*.35),Vector3.ONE*.28,lamp,8))
 	_nav_lights(root,Vector3(-L*.12,f+.6,-L*.3),Vector3(L*.12,f+.6,-L*.3),Vector3(0,f+L*1.05+.2,L*.08))
 	_flag(root,Vector3(0,f+L*1.05+.1,L*.08),1.1,rng)
@@ -459,7 +459,7 @@ static func _galeao(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var deck:=.068*L
 	_flag(root,Vector3(0,.63*L,.13*L),1.4,rng)
 	for side: float in [-1.,1.]:
-		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=1.8
+		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=.9
 		_detail(G.sphere(root,Vector3(side*L*.07,deck+L*.06,L*.47),Vector3.ONE*.35,lamp,8))
 	root.set_meta("deck",deck)
 	root.set_meta("helm",Vector3(0,deck+L*.025,L*.38));root.set_meta("walk",[Vector3(-L*.05,deck,-L*.22),Vector3(-L*.05,deck,L*.2)])
