@@ -110,7 +110,7 @@ func _run() -> void:
 			if fishing.state != Fishing.State.REELING:
 				break
 		if fishing.state != Fishing.State.CAUGHT:
-			_check(false, "reel/rest strategy must work for every selected species")
+			_check(false, "reel/rest strategy must work for every selected species (%s %.0f kg: %s)"%[fishing.species_current.id,fishing.fish_weight,fishing.last_message])
 			break
 		var species_id: String = str(fishing.species_current.id)
 		if not sampled.has(species_id):

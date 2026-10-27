@@ -258,7 +258,7 @@ func _update_fight(delta: float) -> void:
 	if _reeling:_slack_time=0.
 	else:_slack_time+=delta
 	# A fish tires faster against a tight line; big fish have more in them.
-	stamina=maxf(0.,stamina-delta*(.012+(.045 if _reeling else .015)*(1. if fight_phase!="calm" else .6))/maxf(.6,sqrt(fish_weight/4.)))
+	stamina=maxf(0.,stamina-delta*(.012+(.045 if _reeling else .015)*(1. if fight_phase!="calm" else .6))/clampf(sqrt(fish_weight/4.),.6,5.5))
 	tension = clampf(tension, 0.0, 1.0)
 	progress = clampf(progress, 0.0, 1.0)
 	if tension >= 1.0:
