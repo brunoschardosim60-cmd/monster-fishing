@@ -72,6 +72,7 @@ func _fleet(boat: CharacterBody3D) -> void:
 		var helm: Vector3=boat._hull.to_local(boat.seat_position())
 		check(absf(helm.y-float(spec.deck.y))<.3 and absf(helm.z)<float(spec.length)*.5,"%s: helm stands on the deck (%.2f, %.2f)"%[id,helm.y,helm.z])
 		check(is_instance_valid(boat.helm_wheel) and boat.helm_wheel.is_inside_tree() and boat.helm_wheel.is_visible_in_tree(),"%s: helm wheel or tiller is visible"%id)
+		check(boat.crew.size()==(spec.get("crew",[]) as Array).size() and boat.crew.all(func(c: Node3D) -> bool:return c.is_inside_tree()),"%s: %d sailors aboard"%[id,boat.crew.size()])
 		# Walk the deck: stay aboard and never inside a cabin or mast.
 		game.player.position=boat.global_position+Vector3(0,1.5,0);game.interact();await frames(3)
 		check(game.player.in_boat,"%s: boarding works"%id)

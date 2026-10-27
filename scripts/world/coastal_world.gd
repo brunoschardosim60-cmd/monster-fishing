@@ -64,7 +64,9 @@ func _ready() -> void:
 	_make_dock()
 	village=preload("res://scripts/world/harbor_village.gd").new();village.world=self;village.name="VilaDaAurora";add_child(village)
 	_make_lighthouse(Vector3(-65,Layout.height(Vector2(-65,490)),490))
-	harbor_lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();harbor_lighthouse.world=self;harbor_lighthouse.position=Vector3(174,Layout.height(Vector2(174,96)),96);harbor_lighthouse.name="FarolDaEntrada";harbor_lighthouse.tower_height=32.;harbor_lighthouse.style="faixas";harbor_lighthouse.period=8.;harbor_lighthouse.tint=Color("ffd9a0");harbor_lighthouse.scale=Vector3.ONE*1.35;add_child(harbor_lighthouse)
+	# One lighthouse on the home island (FarolDaAurora on the northern heights); the old harbour-entrance
+	# tower was removed so the night sky is not full of beams. The name stays as an alias for the map beacon.
+	harbor_lighthouse=lighthouse
 	remote_lighthouses=preload("res://scripts/world/remote_lighthouses.gd").new();remote_lighthouses.world=self;remote_lighthouses.name="FaroisDistantes";add_child(remote_lighthouses)
 	_make_sign()
 	for p: Vector3 in [Vector3(-17, 0, -36), Vector3(24, 0, -60), Vector3(-40, 0, -98), Vector3(59, 0, -114)]:
@@ -73,7 +75,7 @@ func _ready() -> void:
 	var dynamic_roots: Array[Node3D] = []
 	dynamic_roots.append_array(gulls)
 	dynamic_roots.append_array(buoys)
-	dynamic_roots.append(region);dynamic_roots.append(village);dynamic_roots.append(trail_walkers);dynamic_roots.append(lighthouse);dynamic_roots.append(harbor_lighthouse)
+	dynamic_roots.append(region);dynamic_roots.append(village);dynamic_roots.append(trail_walkers);dynamic_roots.append(lighthouse)
 	preload("res://scripts/world/static_batch.gd").build(self, dynamic_roots)
 	ocean=preload("res://scripts/ocean/ocean_environment.gd").new()
 	ocean.world=self; ocean.name="OceanEnvironment"; add_child(ocean)
@@ -708,14 +710,14 @@ func _make_trail_walkers() -> Node3D:
 		var walker:=Resident.new();walker.route.assign(out_and_back);walker.speed=float(specs[i][2]);walker.look_id=14+i
 		holder.add_child(walker)
 		walker.target_index=mini(start,out_and_back.size()-1);walker.position=out_and_back[walker.target_index]
-	for keeper_spec: Array in [[Vector3(170.2,0,99.6),2.4],[Vector3(-61.,0,494.5),2.1]]:
+	for keeper_spec: Array in [[Vector3(-61.,0,494.5),2.1]]:
 		var keeper:=Resident.new();keeper.look_id=20+(0 if keeper_spec[0].x>0. else 1)
 		var at: Vector3=keeper_spec[0];at.y=Layout.height(Vector2(at.x,at.z))+.08
 		keeper.position=at;keeper.rotation.y=float(keeper_spec[1]);holder.add_child(keeper)
 	return holder
 
 func _make_lighthouse(pos: Vector3) -> void:
-	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.tower_height=24.;lighthouse.style="preto";lighthouse.period=16.;lighthouse.beam_angles=[0.,26.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");lighthouse.scale=Vector3.ONE*1.35;add_child(lighthouse)
+	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.tower_height=26.;lighthouse.style="preto";lighthouse.period=18.;lighthouse.beam_angles=[0.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");lighthouse.scale=Vector3.ONE*2.;add_child(lighthouse)
 
 func _make_wildlife() -> void:
 	var white := G.material(Color("eee6cf"))

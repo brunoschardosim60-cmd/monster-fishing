@@ -52,14 +52,18 @@ func run() -> void:
 	check(walking>=town.residents.size()/2,"townspeople walk their streets (%d)"%walking)
 	game.world.ocean.hour=23.;await frames(160)
 	check(House.windows!=null and House.windows.emission_energy_multiplier>1.,"windows light up at night")
-	check(game.world.lighthouse.tower_height>=24. and game.world.harbor_lighthouse.tower_height>=30.,"both home lighthouses are tall towers")
+	check(game.world.lighthouse.tower_height>=24. and game.world.lighthouse.scale.x>=2.,"the home lighthouse is a big tower")
 	var remote: Array=game.world.remote_lighthouses.lighthouses
 	var on_land:=0
 	for l: Node3D in remote:
 		if Layout.coast(Vector2(l.position.x,l.position.z)).x<0. and l.position.y>-.5:on_land+=1
-	check(remote.size()>=4 and on_land==remote.size(),"%d lighthouses on the distant islands, all on land"%remote.size())
+	check(remote.size()==2 and on_land==remote.size(),"%d lighthouses on the distant islands, all on land"%remote.size())
+	var high:=0
+	for l: Node3D in remote:
+		if l.position.y>15.:high+=1
+	check(high==remote.size(),"distant lighthouses stand on high ground (%d of %d)"%[high,remote.size()])
 	var periods:={}
 	for l: Node3D in remote:periods[l.period]=true
-	check(periods.size()>=4,"distant lighthouses each have their own rhythm")
+	check(periods.size()>=2,"distant lighthouses each have their own rhythm")
 	print("TOWN %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

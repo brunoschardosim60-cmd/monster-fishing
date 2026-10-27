@@ -8,14 +8,14 @@ const WORLD_HALF: float = 5000.0
 ## north = -z, with the Ilha Principal on the west and the biome ring spreading east.
 const LOBES: Array[Vector4]=[
 	Vector4(0,230,220,230),Vector4(-140,105,95,115),Vector4(150,110,100,130),Vector4(-65,540,330,480),
-	Vector4(14,2340,250,270),Vector4(1346,-834,360,300),Vector4(2049,2294,380,330),Vector4(-110,-18,30,29),
-	Vector4(1050,132,300,260),Vector4(815,-262,125,105),Vector4(902,1144,330,290),
-	Vector4(273,-926,410,330),Vector4(2456,270,400,430),Vector4(1679,1190,370,330),
-	Vector4(2567,1650,240,220),Vector4(2345,-972,380,320),Vector4(-2250,700,230,210),
-	Vector4(1480,282,150,120),Vector4(1180,-291,110,95),Vector4(812,1680,140,120),
-	Vector4(2426,990,170,150),Vector4(-316,2040,120,110),
-	Vector4(3900,-400,300,260),Vector4(-3800,-3300,260,240),Vector4(-4000,1600,320,280),
-	Vector4(1200,-4200,340,300),Vector4(3600,3900,300,280),Vector4(-1600,4200,340,300)]
+	Vector4(-54,3190,250,270),Vector4(1952,-1344,360,300),Vector4(2805,3030,380,330),Vector4(-110,-18,30,29),
+	Vector4(1607,15,300,260),Vector4(1182,-515,125,105),Vector4(1288,1644,330,290),
+	Vector4(396,-1478,410,330),Vector4(3561,256,400,430),Vector4(2435,1590,370,330),
+	Vector4(3491,2136,240,220),Vector4(3312,-1496,380,320),Vector4(-3262,880,230,210),
+	Vector4(2037,165,150,120),Vector4(1737,-408,110,95),Vector4(1198,2180,140,120),
+	Vector4(3506,1297,170,150),Vector4(-384,2890,120,110),
+	Vector4(4372,-485,300,260),Vector4(-3800,-3300,260,240),Vector4(-4265,1686,320,280),
+	Vector4(1200,-4200,340,300),Vector4(3600,3900,300,280),Vector4(-1702,4450,340,300)]
 ## One record per lobe. The first four and the old-port lobe together form Aurora.
 ## Distant entries drive real island geometry, map labels and future region systems.
 const REGIONS: Array[Dictionary]=[
@@ -49,17 +49,17 @@ const REGIONS: Array[Dictionary]=[
 	{"id":"wreck_bay","name":"Baía dos Náufragos","map":"Baía dos Náufragos","biome":"desert","map_visible":true}]
 ## Open-water zones that have no island but appear on the map and host big creatures.
 const SEA_ZONES: Array[Dictionary]=[
-	{"name":"Oceano Profundo","position":Vector2(976,2156)},
+	{"name":"Oceano Profundo","position":Vector2(1415,2991)},
 	{"name":"Oceano Aberto","position":Vector2(-1500,-700)},
-	{"name":"Mar do Levante","position":Vector2(3400,1500)},
+	{"name":"Mar do Levante","position":Vector2(4084,1742)},
 	{"name":"Mar Boreal","position":Vector2(-600,-3600)},
 	{"name":"Mar do Poente Distante","position":Vector2(-3600,-200)}]
 ## Where the cold-water tint, glacier snow and floating ice fields are centred (Ilha Gelada).
-const COLD_CENTER: Vector2=Vector2(273,-926)
+const COLD_CENTER: Vector2=Vector2(396,-1478)
 ## Floating ice fields (x, z, floe count) and the authored calm passage between the
 ## glacier shelf and the first field. See ocean_environment.gd and wave_field.gd.
-const ICE_FIELDS: Array[Vector3]=[Vector3(538,-468,11),Vector3(273,-1378,18)]
-const ICE_PASSAGE: Vector2=Vector2(500,-527)
+const ICE_FIELDS: Array[Vector3]=[Vector3(661,-1020,11),Vector3(396,-1930,18)]
+const ICE_PASSAGE: Vector2=Vector2(623,-1079)
 ## Distant-island outline: sum of low harmonics (frequency, amplitude). Every phase is
 ## ((index*7+frequency*13) mod 17)*.37, so the shader include reproduces it exactly.
 const REMOTE_HARMONICS: Array[Vector2]=[Vector2(2,.09),Vector2(3,.07),Vector2(4,.04),Vector2(5,.04),Vector2(7,.025),Vector2(9,.015)]

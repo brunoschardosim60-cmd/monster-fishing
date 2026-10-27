@@ -48,7 +48,7 @@ func _ready() -> void:
 	# Added after batching so the flare is never merged into the tower mesh.
 	glow_material=ShaderMaterial.new();glow_material.shader=preload("res://assets/shaders/lighthouse_glow.gdshader");glow_material.set_shader_parameter("tint",Vector3(tint.r,tint.g,tint.b))
 	glow=G.mesh_node(self,QuadMesh.new(),glow_material,Vector3(0,rotor.position.y,0));glow.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	glow.custom_aabb=AABB(Vector3(-300,-300,-300),Vector3(600,600,600));glow.visibility_range_end=7000.
+	glow.custom_aabb=AABB(Vector3(-300,-300,-300),Vector3(600,600,600));glow.visibility_range_end=4500.
 func _process(delta: float) -> void:
 	if abandoned:
 		rotor.visible=false;glow.visible=false;set_process(false);return
@@ -68,7 +68,7 @@ func _process(delta: float) -> void:
 		var to_camera: Vector3=(camera.global_position-rotor.global_position).normalized()
 		for arm: Node3D in arms:flash=maxf(flash,pow(maxf(0.,(-arm.global_basis.z).dot(to_camera)),40.))
 	lens.emission_energy_multiplier=(2.+flash*18.)*night
-	glow_material.set_shader_parameter("intensity",night*(.16+flash*1.5)*(1.+(haze-1.)*.5))
+	glow_material.set_shader_parameter("intensity",night*(.1+flash*.9)*(1.+(haze-1.)*.5))
 
 ## The shaft and its spotlight stop at the first solid thing in their way (a house, a cliff, a hull),
 ## so the light never passes through walls.

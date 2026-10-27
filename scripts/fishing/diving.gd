@@ -41,7 +41,7 @@ func max_depth() -> float:return DEPTH[gear()]
 func _place_sites() -> void:
 	# Wrecks: around the home island first (easy dives), then further out in deeper water.
 	var plan: Array=[[Vector2(330,-60),"rowboat"],[Vector2(-260,-120),"rowboat"],[Vector2(420,420),"galleon"],[Vector2(-520,640),"cargo"],
-		[Vector2(980,-520),"galleon"],[Vector2(1650,700),"cargo"],[Vector2(-1300,300),"galleon"],[Vector2(2300,-300),"rowboat"]]
+		[Vector2(1347,-773),"galleon"],[Vector2(1650,700),"cargo"],[Vector2(-1300,300),"galleon"],[Vector2(2300,-300),"rowboat"]]
 	for item: Array in plan:
 		var p:=_bottom_spot(item[0],10.,45.)
 		if p!=Vector3.INF:_wreck(p,str(item[1]))

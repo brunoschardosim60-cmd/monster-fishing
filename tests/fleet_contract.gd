@@ -26,6 +26,14 @@ func run() -> void:
 	check(crewed==ships.size(),"every vessel has people aboard")
 	check(roles.has("helm") and roles.has("deckhand") and roles.has("fisher") and roles.has("rower"),"crew roles: %s"%str(roles.keys()))
 	check(sails>=6,"%d sails on the sailing ships"%sails)
+	await frames(30)
+	# Sails are animated within 700 m of the camera (far ships are not animated at all).
+	var trimmed:=0;var near_sailing:=0;var eye: Vector3=game.get_viewport().get_camera_3d().global_position
+	for ship in ships:
+		if ship.sail_rig==null or ship.position.distance_to(eye)>650.:continue
+		near_sailing+=1
+		if absf((ship.sail_rig.pivots[0] as Node3D).basis.get_euler().y)>.05:trimmed+=1
+	check(near_sailing>=1 and trimmed==near_sailing,"%d of %d nearby sailing ships trim their sails to the wind"%[trimmed,near_sailing])
 	var names:={}
 	for ship in ships:names[ship.ship_name]=true
 	check(names.size()>=ships.size()-1,"vessels carry their own names")

@@ -30,7 +30,7 @@ func _ready() -> void:
 		elif id=="adverse":_site(_off_coast(i,45.,200.),90.,"rough","naufragio")
 	_site(Vector2(-900.,-1150.),85.,"rough","criatura")
 	_site(Vector2(1900.,3200.),100.,"night","naufragio")
-	_site(Vector2(640.,-1700.),70.,"rough","gruta")
+	_site(Vector2(763.,-2252.),70.,"rough","gruta")
 
 func _off_coast(lobe: int,angle_deg: float,distance: float) -> Vector2:
 	var l: Vector4=Layout.LOBES[lobe];var dir:=Vector2.from_angle(deg_to_rad(angle_deg));var p:=Vector2(l.x,l.y)

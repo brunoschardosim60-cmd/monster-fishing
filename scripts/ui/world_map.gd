@@ -7,8 +7,8 @@ const FishingSystem=preload("res://scripts/fishing/fishing_system.gd")
 const MODE_ISLAND: int = 0
 const MODE_ARCHIPELAGO: int = 1
 const MODE_WORLD: int = 2
-const ARCHIPELAGO_CENTER: Vector2=Vector2(1050,600)
-const ARCHIPELAGO_SPAN: Vector2=Vector2(3800,4400)
+const ARCHIPELAGO_CENTER: Vector2=Vector2(1650,800)
+const ARCHIPELAGO_SPAN: Vector2=Vector2(5000,5600)
 const MAP_TOP: float = 58.
 const MAP_BOTTOM: float = 566.
 var game: Node3D

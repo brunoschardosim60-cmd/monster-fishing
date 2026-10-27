@@ -31,6 +31,7 @@ var player_boat: Node3D
 var speed: float=0.
 var hull: Node3D
 var model: Node3D
+var sail_rig: RefCounted
 var trail: MeshInstance3D
 var searchlight: SpotLight3D
 var crew: Array=[]
@@ -53,6 +54,8 @@ func _ready() -> void:
 	var collision:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=Vector3(beam_m*.9,2.,length_m*.9);collision.shape=box;collision.position.y=.2;add_child(collision)
 	hull=Node3D.new();hull.name="Flutuacao";add_child(hull)
 	model=Models.build(kind,length_m,seed_value);hull.add_child(model)
+	# Sails swing on their masts and trim to the wind like the player's (sail_rig.gd).
+	if not (model.get_meta("sails",[]) as Array).is_empty():sail_rig=load("res://scripts/boats/sail_rig.gd").rig(model)
 	if length_m>=12.:
 		var lamp:=OmniLight3D.new();lamp.position=Vector3(0,float(model.get_meta("deck",1.))+2.,0);lamp.omni_range=length_m*.4;lamp.light_energy=0.;lamp.light_color=Color("ffd8a0");lamp.name="Luz";hull.add_child(lamp)
 	# Every decked boat carries a searchlight on the wheelhouse, lit at night and swept slowly ahead.
@@ -205,7 +208,11 @@ func _animate(delta: float) -> void:
 	var flag: Node3D=model.get_meta("flag") if model.has_meta("flag") else null
 	if flag!=null:flag.rotation.y=sin(_phase*3.1)*.22*(.4+Waves.wind)+sin(_phase*7.3)*.06
 	var reef:=1.-clampf((Waves.wind-.55)*2.2,0.,.45)
-	for sail: Node3D in model.get_meta("sails",[]):sail.scale=Vector3(1.,lerpf(sail.scale.y,reef,1.-exp(-delta)),1.)
+	if sail_rig!=null:
+		var local_wind: Vector3=global_basis.inverse()*Vector3(Waves.direction.x,0.,Waves.direction.y)
+		sail_rig.update(delta,local_wind,Waves.wind,reef)
+	else:
+		for sail: Node3D in model.get_meta("sails",[]):sail.scale=Vector3(1.,lerpf(sail.scale.y,reef,1.-exp(-delta)),1.)
 
 ## 0 by day, 1 at night: windows and deck lamps glow.
 func set_night(value: float) -> void:

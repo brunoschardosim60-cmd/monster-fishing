@@ -69,6 +69,8 @@ var sail_speed: float=0.
 var sail_heel: float=0.
 var _overcanvas_clock: float=0.
 var _alt_body: Node3D
+## Sailors aboard the bigger player hulls (crew_member.gd), rebuilt with the hull.
+var crew: Array[Node3D]=[]
 var _tripo_parts: Array[Node3D]=[]
 var _tripo_lights: Array[Light3D]=[]
 var _tripo_lamps: Array[StandardMaterial3D]=[]
@@ -579,6 +581,7 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 	for light: Light3D in _tripo_lights:light.visible=false
 	sail_rig=null;sail_speed=0.;sail_heel=0.
 	if tripo:
+		crew.clear()
 		helm_wheel=_tripo_wheel;bucket=_tripo_bucket;_propeller=_tripo_propeller
 		deck_lights=_tripo_lights.duplicate();lamp_materials=_tripo_lamps.duplicate()
 		hydrodynamics=_tripo_hydro.duplicate()
@@ -595,6 +598,13 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 			helm_wheel=_build_helm_wheel(_alt_body,wheel[0],float(wheel[1]),float(wheel[2]))
 		_build_bucket(_alt_body,hull_spec.bucket)
 		for roof: Dictionary in hull_spec.deck.get("roofs",[]):_build_ladder(_alt_body,roof)
+		crew.clear()
+		var crew_index: int=0
+		for c: Dictionary in hull_spec.get("crew",[]):
+			var person=preload("res://scripts/boats/crew_member.gd").new();person.look_id=60+crew_index*7;person.role=str(c.role)
+			if c.has("a"):person.walk_a=c.a;person.walk_b=c.b;person.position=c.a
+			else:person.position=c.at;person.facing=float(c.get("facing",0.))
+			person.name="Tripulante_%d"%crew_index;_alt_body.add_child(person);crew.append(person);crew_index+=1
 		deck_lights=[];lamp_materials=[]
 		var lamp:=OmniLight3D.new();lamp.position=hull_spec.helm+Vector3(0,2.1,-.4);lamp.light_color=Color("ffd69c");lamp.light_energy=1.8;lamp.omni_range=6.;_alt_body.add_child(lamp);deck_lights.append(lamp)
 		if float(hull_spec.sails)>0.:
