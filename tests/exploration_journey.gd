@@ -13,6 +13,9 @@ func run() -> void:
 	for action: StringName in InputMap.get_actions():InputMap.action_erase_events(action)
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
 	game.world.ocean.weather.settle(0)
+	# Calm sea for a collision test: no storm cells or whirlpools on the way (they damage the hull on purpose).
+	game.world.storms.set_process(false);game.world.whirlpools.set_physics_process(false)
+	preload("res://scripts/world/wave_field.gd").storm_cells.clear();preload("res://scripts/world/wave_field.gd").whirls.clear()
 	game.player.position=Vector3(0,1.55,-23);game.interact()
 	game.boat.position=Vector3(30,0,-100)
 	var reached:=0
