@@ -5,6 +5,7 @@ render_mode blend_mix, cull_disabled, depth_draw_opaque, shadows_disabled;
 // edges and streaks towards the scuppers.
 uniform float amount=0.;      // 0 dry … 1 swamped
 uniform float stir=0.;        // how hard it is moving (hull motion, water coming in)
+uniform vec2 flow=vec2(0.);    // which way it runs off (sheet space, towards the low side and the scuppers)
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 x){vec2 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
 	return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
@@ -24,7 +25,11 @@ void fragment(){
 	// Edges of the sheet (UV 0..1): foam where the water meets the bulwarks.
 	vec2 e=min(UV,1.-UV);
 	float edge=1.-smoothstep(0.,.08,min(e.x,e.y));
-	float foam=clamp(edge*(.6+n2)+smoothstep(.6,.9,n1)*(.45+stir*.7)+smoothstep(.75,.95,n2)*.3,0.,1.);
+	// Runnels: streaks stretched along the way the water is running off, sliding towards the scuppers.
+	float fl=length(flow);vec2 fd=fl>.01?flow/fl:vec2(1.,0.);vec2 fp=vec2(-fd.y,fd.x);
+	float runnel=noise(vec2(dot(local,fp)*7.,dot(local,fd)*1.2-TIME*(1.5+fl*4.)));
+	float streaks=smoothstep(.62,.9,runnel)*clamp(fl*1.5,0.,1.);
+	float foam=clamp(edge*(.6+n2)+smoothstep(.6,.9,n1)*(.45+stir*.7)+smoothstep(.75,.95,n2)*.3+streaks*.6,0.,1.);
 	ALBEDO=mix(vec3(.2,.44,.48),vec3(.88,.93,.92),foam*.85);
 	ROUGHNESS=mix(.04,.5,foam);
 	SPECULAR=.9;
