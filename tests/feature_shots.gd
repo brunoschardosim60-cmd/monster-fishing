@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -549,3 +549,44 @@ func _ilhaA() -> void:
 	# Forest on a slope, close to the ground.
 	var p:=Vector2(-30,300)
 	await shot("ilha_floresta",Vector3(p.x,Lay.ground(p)+2.,p.y),Vector3(p.x+20.,Lay.ground(p+Vector2(20,10))+1.,p.y+10.),2)
+
+func _mar2() -> void:
+	# Redemoinho fundo (malha própria) e o mar entrando no barco.
+	var w=game.world;var b: CharacterBody3D=game.boat;var p:=_sea_point()+Vector3(0,0,-150)
+	for c in w.storms.cells.duplicate():
+		if not c.anchored:(c.node as Node3D).queue_free();w.storms.cells.erase(c)
+	w.ocean.weather.settle(1)
+	var wp: Node3D=w.whirlpools
+	wp.spawn_near(p);wp.sites[-1].strength=.35
+	for i: int in 20:await physics_frame
+	await shot("mar2_redemoinho_formando",p+Vector3(110,18,60),p,2)
+	wp.sites[-1].strength=1.
+	for i: int in 30:await physics_frame
+	await shot("mar2_redemoinho_cima",p+Vector3(0,95,75),p+Vector3(0,-10,0),2)
+	await shot("mar2_redemoinho_lado",p+Vector3(95,10,20),p+Vector3(0,-14,0),2)
+	b.global_position=p+Vector3(16,0,0);b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for i: int in 60:await physics_frame
+	await shot("mar2_barco_descendo",b._hull.global_position+Vector3(22,12,14),b._hull.global_position,1)
+	wp.sites[-1].expires=0.
+	for i: int in 10:await physics_frame
+	# Water aboard on a rolling hull: the sheet in the low side, scuppers running.
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO
+	w.ocean.weather.settle(2)
+	for i: int in 40:
+		b.water_aboard=b.water_capacity()*.45;await physics_frame
+	await shot("mar2_agua_conves",b._hull.global_position+b.global_basis*Vector3(3.5,4.5,5.5),b._hull.global_position+Vector3(0,1.,0),1)
+	b.deck_wash.poured(b._hull.global_position+b.global_basis*Vector3(1.5,1.5,-2.),.8)
+	for i: int in 6:await process_frame
+	await shot("mar2_onda_entrando",b._hull.global_position+b.global_basis*Vector3(5.,3.,-1.),b._hull.global_position+b.global_basis*Vector3(0,1.2,-2.),1)
+
+func _mar3() -> void:
+	var w=game.world;var b: CharacterBody3D=game.boat
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	w.ocean.weather.settle(2)
+	for i: int in 50:
+		b.water_aboard=b.water_capacity()*.45;await physics_frame
+	var h: Vector3=b._hull.global_position
+	await shot("mar3_conves_cima",h+b.global_basis*Vector3(1.2,6.5,6.5),h+b.global_basis*Vector3(0,1.,1.5),1)
+	await shot("mar3_embornal",h+b.global_basis*Vector3(4.5,1.2,3.),h+b.global_basis*Vector3(1.6,.6,1.),1)

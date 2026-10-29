@@ -33,13 +33,18 @@ func run() -> void:
 	world.whirlpools.spawn_near(wp_at);world.whirlpools.sites[-1].strength=1.
 	await frames(3)
 	var centre:=Waves.height_at(wp_at);var edge:=Waves.height_at(wp_at+Vector3(95,0,0))
-	check(centre<edge-3.,"the whirlpool sinks a funnel into the sea (centre %.1f m, edge %.1f m)"%[centre,edge])
+	check(centre<edge-25.,"the whirlpool sinks a deep funnel into the sea, down to a throat (centre %.1f m, edge %.1f m)"%[centre,edge])
+	var funnel_on: bool=world.whirlpools.funnels.size()>0 and world.whirlpools.funnels[0].visible and is_equal_approx(world.whirlpools.funnels[0].scale.x,90.)
+	check(funnel_on,"it is drawn by its own fine radial mesh, not the coarse far grid")
 	game.player.set_boating(true);game.boat.set_occupied(true);game.player.in_boat=true
 	game.boat.global_position=wp_at+Vector3(50,0,0);game.boat.speed=0.
 	var before: Vector3=game.boat.global_position;var yaw: float=game.boat.rotation.y
 	await frames(120)
 	var moved: float=game.boat.global_position.distance_to(before)
 	check(moved>5. and absf(angle_difference(yaw,game.boat.rotation.y))>.1,"the current carries and turns the boat (%.1f m)"%moved)
+	game.boat.global_position=wp_at+Vector3(12,0,0);game.boat.speed=0.
+	await frames(90)
+	check(game.boat._hull.global_position.y< -6.,"near the throat the boat goes down the wall of the funnel (hull at %.1f m)"%game.boat._hull.global_position.y)
 	game.boat.global_position=sea+Vector3(0,0,400)
 	# --- Sonar
 	game.inventory.equipment["sonar"]=0

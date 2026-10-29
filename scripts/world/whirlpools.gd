@@ -14,6 +14,48 @@ var world: Node3D
 var sites: Array[Dictionary]=[]
 var _rng:=RandomNumberGenerator.new()
 var _warned: bool=false
+## Fine radial meshes drawing the funnels (rings packed towards the throat), one per shaped whirlpool,
+## with the sea's own material: the regular grids leave the inside of each whirlpool to these.
+var funnels: Array[MeshInstance3D]=[]
+static var _funnel_mesh: ArrayMesh
+
+static func funnel_mesh() -> ArrayMesh:
+	if _funnel_mesh!=null:return _funnel_mesh
+	const SEG: int=112
+	const RINGS: int=72
+	var verts:=PackedVector3Array();var idx:=PackedInt32Array()
+	verts.append(Vector3.ZERO)
+	for r: int in RINGS:
+		# Unit radius; rings crowd towards the centre where the throat is steep.
+		var rad: float=pow(float(r+1)/float(RINGS),1.7)
+		for k: int in SEG:
+			var a: float=float(k)/float(SEG)*TAU
+			verts.append(Vector3(cos(a)*rad,0.,sin(a)*rad))
+	for k: int in SEG:idx.append_array([0,1+k,1+(k+1)%SEG])
+	for r: int in RINGS-1:
+		var a0: int=1+r*SEG;var a1: int=1+(r+1)*SEG
+		for k: int in SEG:
+			var k1: int=(k+1)%SEG
+			idx.append_array([a0+k,a1+k,a0+k1,a0+k1,a1+k,a1+k1])
+	var arrays:=[];arrays.resize(Mesh.ARRAY_MAX);arrays[Mesh.ARRAY_VERTEX]=verts;arrays[Mesh.ARRAY_INDEX]=idx
+	var normals:=PackedVector3Array();normals.resize(verts.size());normals.fill(Vector3.UP);arrays[Mesh.ARRAY_NORMAL]=normals
+	_funnel_mesh=ArrayMesh.new();_funnel_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+	return _funnel_mesh
+
+func _update_funnels() -> void:
+	if world==null or world.get("ocean_material")==null:return
+	while funnels.size()<4:
+		var m:=MeshInstance3D.new();m.name="Funil_%d"%funnels.size();m.mesh=funnel_mesh();m.material_override=world.ocean_material
+		m.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;m.visible=false;add_child(m);funnels.append(m)
+	for i: int in 4:
+		var m: MeshInstance3D=funnels[i]
+		if i>=Waves.whirls.size():m.visible=false;continue
+		var wh: Vector4=Waves.whirls[i]
+		m.visible=true
+		# Unit mesh scaled to the whirlpool (in x/z only: heights come from the sea shader).
+		m.position=Vector3(wh.x,0.,wh.y);m.scale=Vector3(wh.z,1.,wh.z)
+		m.custom_aabb=AABB(Vector3(-1.,-50.,-1.),Vector3(2.,60.,2.))
+		m.set_instance_shader_parameter("funnel",Vector4(wh.x,wh.y,wh.z,1.))
 
 func _ready() -> void:
 	_rng.seed=909
@@ -105,6 +147,7 @@ func _physics_process(delta: float) -> void:
 			if not bool(site.seen) and (site.pos as Vector2).distance_to(eye)<500.:site.seen=true
 	shaping.sort_custom(func(a: Vector4,b: Vector4) -> bool:return Vector2(a.x,a.y).distance_squared_to(eye)<Vector2(b.x,b.y).distance_squared_to(eye))
 	Waves.whirls=shaping.slice(0,4)
+	_update_funnels()
 	var game=get_tree().get_first_node_in_group("game")
 	if game!=null and game.started:_pull(game,delta)
 

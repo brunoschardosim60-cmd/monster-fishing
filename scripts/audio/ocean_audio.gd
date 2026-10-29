@@ -14,6 +14,8 @@ var thunder_layer: AudioStreamPlayer3D
 ## sail flogging and bow slaps triggered by what the hull is doing.
 var engine_layer: AudioStreamPlayer3D
 var rigging_layer: AudioStreamPlayer
+## Water on deck washing about and running out of the scuppers (loop, follows the boat's water aboard).
+var wash_layer: AudioStreamPlayer3D
 var _creak_clock: float=3.
 var _flap_clock: float=0.
 var _last_roll: float=0.
@@ -43,6 +45,7 @@ func _ready() -> void:
 	thunder_layer.unit_size=250.; thunder_layer.max_distance=1500.
 	engine_layer=_spatial(_engine_sound(),true);engine_layer.volume_db=-80.
 	rigging_layer=_layer(_noise_sound(66,.5,6.,true))
+	wash_layer=_spatial(_noise_sound(67,.09,5.,true),true);wash_layer.volume_db=-80.
 	thunder_layer.volume_db=-5.
 
 func _layer(stream: AudioStream) -> AudioStreamPlayer:
@@ -74,6 +77,10 @@ func _boat_sounds(delta: float,muffled: float) -> void:
 	var hoisted: float=float(boat.sail_rig.hoist) if sails else 0.
 	rigging_layer.volume_db=(-70. if not (sails and aboard) else -52.+ocean.weather.wind*26.+hoisted*4.)-muffled
 	rigging_layer.pitch_scale=.8+ocean.weather.wind*.6
+	var wf: float=float(boat.water_fraction()) if boat.has_method("water_fraction") else 0.
+	wash_layer.global_position=boat.global_position+Vector3.UP
+	wash_layer.volume_db=(-80. if wf<.01 else -30.+sqrt(wf)*18.)-muffled
+	wash_layer.pitch_scale=.75+.25*sin(Time.get_ticks_msec()*.0013)+absf(float(boat.roll_rate))*.3
 	if not aboard:return
 	# Wooden hulls creak as they roll; more in a seaway.
 	var hull: Node3D=boat._hull
@@ -141,14 +148,14 @@ func cue_at(kind: String,at: Vector3,volume_db: float=0.) -> void:
 	p.pitch_scale=randf_range(.93,1.07)
 	p.play()
 
-const LOUD: Dictionary={"roar":6.,"slam":5.,"breach":6.,"axe":-2.,"hammer":-4.,"knock":-6.,"net":-3.,"harpoon":0.,"flare":-2.,"boost":-4.,"sink":0.,"mission":-6.,"coins":-8.,"ping":-4.}
+const LOUD: Dictionary={"slap":-1.,"pour":3.,"roar":6.,"slam":5.,"breach":6.,"axe":-2.,"hammer":-4.,"knock":-6.,"net":-3.,"harpoon":0.,"flare":-2.,"boost":-4.,"sink":0.,"mission":-6.,"coins":-8.,"ping":-4.}
 
 func _stream(kind: String) -> AudioStreamWAV:
 	if _cues.has(kind):return _cues[kind]
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = 22050
-	var seconds: Dictionary={"catch":.41,"chain":1.36,"splash":.64,"horn":1.36,"bite":.18,"roar":2.6,"slam":1.6,"breach":2.4,"axe":.5,"hammer":.25,
+	var seconds: Dictionary={"slap":.55,"pour":1.5,"catch":.41,"chain":1.36,"splash":.64,"horn":1.36,"bite":.18,"roar":2.6,"slam":1.6,"breach":2.4,"axe":.5,"hammer":.25,
 		"knock":.3,"creak":.9,"flap":.6,"bell":1.,"net":1.5,"harpoon":.9,"flare":2.2,"boost":1.4,"sink":3.,"mission":1.1,"coins":.5,"ping":1.6}
 	var length: int=int(22050.*float(seconds.get(kind,.2)))
 	var samples := PackedByteArray()
@@ -177,6 +184,20 @@ func _stream(kind: String) -> AudioStreamWAV:
 			"splash":
 				low = lerpf(low, rng.randf_range(-1.0, 1.0), 0.25)
 				value = low * exp(-t * 4.5) * 0.55
+			"slap":
+				# A wave slapping the hull: a hollow wooden thunk with the water's smack and a short hiss.
+				var body:=sin(t*TAU*(132.-t*60.))*exp(-t*16.)+sin(t*TAU*263.)*exp(-t*28.)*.35
+				low=lerpf(low,rng.randf_range(-1.,1.),.42)
+				var smack:=low*exp(-t*22.)
+				low2=lerpf(low2,rng.randf_range(-1.,1.),.18)
+				value=(body*.75+smack*.6+low2*exp(-t*6.)*.25)*.85
+			"pour":
+				# Green water coming over the rail: a heavy rush that sloshes and gurgles away.
+				low=lerpf(low,rng.randf_range(-1.,1.),.16)
+				low2=lerpf(low2,rng.randf_range(-1.,1.),.05)
+				var rush:=smoothstep(0.,.06,t)*exp(-t*1.6)
+				var gurgle:=sin(t*TAU*(95.+60.*sin(t*17.)))*pow(maxf(0.,sin(t*TAU*6.)),6.)*smoothstep(.2,.5,t)*(1.-smoothstep(1.,1.5,t))
+				value=(low*rush*.8+low2*rush*.9+gurgle*.25)*.9
 			"roar":
 				# A sea monster: a falling, gravelly growl (low saw through noise modulation) with a wet tail.
 				var f := lerpf(70.,38.,t/2.6)+sin(t*9.)*6.

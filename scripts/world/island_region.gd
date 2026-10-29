@@ -31,6 +31,9 @@ func _ready() -> void:
 	_make_grass_template()
 	for x: int in range(-6,5):
 		for z: int in range(-1,14): _chunk(Vector2(x*80,z*80))
+	# Cliffs and the sea arch draw from their own generator, so changes to the forest never move them
+	# (the arch's channel must stay open).
+	rng.seed=90210
 	_make_cliffs()
 	_make_sea_arch()
 	# The surface template is no longer needed after extracting reusable meshes.

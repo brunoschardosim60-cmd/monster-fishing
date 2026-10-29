@@ -23,6 +23,10 @@ uniform float sea_glow = 0.0; // luz difusa da água; ocean_environment liga de 
 uniform mat4 hull_inv=mat4(1.);
 uniform vec4 hull_box=vec4(0.);
 uniform float hull_keel=-1.;
+// Whirlpools have their own fine radial mesh (whirlpools.gd): on it funnel = (x, z, radius, 1); the
+// regular grids (funnel.w = 0) leave the inside of every whirlpool to it, so the throat is never drawn
+// with the coarse far cells.
+instance uniform vec4 funnel=vec4(0.);
 varying vec3 world_pos;
 varying vec3 wave_normal;
 varying float crest;
@@ -35,6 +39,14 @@ void vertex() {
 	crest=w.y;
 }
 void fragment() {
+	if(funnel.w>0.){
+		if(length(world_pos.xz-funnel.xy)>funnel.z*.9) discard;
+	}else{
+		for(int i=0;i<4;i++){
+			vec4 wh=whirl[i];
+			if(wh.w>.02 && length(world_pos.xz-wh.xy)<wh.z*.9) discard;
+		}
+	}
 	if(hull_box.x>0.){
 		vec3 hl=(hull_inv*vec4(world_pos,1.)).xyz;
 		// Narrowing towards the bow so the cut follows the hull lines.
@@ -85,11 +97,13 @@ void fragment() {
 		float t=clamp(1.-dist/wh.z,0.,1.);
 		// Foam advected round the funnel: noise sampled in rotating polar coordinates, broken into streaks.
 		float ang=atan(d.y,d.x)+sea_time*wh.w*(.4+1.6*t*t)+log(dist+1.)*1.6;
-		vec2 polar=vec2(ang*2.,dist*.05);
+		// Angle in whole turns of the texture, so there is no seam where atan wraps round.
+		vec2 polar=vec2(ang/6.2831853*4.,dist*.05);
 		float churn=texture(foam_tex,polar*vec2(.5,1.)).r*.6+texture(foam_tex,polar*vec2(1.3,3.)+.3).r*.4;
 		float arms=.5+.5*sin(ang*5.);
 		swirl=max(swirl,smoothstep(.5,.85,churn*.7+arms*.45)*smoothstep(0.,.3,t)*(1.-smoothstep(.9,1.,t))*wh.w*.7);
-		vortex=max(vortex,t*t*wh.w);
+		float core=wh.z*.075;
+		vortex=max(vortex,max(t*t*.6,core*core/(core*core+dist*dist))*wh.w);
 	}
 	float foam=clamp(shore+surf+whitecap+streaks+storm_caps+swirl,0.,.96);
 	// --- Colour model -------------------------------------------------------------------

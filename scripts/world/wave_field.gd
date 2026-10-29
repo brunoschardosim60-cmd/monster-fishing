@@ -32,8 +32,12 @@ static func whirl_offset(v: Vector2) -> float:
 		if wh.w<=0.:continue
 		var d:=v-Vector2(wh.x,wh.y);var dist:=d.length()
 		if dist>=wh.z:continue
-		var t:=1.-dist/wh.z;var depth:=wh.w*minf(wh.z*.16,13.)
-		y+=-depth*pow(t,2.5)+sin(atan2(d.y,d.x)*3.+dist*.35-time*3.)*.18*t*wh.w
+		var t:=1.-dist/wh.z
+		var bowl:=minf(wh.z*.08,7.)*wh.w
+		var core:=wh.z*.075;var c2:=core*core
+		var throat:=minf(wh.z*.42,40.)*wh.w
+		var f:=c2/(c2+dist*dist)-c2/(c2+wh.z*wh.z)
+		y+=-bowl*t*t-throat*f+sin(atan2(d.y,d.x)*3.+dist*.35-time*3.)*.18*t*wh.w
 	return y
 
 static func _pad(list: Array[Vector4]) -> Array[Vector4]:

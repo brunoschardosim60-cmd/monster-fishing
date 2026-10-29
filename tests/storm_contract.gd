@@ -86,6 +86,10 @@ func run() -> void:
 		var local: Vector3=boat._hull.to_local(game.player.global_position)
 		if absf(local.y-float(deck.y))>.6 or absf(local.x)>float(deck.x)+.05:ok=false
 	check(ok,"the player keeps footing on the deck in rough water")
+	# Waves slap the hull in a seaway: heard and seen at the sides.
+	var slaps0: int=boat.deck_wash.slaps
+	await _ticks(240)
+	check(boat.deck_wash.slaps>slaps0,"waves slap against the hull in a seaway (%d slaps in 4 s)"%(boat.deck_wash.slaps-slaps0))
 	# Water over the rail: when the sea stands above the gunwale it pours in; she floats deeper with it,
 	# goes slower, drains through the scuppers and pump, and can be bailed; the sea is not drawn inside her.
 	game.toggle_deck();await frames(3)
@@ -93,18 +97,26 @@ func run() -> void:
 	boat.global_position=Vector3(250,0,-300);boat.rotation=Vector3.ZERO;boat.speed=0.;boat.water_aboard=0.
 	await _ticks(120)
 	check(Waves.hull_box.x>0. and Waves.hull_inv.origin.distance_to(boat._hull.global_transform.affine_inverse().origin)<.5,"the hull's outline is passed to the sea shader, which leaves its inside dry")
-	var dry_y: float=boat._hull.position.y
+	# Freeboard measured against the sea right under her, averaged over a few seconds.
+	var dry_sum:=0.
+	for f: int in 120:
+		await _tick();dry_sum+=boat._hull.position.y-Waves.height_at(boat.global_position)
+	var dry_y: float=dry_sum/120.
 	for f: int in 60:
-		boat._hull.position.y=dry_y-float(boat.hull_spec.gunwale)-.4;boat.heave_velocity=0.
+		boat._hull.position.y=Waves.height_at(boat.global_position)+dry_y-float(boat.hull_spec.gunwale)-.4;boat.heave_velocity=0.
 		await _tick()
 	check(boat.water_aboard>20.,"with the rail under, sea water pours aboard (%.0f kg)"%boat.water_aboard)
+	check(boat.deck_wash.pours>0,"…as white water bursting in over the rail, with its roar (%d)"%boat.deck_wash.pours)
 	boat.water_aboard=boat.water_capacity()*.6;boat.engine_rpm=0.
 	var sum:=0.
 	for f: int in 240:
 		boat.water_aboard=boat.water_capacity()*.6
 		await _tick()
-		if f>120:sum+=boat._hull.position.y
+		if f>120:sum+=boat._hull.position.y-Waves.height_at(boat.global_position)
 	var wet_y: float=sum/119.
+	var scupper_on:=false
+	for sc: CPUParticles3D in boat.deck_wash.scuppers:scupper_on=scupper_on or sc.emitting
+	check(boat.deck_wash.sheet.visible and scupper_on,"water lies on deck and runs out of the scuppers")
 	check(wet_y<dry_y-.1,"heavy with water she floats deeper (%.2f m lower)"%(dry_y-wet_y))
 	await _ticks(600)
 	check(boat.water_aboard<boat.water_capacity()*.6*.4,"the scuppers drain the deck (%.0f%% left)"%(boat.water_fraction()*100.))

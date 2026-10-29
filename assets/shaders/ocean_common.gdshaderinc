@@ -46,12 +46,20 @@ vec3 sea_surface(vec2 p) {
 	for(int i=0;i<4;i++){
 		vec4 wh=whirl[i];if(wh.w<=0.)continue;
 		vec2 d=p-wh.xy;float dist=length(d);if(dist>=wh.z)continue;
-		float t=1.-dist/wh.z;float depth=wh.w*min(wh.z*.16,13.);
 		vec2 dir=d/max(dist,.01);
 		float ang=atan(d.y,d.x);
+		float t=1.-dist/wh.z;
+		// A real maelstrom: a broad bowl that steepens into a narrow throat tens of metres deep
+		// (wave_field.gd whirl_offset mirrors this). Its own fine radial mesh draws it (whirlpools.gd).
+		float bowl=min(wh.z*.08,7.)*wh.w;
+		float core=wh.z*.075;float c2=core*core;
+		float throat=min(wh.z*.42,40.)*wh.w;
+		float f=c2/(c2+dist*dist)-c2/(c2+wh.z*wh.z);
 		float ripple=sin(ang*3.+dist*.35-sea_time*3.)*.18*t*wh.w;
-		result.y+=-depth*pow(t,2.5)+ripple;
-		result.xz+=-dir*(depth*2.5*pow(t,1.5)/wh.z);
+		result.y+=-bowl*t*t-throat*f+ripple;
+		// Slope of that surface (outward), for the normals.
+		float slope=bowl*2.*t/wh.z+throat*2.*c2*dist/((c2+dist*dist)*(c2+dist*dist));
+		result.xz+=-dir*slope;
 	}
 	result.y+=tide;
 	result.y+=(sin(c.x*.85-sea_time*1.15)*.12*(.3+swell_energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x))*lod;

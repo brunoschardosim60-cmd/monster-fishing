@@ -14,7 +14,8 @@ var integrity: float=1.
 ## It weighs the hull down (she floats deeper and lower, rolls heavier and is slower), drains through the
 ## scuppers and the bilge pump, can be bailed out (E on deck), and too much of it swamps the boat.
 var water_aboard: float=0.
-var _deck_water: MeshInstance3D
+## Waves against the hull, green water, water on deck and the scuppers (deck_wash.gd).
+var deck_wash: Node3D
 var _water_note: int=0
 ## Boost (SHIFT at the helm): a few seconds of extra power to outrun a monster, then the engine cools.
 var boost: float=0.
@@ -107,6 +108,7 @@ var _wake_material: ShaderMaterial
 const DOCK_POSITION: Vector3 = Vector3(3.9, 0.0, -23.0)
 
 func _ready() -> void:
+	deck_wash=preload("res://scripts/boats/deck_wash.gd").new();deck_wash.name="MarNoCasco";deck_wash.boat=self;add_child(deck_wash)
 	collision_layer = 2
 	collision_mask = 1
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
@@ -251,6 +253,7 @@ func _wave_hits(delta: float,here: Vector2) -> void:
 	take_hit((.01+.025*rough)/pow(size_factor,2.)*wave_damage_scale,(.22+.25*rough)/size_factor)
 	# Green water: part of the breaking sea lands on deck.
 	water_aboard+=float(hydrodynamics.mass_kg)*pow(size_factor,3.)*.035*rough*wave_damage_scale
+	if deck_wash!=null:deck_wash.poured(global_position-global_basis.z*float(hull_spec.length)*.4*size_factor+Vector3.UP*(_hull.global_position.y+float(hull_spec.get("gunwale",1.))*size_factor),.4+rough*.6)
 	if water_effects!=null:water_effects.splash(global_position-global_basis.z*2.+global_basis.x*randf_range(-1.,1.),1.2+rough,true)
 	var game:=get_tree().get_first_node_in_group("game")
 	if game!=null:
@@ -290,13 +293,13 @@ func _ship_water(delta: float,heights: Array[float],xs: Array[float],zs: Array[f
 		# However hard it breaks, only so much gets in at once (the rail and the deckhouse shed the rest).
 		water_aboard+=minf(inflow,m*.012)*delta
 		# Water coming over the rail: a burst of white water on that side, and a lurch.
-		if water_effects!=null and impact_cooldown<=0. and worst>=0:
+		if impact_cooldown<=0. and worst>=0:
 			var at: Vector3=global_position+global_basis.x*xs[worst%3]*.9+global_basis.z*zs[worst/3]*.9
-			water_effects.splash(at,.6+minf(worst_over*1.5,1.5),true)
+			at.y=_hull.global_position.y+gunwale
+			if water_effects!=null:water_effects.splash(at,.6+minf(worst_over*1.5,1.5),true)
 			roll_rate+=signf(xs[worst%3])*-minf(worst_over,.6)*.6;heave_velocity-=minf(worst_over,.5)*.6
 			impact_cooldown=.5
-			var game:=get_tree().get_first_node_in_group("game")
-			if game!=null and occupied:game.audio.cue_at("slam",at,-12.)
+			if deck_wash!=null:deck_wash.poured(at,worst_over)
 	# Out it goes: scuppers on a decked hull (fast while there is a lot), the bilge pump with an engine.
 	var decked: bool=str(hull_spec.get("kind",""))!="canoa"
 	var drain: float=(water_aboard*.12 if decked else 0.)+(14.*size_factor if decked and engine_rpm>.05 else 0.)
@@ -306,7 +309,6 @@ func _ship_water(delta: float,heights: Array[float],xs: Array[float],zs: Array[f
 		var audio:=get_tree().get_first_node_in_group("audio")
 		if audio!=null:audio.cue("sink")
 	_water_warnings()
-	_update_deck_water()
 
 func _water_warnings() -> void:
 	var wf: float=water_fraction()
@@ -316,23 +318,6 @@ func _water_warnings() -> void:
 		if game!=null:
 			game.hud.notify(["","Água no convés! O barco está mais pesado. Esgote com E no convés ou saia do mar grosso.","O barco está alagando! Esgote a água (E) ou ela afunda."][level])
 	_water_note=level if level>_water_note or wf<.15 else _water_note
-
-## The water on deck: a level sheet inside the hull that rises with what has come aboard and sloshes.
-func _update_deck_water() -> void:
-	if not is_instance_valid(_hull):return
-	var wf: float=water_fraction()
-	if _deck_water==null or not is_instance_valid(_deck_water) or _deck_water.get_parent()!=_hull:
-		_deck_water=MeshInstance3D.new();_deck_water.name="AguaNoConves";_deck_water.mesh=BoxMesh.new()
-		var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.22,.46,.5,.72);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.roughness=.08;mat.metallic_specular=.8
-		_deck_water.material_override=mat;_deck_water.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;_hull.add_child(_deck_water)
-	_deck_water.visible=wf>.01
-	if not _deck_water.visible:return
-	var deck: Dictionary=hull_spec.deck
-	var level: float=lerpf(.03,.38,clampf(wf,0.,1.))
-	(_deck_water.mesh as BoxMesh).size=Vector3(float(deck.x)*2.+.1,level,float(deck.z1)-float(deck.z0))
-	_deck_water.position=Vector3(-sin(_hull.rotation.z)*float(deck.x)*.5*wf,float(deck.y)+level*.5-.02,(float(deck.z0)+float(deck.z1))*.5)
-	# Keep the sheet level with the horizon while the hull pitches and rolls under it.
-	_deck_water.rotation=Vector3(-_hull.rotation.x,0.,-_hull.rotation.z)
 
 ## Tells the sea shader where the hull is so it is not drawn inside it.
 func _publish_hull() -> void:

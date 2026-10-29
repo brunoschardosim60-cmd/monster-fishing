@@ -90,9 +90,10 @@ func _district(data: Array) -> void:
 			var angle:=_rng.randf()*TAU
 			if _place("obra",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+12.+float(attempt)*.4),_size_of("obra"),centre,water,record):break
 	var tries:=0
-	while (record.houses as Array).size()<count+(1 if not landmark.is_empty() else 0) and tries<600:
+	while (record.houses as Array).size()<count+(1 if not landmark.is_empty() else 0) and tries<1500:
 		tries+=1
-		var ring:=PLAZA_R+8.+_rng.randf()*(radius-PLAZA_R-6.)
+		# When the inner rings fill up, look a little further out.
+		var ring:=PLAZA_R+8.+_rng.randf()*(radius-PLAZA_R-6.+float(tries/250)*6.)
 		var angle:=_rng.randf()*TAU
 		var at:=centre+Vector2(cos(angle),sin(angle))*ring
 		var style: String=styles[_rng.randi()%styles.size()]
