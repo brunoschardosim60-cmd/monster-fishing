@@ -32,10 +32,10 @@ func _ready() -> void:
 	sheet_mat=ShaderMaterial.new();sheet_mat.shader=preload("res://assets/shaders/deck_water.gdshader")
 	sheet.material_override=sheet_mat;sheet.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sheet.top_level=true;sheet.visible=false;add_child(sheet)
-	pour=_drops(160,1.2,true,Vector2(.13,.34));pour.top_level=true;pour.name="AguaEntrando";add_child(pour)
+	pour=_drops(220,1.2,true,Vector2(.07,.2));pour.top_level=true;pour.name="AguaEntrando";add_child(pour)
 	for i: int in 4:
-		var f:=_drops(150,1.1,true,Vector2(.13,.34));f.top_level=true;f.name="Borrifo_%d"%i;add_child(f);_fans.append(f)
-	land=_drops(90,.5,true,Vector2(.1,.18));land.top_level=true;land.name="RespingoNoConves";add_child(land)
+		var f:=_drops(220,1.1,true,Vector2(.07,.2));f.top_level=true;f.name="Borrifo_%d"%i;add_child(f);_fans.append(f)
+	land=_drops(120,.5,true,Vector2(.06,.11));land.top_level=true;land.name="RespingoNoConves";add_child(land)
 	land.initial_velocity_min=.6;land.initial_velocity_max=1.8;land.spread=55.;land.gravity=Vector3(0,-9.8,0)
 
 var _fans: Array[CPUParticles3D]=[]

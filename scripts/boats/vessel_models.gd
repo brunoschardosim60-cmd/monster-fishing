@@ -104,7 +104,7 @@ static func _seat(root: Node3D,at: Vector3,facing: float) -> void:
 ## `well`: openings cut in the deck, each Vector3(half width, z from, z to) — where a cabin below is
 ## entered or roofed by a coachroof (the deck is left on either side of the opening).
 static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: float,hull: Color,bottom: Color,stripe: Color,deck: Color,pointed_stern: bool=false,sheer: float=0.,open_floor: float=-1.,well: Array=[]) -> void:
-	var mat:=StandardMaterial3D.new();mat.vertex_color_use_as_albedo=true;mat.roughness=.55;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+	var mat: Material=_hull_material()
 	var sections:=int(clampf(L/.3,20.,80.))
 	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rings: Array=[];var colors: Array[Color]=[bottom,bottom,bottom,hull,hull,stripe,stripe,hull,deck,deck,hull,stripe,stripe,hull,hull,bottom,bottom]
@@ -148,6 +148,14 @@ static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: floa
 	st.generate_normals()
 	var node:=MeshInstance3D.new();node.name="Casco";node.mesh=st.commit();node.material_override=mat;root.add_child(node)
 	root.set_meta("deck",freeboard)
+
+## Shared painted-plank hull material (assets/shaders/painted_hull.gdshader): the hull's vertex colours
+## are the paint; the shader adds strakes, deck planking, grain, worn edges and waterline grime.
+static var _hull_mat: ShaderMaterial
+static func _hull_material() -> ShaderMaterial:
+	if _hull_mat==null:
+		_hull_mat=ShaderMaterial.new();_hull_mat.shader=preload("res://assets/shaders/painted_hull.gdshader")
+	return _hull_mat
 
 ## A box with no bottom (four walls and a top), for coachroofs and deckhouses with a room under them.
 static func _shell(root: Node3D,centre: Vector3,size: Vector3,mat: Material) -> void:
@@ -252,11 +260,61 @@ static func _painted(root: Node3D,file: String,L: float,paint: Color,rng: Random
 	return node
 
 # ---------------------------------------------------------------- kinds
+## Where the rail (sheer line) of a lofted hull runs, at fraction t from bow (0) to stern (1); same
+## curves as _hull.
+static func _sheer_point(L: float,beam: float,freeboard: float,sheer: float,pointed: bool,t: float,side: float,inset: float=1.) -> Vector3:
+	var w: float=beam*.5*pow(sin(PI*clampf(t,0.,1.)),.62) if pointed else beam*.5*pow(smoothstep(0.,.36,t),.55)*(1.-.12*smoothstep(.8,1.,t))
+	return Vector3(side*w*.97*inset,freeboard+sheer*pow(1.-t,2.),lerpf(-L*.5,L*.5,t))
+
+## Wooden fittings that make an open boat read as built: a capping rail along both gunwales, a rubbing
+## strake under it, steam-bent ribs inside, slatted floorboards, stem and stern posts.
+static func _open_boat_joinery(root: Node3D,L: float,beam: float,freeboard: float,sheer: float,floor_y: float,wood: Material,dark: Material) -> void:
+	var n:=22
+	for side: float in [-1.,1.]:
+		var prev:=_sheer_point(L,beam,freeboard,sheer,true,.03,side)
+		for i: int in range(1,n+1):
+			var t:=lerpf(.03,.97,float(i)/float(n))
+			var p:=_sheer_point(L,beam,freeboard,sheer,true,t,side)
+			_detail(G.beam(root,prev+Vector3(0,.02,0),p+Vector3(0,.02,0),.045,wood))
+			_detail(G.beam(root,prev*Vector3(1.035,1.,1.)-Vector3(0,.09,0),p*Vector3(1.035,1.,1.)-Vector3(0,.09,0),.03,dark))
+			prev=p
+		# Ribs: bent from the floor up to the rail, close-spaced.
+		for i: int in range(2,n-1):
+			var t:=float(i)/float(n)
+			var top:=_sheer_point(L,beam,freeboard,sheer,true,t,side,.95)
+			var low:=Vector3(top.x*.78/.95,floor_y+.02,top.z);var mid:=Vector3(top.x*1.02,lerpf(floor_y,top.y,.45),top.z)
+			_detail(G.beam(root,low,mid,.028,dark));_detail(G.beam(root,mid,top,.026,dark))
+	# Floorboards: three slats fore-and-aft between the ribs.
+	for k: int in 3:
+		_detail(G.box(root,Vector3((float(k)-1.)*.15,floor_y+.035,0.),Vector3(.1,.025,L*.56),wood))
+	# Stem and sternpost rising a hand above the sheer.
+	for e: float in [0.,1.]:
+		var tip:=_sheer_point(L,beam,freeboard,sheer,true,e,0.)
+		var foot:=Vector3(0,floor_y,tip.z*.9)
+		_detail(G.beam(root,foot,tip+Vector3(0,.12,0)-Vector3(0,0,signf(tip.z)*.04),.06,dark))
+
 static func _canoa(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var wood: Color=_pick(rng,[Color("8a5a2b"),Color("a0522d"),Color("6b4226"),Color("b8433a"),Color("2f6f8f")])
 	_hull(root,L,.95,.42,.16,wood,wood.darkened(.35),wood.lightened(.25),Color("c9a46a"),true,.18,.06)
 	var oak:=_mat(Color("d8b07a"))
-	for i: int in 2:_detail(G.box(root,Vector3(0,.3,(float(i)-.5)*L*.38),Vector3(.8,.04,.22),oak))
+	var trim:=_mat(Color("c79a62"),.75);var frame:=_mat(Color("6b4a2c"),.85)
+	_open_boat_joinery(root,L,.95,.42,.18,.06,trim,frame)
+	for i: int in 2:
+		var z:=(float(i)-.5)*L*.38
+		_detail(G.box(root,Vector3(0,.3,z),Vector3(.8,.04,.22),oak))
+		# Knees under the thwart ends.
+		for sx: float in [-1.,1.]:_detail(G.beam(root,Vector3(sx*.36,.29,z),Vector3(sx*.33,.12,z),.03,frame))
+	# Bow gear: a coiled line, a little grapnel anchor and a bailer cut from a jug.
+	var rope:=_mat(Color("c8b58a"),.95)
+	for r: int in 4:
+		var coil:=TorusMesh.new();coil.inner_radius=.09+float(r)*.012;coil.outer_radius=.11+float(r)*.012;coil.rings=14;coil.ring_segments=5
+		_detail(G.mesh_node(root,coil,rope,Vector3(.05,.1+float(r)*.018,-L*.36)))
+	var iron:=_mat(Color("3a3632"),.5,.4)
+	_detail(G.beam(root,Vector3(-.12,.1,-L*.31),Vector3(-.12,.32,-L*.31),.02,iron))
+	for k: int in 4:
+		var a:=float(k)*PI*.5
+		_detail(G.beam(root,Vector3(-.12,.11,-L*.31),Vector3(-.12+cos(a)*.08,.17,-L*.31+sin(a)*.08),.016,iron))
+	_detail(G.cylinder(root,Vector3(.16,.14,L*.12),.07,.14,_mat(Color("e8e2c8"),.4),.06,10))
 	_seat(root,Vector3(0,-.42,-L*.19),0.);_seat(root,Vector3(0,-.42,L*.19),0.)
 	var paddle:=Node3D.new();paddle.name="Remo";paddle.position=Vector3(.42,.75,-L*.19);root.add_child(paddle)
 	_detail(G.beam(paddle,Vector3(0,.3,0),Vector3(.25,-.85,.1),.03,oak));_detail(G.box(paddle,Vector3(.25,-.95,.1),Vector3(.04,.42,.16),oak))
@@ -317,6 +375,64 @@ static func _pesqueiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> void
 	_rail(root,Vector3(-L*.14,f,L*.22),PI*.5);_rail(root,Vector3(L*.14,f,L*.18),-PI*.5);_rail(root,Vector3(L*.1,f,L*.42),PI)
 	root.set_meta("crew",rng.randi_range(3,4))
 
+## Rail round a decked hull: stanchions along the sheer with a capping rail on top and a mid rail (wood
+## on working boats; `metal` gives lifelines on chrome stanchions for a yacht).
+static func _deck_rails(root: Node3D,L: float,beam: float,f: float,sheer: float,height: float,spacing: float,wood: Material,post: Material,metal: bool=false,t0: float=.06,t1: float=.97) -> void:
+	var n: int=maxi(6,int(L*(t1-t0)/spacing))
+	for side: float in [-1.,1.]:
+		var prev: Vector3
+		for i: int in n+1:
+			var t:=lerpf(t0,t1,float(i)/float(n))
+			var p:=_sheer_point(L,beam,f-sheer*0.,sheer,false,t,side,.985)
+			_detail(G.beam(root,p,p+Vector3(0,height,0),.022 if metal else .045,post))
+			if i>0:
+				if metal:
+					_detail(G.beam(root,prev+Vector3(0,height,0),p+Vector3(0,height,0),.012,post))
+					_detail(G.beam(root,prev+Vector3(0,height*.5,0),p+Vector3(0,height*.5,0),.01,post))
+				else:
+					_detail(G.beam(root,prev+Vector3(0,height,0),p+Vector3(0,height,0),.07,wood))
+					_detail(G.beam(root,prev+Vector3(0,height*.45,0),p+Vector3(0,height*.45,0),.035,wood))
+				# Rubbing strake just under the rail outside.
+				_detail(G.beam(root,prev*Vector3(1.03,1.,1.)-Vector3(0,.12,0),p*Vector3(1.03,1.,1.)-Vector3(0,.12,0),.05,wood))
+			prev=p
+
+## Mooring cleat: two horns on a low base.
+static func _cleat(root: Node3D,at: Vector3,yaw: float,mat: Material) -> void:
+	var c:=Node3D.new();c.position=at;c.rotation.y=yaw;root.add_child(c)
+	_detail(G.box(c,Vector3(0,.03,0),Vector3(.06,.06,.1),mat))
+	_detail(G.beam(c,Vector3(0,.07,-.13),Vector3(0,.07,.13),.035,mat))
+
+## Hatch: a raised coaming with a slatted grating top.
+static func _hatch(root: Node3D,at: Vector3,size: Vector2,wood: Material,dark: Material) -> void:
+	_detail(G.box(root,at+Vector3(0,.12,0),Vector3(size.x+.12,.24,size.y+.12),wood))
+	var slats: int=int(size.x/.12)
+	for i: int in slats:_detail(G.box(root,at+Vector3(-size.x*.5+(float(i)+.5)*size.x/float(slats),.25,0),Vector3(.05,.03,size.y),dark))
+	for k: int in 3:_detail(G.box(root,at+Vector3(0,.255,(float(k)-1.)*size.y*.33),Vector3(size.x,.025,.04),dark))
+
+## Barrel with hoops.
+static func _barrel(root: Node3D,at: Vector3,radius: float,wood: Material,hoop: Material) -> void:
+	_detail(G.cylinder(root,at+Vector3(0,radius*1.2,0),radius,radius*2.4,wood,radius,12))
+	_detail(G.cylinder(root,at+Vector3(0,radius*1.2,0),radius*1.1,radius*1.4,wood,radius*1.1,12))
+	for y: float in [.25,.8,1.6,2.15]:_detail(G.cylinder(root,at+Vector3(0,radius*y,0),radius*1.06+(.02 if y>.5 and y<2. else 0.),.035,hoop,-1.,12))
+
+## Ship's lantern on a short bracket: iron cap and base, glowing glass between four bars, a ring on top.
+static func _lantern(root: Node3D,at: Vector3,h: float,glass: Material,iron: Material) -> void:
+	var r:=h*.28
+	_detail(G.cylinder(root,at+Vector3(0,h*.08,0),r*1.15,h*.12,iron,r*1.15,10))
+	_detail(G.cylinder(root,at+Vector3(0,h*.45,0),r,h*.6,glass,r*.9,10))
+	_detail(G.cylinder(root,at+Vector3(0,h*.85,0),r*.4,h*.2,iron,r*1.2,10))
+	for k: int in 4:
+		var a:=float(k)*PI*.5+PI*.25
+		_detail(G.beam(root,at+Vector3(cos(a)*r,h*.14,sin(a)*r),at+Vector3(cos(a)*r*.92,h*.76,sin(a)*r*.92),.012,iron))
+	var ring:=TorusMesh.new();ring.inner_radius=r*.3;ring.outer_radius=r*.42
+	var n: Node3D=_detail(G.mesh_node(root,ring,iron,at+Vector3(0,h*1.02,0)));n.rotation.x=PI*.5
+
+## Coil of rope lying on deck.
+static func _coil(root: Node3D,at: Vector3,radius: float,mat: Material) -> void:
+	for r: int in 4:
+		var coil:=TorusMesh.new();coil.inner_radius=radius+float(r)*.014;coil.outer_radius=radius+.024+float(r)*.014;coil.rings=16;coil.ring_segments=5
+		_detail(G.mesh_node(root,coil,mat,at+Vector3(0,.015+float(r)*.02,0)))
+
 static func _veleiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var paint: Color=_pick(rng,[Color("f4f4f0"),Color("1f3d5c"),Color("2e6b8a"),Color("7a1f2b"),Color("f4f4f0")])
 	var f:=1.1
@@ -341,6 +457,27 @@ static func _veleiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	for side: float in [-1.,1.]:_line(root,Vector3(0,f+mast_h*.8,mast_z),Vector3(side*L*.15,f,mast_z+L*.05),rope)
 	_nav_lights(root,Vector3(-L*.14,f+.2,-L*.4),Vector3(L*.14,f+.2,-L*.4),Vector3(0,f+mast_h+.1,mast_z))
 	_flag(root,Vector3(0,f+1.4,L*.5),.55,rng);_detail(G.cylinder(root,Vector3(0,f+.7,L*.5),.025,1.4,spar))
+	# Deck hardware: lifelines on chrome stanchions, teak toe rail, cleats, winches by the cockpit,
+	# handrails and dorade vents on the coachroof, an anchor on the bow roller.
+	var chrome:=_mat(Color("d6dadd"),.25,.85);var teak:=_mat(Color("a87a4a"),.7)
+	_deck_rails(root,L,L*.32,f,.3,.62,1.1,teak,chrome,true,.08,.95)
+	for z: float in [-L*.44,L*.44]:
+		for side: float in [-1.,1.]:_cleat(root,_sheer_point(L,L*.32,f,.3,false,z/L+.5,side,.8),0.,chrome)
+	for side: float in [-1.,1.]:
+		var w:=Vector3(side*L*.11,f,L*.25)
+		_detail(G.cylinder(root,w+Vector3(0,.12,0),.09,.24,chrome,.07,14));_detail(G.cylinder(root,w+Vector3(0,.25,0),.05,.04,_mat(Color("2a2a2a"),.5),.05,10))
+		_detail(G.beam(root,Vector3(side*L*.075,f+.62,-L*.13),Vector3(side*L*.075,f+.62,L*.1),.03,teak))
+		for k: int in 4:_detail(G.beam(root,Vector3(side*L*.075,f+.6,-L*.13+float(k)*L*.077),Vector3(side*L*.075,f+.62,-L*.13+float(k)*L*.077),.03,teak))
+		var vent:=Vector3(side*L*.05,f+.6,-L*.15)
+		_detail(G.cylinder(root,vent+Vector3(0,.12,0),.05,.24,chrome,.05,10))
+		var cowl: Node3D=_detail(G.cylinder(root,vent+Vector3(0,.27,-.04),.07,.1,_mat(Color("c43d2f"),.5),.08,10));cowl.rotation.x=PI*.5
+	# Cockpit coaming round the helm.
+	for side: float in [-1.,1.]:_detail(G.box(root,Vector3(side*L*.07,f+.15,L*.32),Vector3(.05,.3,L*.2),teak))
+	_detail(G.box(root,Vector3(0,f-.02,L*.43),Vector3(L*.12,.04,.5),teak))
+	var anchor_mat:=_mat(Color("8d9196"),.4,.7)
+	_detail(G.beam(root,Vector3(0,f+.25,-L*.5),Vector3(0,f-.1,-L*.5-.12),.04,anchor_mat))
+	_detail(G.beam(root,Vector3(-.15,f-.12,-L*.5-.1),Vector3(.15,f-.12,-L*.5-.1),.04,anchor_mat))
+	_coil(root,Vector3(L*.05,f,-L*.4),.12,_mat(Color("e8e0c8"),.9))
 	root.set_meta("helm",Vector3(0,f-.2,L*.36));root.set_meta("walk",[Vector3(L*.08,f,-L*.25),Vector3(L*.08,f,L*.2)])
 	_rail(root,Vector3(-L*.08,f,-L*.34),0.);_rail(root,Vector3(L*.1,f,L*.3),-PI*.5)
 	root.set_meta("crew",rng.randi_range(2,3))
@@ -354,6 +491,42 @@ static func _escuna(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	_detail(G.beam(root,Vector3(0,f+.6,-L*.5),Vector3(0,f+1.6,-L*.68),.12,spar))
 	G.box(root,Vector3(0,f+.55,L*.25),Vector3(L*.14,1.1,L*.16),wood)
 	_windows(root,Vector3(0,f+.65,L*.25-L*.08-.01),L*.1,.35,3)
+	# Deckhouse joinery: an overhanging roof with a moulded edge, corner posts, panelled sides, a door
+	# aft and a skylight on top.
+	var light_wood:=_mat(Color("b08a5a"),.7);var dark_wood:=_mat(Color("3e2c1c"),.85);var brass:=_mat(Color("b8913f"),.3,.8)
+	var iron:=_mat(Color("2b2724"),.55,.4)
+	_detail(G.box(root,Vector3(0,f+1.12,L*.25),Vector3(L*.14+.16,.07,L*.16+.16),light_wood))
+	for cx: float in [-1.,1.]:
+		for cz: float in [-1.,1.]:_detail(G.box(root,Vector3(cx*L*.07,f+.55,L*.25+cz*L*.08),Vector3(.1,1.1,.1),dark_wood))
+	for side: float in [-1.,1.]:
+		for k: int in 4:_detail(G.box(root,Vector3(side*(L*.07+.012),f+.45,L*.25-L*.06+float(k)*L*.04),Vector3(.02,.55,L*.03),light_wood))
+	_detail(G.box(root,Vector3(.3,f+.48,L*.33+.012),Vector3(.62,.95,.03),dark_wood))
+	_detail(G.sphere(root,Vector3(.5,f+.5,L*.33+.04),Vector3.ONE*.06,brass,8))
+	_detail(G.box(root,Vector3(0,f+1.25,L*.25),Vector3(.9,.22,.7),light_wood))
+	for k: int in 3:_detail(G.box(root,Vector3(-.3+float(k)*.3,f+1.37,L*.25),Vector3(.24,.02,.6),_mat(Color("9fc4cf"),.1,.2)))
+	# Bulwark rail with stanchions round the deck, rubbing strake under it.
+	_deck_rails(root,L,L*.25,f,.9,.75,1.25,light_wood,dark_wood,false,.05,.96)
+	# Main hatch with a grating, a capstan on the foredeck, barrels lashed by the foremast, the ship's bell.
+	_hatch(root,Vector3(0,f,-L*.04),Vector2(1.6,1.4),light_wood,dark_wood)
+	var cap:=Vector3(0,f,-L*.4)
+	_detail(G.cylinder(root,cap+Vector3(0,.35,0),.28,.7,dark_wood,.22,14));_detail(G.cylinder(root,cap+Vector3(0,.72,0),.34,.08,light_wood,.34,14))
+	for k: int in 4:
+		var a:=float(k)*PI*.5
+		_detail(G.beam(root,cap+Vector3(cos(a)*.3,.6,sin(a)*.3),cap+Vector3(cos(a)*1.,.62,sin(a)*1.),.05,light_wood))
+	for k: int in 3:_barrel(root,Vector3(-L*.08+float(k)*.62,f,-L*.26),.26,_mat(Color("8a6238"),.8),iron)
+	var bell_at:=Vector3(L*.04,f,L*.16)
+	_detail(G.beam(root,bell_at+Vector3(-.25,0,0),bell_at+Vector3(-.25,1.2,0),.06,dark_wood));_detail(G.beam(root,bell_at+Vector3(.25,0,0),bell_at+Vector3(.25,1.2,0),.06,dark_wood))
+	_detail(G.box(root,bell_at+Vector3(0,1.22,0),Vector3(.62,.08,.1),dark_wood))
+	_detail(G.cylinder(root,bell_at+Vector3(0,1.02,0),.16,.28,brass,.08,14))
+	# Pin rails at the masts with belaying pins, coils of rope on deck.
+	for mz: float in [-L*.2,L*.08]:
+		for side: float in [-1.,1.]:
+			var rail_at:=Vector3(side*L*.105,f+.55,mz+.6)
+			_detail(G.box(root,rail_at,Vector3(.12,.08,1.4),light_wood))
+			for k: int in 6:_detail(G.cylinder(root,rail_at+Vector3(0,.04,-.55+float(k)*.22),.022,.36,dark_wood,.03,6))
+			_coil(root,Vector3(side*L*.085,f,mz+1.3),.16,_mat(Color("c8b58a"),.95))
+			# Deadeyes where the shrouds come down to the rail.
+			for dz: float in [-1.,1.]:_detail(G.cylinder(root,Vector3(side*L*.122,f+.5,mz+dz),.07,.06,dark_wood,.07,10)).rotation.z=PI*.5
 	var cloth: Color=_pick(rng,[Color("efe6d2"),Color("e2d6bc"),Color("f2ede2"),Color("b7472a")])
 	var rope:=_mat(Color("2a2420"),.85)
 	for mast: Array in [[-L*.2,L*.95],[L*.08,L*1.05]]:
@@ -369,7 +542,7 @@ static func _escuna(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	_line(root,Vector3(0,f+L*1.05,L*.08),Vector3(0,f+L*.9,-L*.2),rope)
 	for side: float in [-1.,1.]:
 		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=.9
-		_detail(G.sphere(root,Vector3(side*L*.11,f+1.3,L*.35),Vector3.ONE*.28,lamp,8))
+		_lantern(root,Vector3(side*L*.115,f+1.,L*.35),.38,lamp,_mat(Color("2b2724"),.55,.4))
 	_nav_lights(root,Vector3(-L*.12,f+.6,-L*.3),Vector3(L*.12,f+.6,-L*.3),Vector3(0,f+L*1.05+.2,L*.08))
 	_flag(root,Vector3(0,f+L*1.05+.1,L*.08),1.1,rng)
 	root.set_meta("helm",Vector3(0,f,L*.4));root.set_meta("walk",[Vector3(-L*.07,f,-L*.35),Vector3(-L*.07,f,L*.15)])

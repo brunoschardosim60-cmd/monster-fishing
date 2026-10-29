@@ -7,7 +7,7 @@ func run() -> void:
 	await frames(10)
 	var inv: RefCounted=game.inventory;var boat: CharacterBody3D=game.boat;var fishing: Node=game.fishing
 	inv.money=1000
-	check(Shop.buy("rod",inv,boat,fishing).begins_with("Melhoria concluída"),"first rod upgrade is accepted")
+	check(Shop.buy("rod",inv,boat,fishing).begins_with("Nova vara"),"first rod upgrade is accepted")
 	check(inv.equipment.rod==1,"rod is at level 1")
 	check(absf(fishing.rod_bonus-.15)<1e-4,"level 1 rod adds +15%% reel speed (%.2f)"%fishing.rod_bonus)
 	var before:int=inv.money

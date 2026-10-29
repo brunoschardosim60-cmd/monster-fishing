@@ -22,6 +22,7 @@ uniform float sea_glow = 0.0; // luz difusa da água; ocean_environment liga de 
 // water instead of the water running through it; water that comes aboard is drawn by the boat itself.
 uniform mat4 hull_inv=mat4(1.);
 uniform vec4 hull_box=vec4(0.);
+uniform float hull_pointed=0.;
 uniform float hull_keel=-1.;
 // Whirlpools have their own fine radial mesh (whirlpools.gd): on it funnel = (x, z, radius, 1); the
 // regular grids (funnel.w = 0) leave the inside of every whirlpool to it, so the throat is never drawn
@@ -51,6 +52,7 @@ void fragment() {
 		vec3 hl=(hull_inv*vec4(world_pos,1.)).xyz;
 		// Narrowing towards the bow so the cut follows the hull lines.
 		float half_w=hull_box.x*mix(.25,1.,smoothstep(hull_box.y,hull_box.y+(hull_box.z-hull_box.y)*.35,hl.z));
+		half_w*=mix(1.,mix(.12,1.,smoothstep(hull_box.z,hull_box.z-(hull_box.z-hull_box.y)*.35,hl.z))*mix(.5,1.,smoothstep(hull_box.y,hull_box.y+(hull_box.z-hull_box.y)*.35,hl.z)),hull_pointed);
 		if(abs(hl.x)<half_w && hl.z>hull_box.y && hl.z<hull_box.z && hl.y<hull_box.w && hl.y>hull_keel) discard;
 	}
 	vec2 p=world_pos.xz;

@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -666,3 +666,30 @@ func _vitrine() -> void:
 	await shot("vitrine_ponte",a-along*3.+Vector3(0,1.7,0)-out*.5,a+along*10.+out*4.,2)
 	var v: Vector3=room.displays.aurora.at
 	await shot("vitrine_placa",v+out*-3.+Vector3(0,1.8,0)-along*2.,v+Vector3(0,1.6,0)+out*3.,2)
+
+## Close look at the boats' build quality in daylight (planking, rails, ribs, fittings).
+func _detalhe() -> void:
+	var w=game.world;w.ocean.hour=10.;w.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat;var inv=game.inventory
+	game.start_career()
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.
+	for i: int in 30:await process_frame
+	var p: Vector3=b.global_position
+	await shot("detalhe_canoa_alto",p+Vector3(2.2,3.2,3.4),p+Vector3(0,.2,.3),2)
+	await shot("detalhe_canoa_lado",p+Vector3(4.,1.,-1.5),p+Vector3(0,.3,-.5),2)
+	var room: Node3D=w.village.shipyard.showroom
+	var v: Node3D=room.displays.veleiro.node;var e: Node3D=room.displays.escuna.node
+	await shot("detalhe_veleiro",v.global_position+v.global_basis*Vector3(6.,3.,4.),v.global_position+Vector3(0,1.,0),2)
+	await shot("detalhe_escuna",e.global_position+e.global_basis*Vector3(9.,5.,6.),e.global_position+Vector3(0,2.,0),2)
+
+## Inside the player's cabin: bed, wardrobe, table and chairs, lamp, shelf.
+func _casa() -> void:
+	var w=game.world;w.ocean.hour=17.;w.ocean.weather.settle(0)
+	var home: Node3D=null
+	for b in w.village.find_children("*","Node3D",true,false):
+		if b.get("title")=="Sua cabana":home=b;break
+	for i: int in 20:await process_frame
+	var back: float=float(home.depth)*.5;var half: float=float(home.width)*.5
+	await shot("casa_fundo",home.to_global(Vector3(.3,1.6,-back+.9)),home.to_global(Vector3(-.4,.8,back-1.)),2)
+	await shot("casa_cama",home.to_global(Vector3(half-1.,1.7,-.5)),home.to_global(Vector3(-half+.7,.5,back-1.2)),2)
+	await shot("casa_mesa",home.to_global(Vector3(-.6,1.5,0.)),home.to_global(Vector3(half-1.2,.7,back-2.9)),2)

@@ -99,20 +99,7 @@ func _ready() -> void:
 		var tail:=G.box(fish_sign,Vector3(0,0,.62),Vector3(.08,.38,.28),M.surface("teak",Color("3f7f9e"),1.));tail.rotation.x=PI*.25
 		G.ellipsoid(fish_sign,Vector3(0,.07,-.32),Vector3(.12,.08,.08),G.material(Color("f2efe4")),8)
 	# Furniture occupies the sides and back, leaving the doorway and centre clear.
-	if use in ["home","cabin","inn"]:
-		G.box(self,Vector3(-half+1.15,.4,back-1.2),Vector3(1.7,.65,2.),dark,true)
-		var linen:=M.surface("fabric",Color("c4ae7f"),5.)
-		var blanket:=M.surface("fabric",Color("4e7379"),5.)
-		G.mesh_node(self,preload("res://scripts/visuals/sculpt.gd").rounded_box(Vector3(1.65,.2,1.95),.08),linen,Vector3(-half+1.15,.8,back-1.2))
-		G.box(self,Vector3(-half+1.15,.93,back-1.55),Vector3(1.64,.08,1.25),blanket)
-		G.sphere(self,Vector3(-half+1.15,.99,back-.55),Vector3(.55,.12,.28),linen)
-		for y: float in [.65,.9,1.15]:G.box(self,Vector3(-half+1.15,y,back-.14),Vector3(1.8,.15,.12),wood)
-		G.box(self,Vector3(half-1.3,.8,.7),Vector3(1.8,.12,1.3),wood,true)
-		for x: float in [half-2.,half-.6]: G.box(self,Vector3(x,.4,.7),Vector3(.13,.8,1.1),dark)
-		_chair(Vector3(half-1.3,0,-.5),wood)
-		G.cylinder(self,Vector3(half-1.3,.89,.7),.23,.035,trim,.23,20)
-		G.cylinder(self,Vector3(half-.85,1.,.9),.085,.2,trim,.085,16)
-		G.box(self,Vector3(0,.09,.4),Vector3(1.8,.015,2.6),blanket)
+	if use in ["home","cabin","inn"]:pass  # furnished in _furnish_room
 	elif use=="shop":_furnish_shop(half,back,depth)
 	else:
 		G.box(self,Vector3(0,.53,back-1.2),Vector3(width-2.,1.06,1.1),wood,true)
@@ -121,7 +108,7 @@ func _ready() -> void:
 		for y: float in [.7,1.4,2.1]:
 			G.box(self,Vector3(half-.35,y,1.),Vector3(.6,.07,2.6),dark)
 			for z: float in [.1,.8,1.5]: G.cylinder(self,Vector3(half-.35,y+.18,z),.11,.3,trim,.09,12)
-		G.box(self,Vector3(-half+.45,.5,-.5),Vector3(.7,1.,1.),wood,true)
+		preload("res://scripts/visuals/furniture.gd").drawers(self,Vector3(-half+.38,0,-.5),PI*.5,Vector3(1.,.9,.6),3)
 	# Timber verandas, garden pots and side siding follow each house frontage.
 	for x: float in [-half+.35,half-.35]:
 		G.cylinder(self,Vector3(x,.28,-back-.65),.32,.55,stone,.38,16)
@@ -207,21 +194,23 @@ func _furnish_room(half: float,back: float,depth: float) -> void:
 		for z_index: int in 6:
 			var z:=-back+.5+float(z_index)*(depth-1.)/5.
 			G.box(self,Vector3(side*(half-.1),.45,z),Vector3(.05,.9,.03),wood)
-	# Wardrobe in the back-right corner: carcass, two doors and a top cornice.
-	var wardrobe_z:=back-.75
-	G.box(self,Vector3(half-.4,1.05,wardrobe_z),Vector3(.8,2.1,1.1),dark,true)
-	G.box(self,Vector3(half-.8,1.05,wardrobe_z-.27),Vector3(.04,1.9,.5),wood)
-	G.box(self,Vector3(half-.8,1.05,wardrobe_z+.27),Vector3(.04,1.9,.5),wood)
-	G.box(self,Vector3(half-.8,1.05,wardrobe_z),Vector3(.05,.12,.06),iron)
-	G.box(self,Vector3(half-.4,2.2,wardrobe_z),Vector3(.9,.12,1.2),wood)
-	# Bedside table with a small lamp, next to the bed's foot.
-	var table_z:=back-2.6
-	G.box(self,Vector3(-half+.45,.35,table_z),Vector3(.5,.6,.5),wood)
-	G.cylinder(self,Vector3(-half+.45,.72,table_z),.035,.28,iron,.035,6)
-	G.cylinder(self,Vector3(-half+.45,.92,table_z),.14,.2,warm,.1,10)
-	# Framed sea painting on the right wall, above the wardrobe level.
-	G.box(self,Vector3(half-.1,2.5,back-1.6),Vector3(.04,.7,.9),frame)
-	G.box(self,Vector3(half-.12,2.5,back-1.6),Vector3(.02,.6,.8),sea)
+	# Furniture from the joinery set (furniture.gd): wardrobe back-right, the bed along the left wall
+	# under the net with a bedside cabinet and lamp at its head, a table and chairs, a rug, a shelf and
+	# a painting.
+	var F=preload("res://scripts/visuals/furniture.gd")
+	F.wardrobe(self,Vector3(half-.45,0,back-.75),-PI*.5,Vector3(1.05,2.05,.6))
+	F.bed(self,Vector3(-half+.68,0,back-1.18),0.,Vector2(1.05,2.))
+	F.drawers(self,Vector3(-half+1.55,0,back-.35),PI,Vector3(.5,.6,.4))
+	F.oil_lamp(self,Vector3(-half+1.55,.64,back-.35))
+	if half>2.6:
+		var tz:=clampf(back-2.9,-back+2.2,back-2.)
+		F.table(self,Vector3(half-1.25,0,tz),PI*.5,Vector3(1.2,.76,.8))
+		F.chair(self,Vector3(half-1.25,0,tz-.85),PI)
+		F.chair(self,Vector3(half-1.25,0,tz+.85),0.)
+		F.oil_lamp(self,Vector3(half-1.25,.77,tz),false)
+	F.rug(self,Vector3(0,0,0.),0.,Vector2(1.7,1.15))
+	F.shelf(self,Vector3(-half+.14,1.55,-.5),PI*.5,1.1)
+	F.picture(self,Vector3(half-.11,2.5,back-1.6),-PI*.5,Vector2(.9,.68))
 
 
 ## Fishing shop sales floor: a counter with a lure case, scale and till; a pegboard of lures and reels

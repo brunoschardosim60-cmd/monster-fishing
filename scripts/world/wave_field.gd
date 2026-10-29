@@ -111,6 +111,8 @@ static func height_at(p: Vector3) -> float:
 static var hull_inv:=Transform3D.IDENTITY
 static var hull_box:=Vector4.ZERO
 static var hull_keel: float=-1.
+## 1 for a double-ended hull (canoe): the cut narrows at the stern as well as at the bow.
+static var hull_pointed: float=0.
 
 static func bind(mat: ShaderMaterial) -> void:
 	if waves.is_empty(): advance(0.,wind,energy,rain,direction)
@@ -127,3 +129,4 @@ static func bind(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("hull_inv",hull_inv)
 	mat.set_shader_parameter("hull_box",hull_box)
 	mat.set_shader_parameter("hull_keel",hull_keel)
+	mat.set_shader_parameter("hull_pointed",hull_pointed)

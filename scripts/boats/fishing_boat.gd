@@ -336,6 +336,7 @@ func _publish_hull() -> void:
 	Waves.hull_inv=_hull.global_transform.affine_inverse()
 	var cut: Vector2=hull_spec.get("cut",Vector2(float(deck.z0)-.15,float(deck.z1)+.05))
 	Waves.hull_box=Vector4(float(deck.x)+.1,cut.x,cut.y,float(hull_spec.get("gunwale",float(deck.y)+.3)))
+	Waves.hull_pointed=1. if str(hull_spec.get("kind",""))=="canoa" else 0.
 	Waves.hull_keel=float(hydrodynamics.draft_offset)-float(hull_spec.get("immersion",.35))*1.6-.3
 
 ## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.

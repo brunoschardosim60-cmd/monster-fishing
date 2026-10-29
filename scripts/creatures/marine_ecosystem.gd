@@ -19,7 +19,12 @@ const SCHOOL_TABLE: Array=[
 	["atum_rei",-1,1700,-250,5,120,3,14,false],["atum_rei",-1,-1600,1200,5,120,3,14,false],
 	["cirurgiao",22,200,45,16,35,1.5,6,false],["tubarao_recife",22,40,80,2,100,3,8,true],["pargo",23,90,50,14,40,3,12,false],
 	["sargo",24,330,50,16,40,1.2,5,false],["seabass",25,180,60,10,40,4,14,false],["baiacu",26,60,45,2,30,1.5,5,false],["sardine",27,270,60,22,50,2,8,false],
-	["atum_rei",-1,4200,-2100,5,120,3,14,false],["peixe_lua",-1,-3000,3400,2,80,.2,.7,false],["tubarao_branco",-1,3000,2600,1,260,.4,.9,true]]
+	["atum_rei",-1,4200,-2100,5,120,3,14,false],["peixe_lua",-1,-3000,3400,2,80,.2,.7,false],["tubarao_branco",-1,3000,2600,1,260,.4,.9,true],
+	# Mullet and bluefish school along the coast; groupers keep to the rocks; dorado, marlin and swordfish roam offshore.
+	["tainha",1,60,40,20,45,1.,4,false],["tainha",3,320,45,18,40,1.,4,false],["anchova",2,250,70,16,50,2,8,false],["anchova",12,30,65,14,45,2,8,false],
+	["garoupa",10,140,45,2,25,4,12,false],["garoupa",19,200,50,2,25,4,12,false],
+	["dourado",-1,900,-600,4,70,1,5,false],["dourado",-1,-800,700,4,70,1,5,false],
+	["marlim",-1,1500,400,1,160,1,6,true],["espadarte",-1,-1400,-900,1,160,6,18,true]]
 var fish_schools: Array[Node3D]=[]
 var predators: Array[Node3D]=[]
 var guardian: Node3D
