@@ -11,6 +11,8 @@ extends RefCounted
 ##   crew: optional decorative sailors (unused now: the player's crew is hired, see crew_manager.gd)
 ##   holders: rod holders on the rail (position, yaw of the rod leaning outboard); more on bigger boats
 ##   immersion: how deep the hull sits at rest (m): sets its heave period (√(immersion/g)) and stiffness
+##   cabin: a room below you can go down into (cabin_interior.gd): rect (x, z in hull space), floor and
+##          ceiling heights, the hatch on deck and the foot of the ladder inside
 ##   gunwale: height of the rail edge in hull space (water above it comes aboard)
 ##   sails: drive per m/s of wind at full sail and best point of sail (0 = motor only)
 const SPECS: Dictionary={
@@ -25,11 +27,13 @@ const SPECS: Dictionary={
 	"veleiro":{"immersion":.8,"gunwale":1.38,"kind":"veleiro","model_length":11.,"length":10.4,"beam":3.5,"mass":6500.,"draft":.0,"heave":210000.,"angular":3.,"tilt":.38,
 		"deck":{"y":1.1,"x":1.35,"z0":-4.5,"z1":4.6,"start":Vector3(.9,1.1,2.4),"blocks":[Rect2(-.99,-1.87,1.98,3.3)],
 			"roofs":[{"rect":Rect2(-.85,-1.75,1.7,3.05),"y":1.7,"ladder":Vector3(.5,1.1,1.75),"top":Vector3(.5,1.7,1.15)}]},
+		"cabin":{"rect":Rect2(-.92,-1.85,1.84,3.25),"floor":-.18,"ceiling":1.62,"hatch":Vector3(0.,1.12,1.78),"foot":Vector3(0.,-.18,1.05)},
 		"helm":Vector3(0,1.1,4.35),"wheel":[Vector3(0,1.95,3.75),.38,PI*.3,1.5],"bucket":Vector3(-.9,1.1,2.6),"sails":.55,
 		"holders":[{"at":Vector3(1.4,1.45,4.4),"yaw":-2.2},{"at":Vector3(-1.4,1.45,4.4),"yaw":2.2}]},
 	"escuna":{"immersion":1.4,"gunwale":2.5,"kind":"escuna","model_length":20.,"length":19.,"beam":5.,"mass":32000.,"draft":.05,"heave":1100000.,"angular":1.9,"tilt":.24,
 		"deck":{"y":2.2,"x":2.05,"z0":-8.6,"z1":8.6,"start":Vector3(1.5,2.2,-1.),"blocks":[Rect2(-1.45,3.35,2.9,3.3),Rect2(-.3,-4.3,.6,.6),Rect2(-.3,1.3,.6,.6)],
 			"roofs":[{"rect":Rect2(-1.3,3.5,2.6,3.),"y":3.3,"ladder":Vector3(.8,2.2,3.05),"top":Vector3(.8,3.3,3.75)}]},
+		"cabin":{"rect":Rect2(-1.7,-5.,3.4,11.),"floor":.35,"ceiling":2.12,"hatch":Vector3(.05,2.2,2.75),"foot":Vector3(0.,.35,2.5)},
 		"helm":Vector3(0,2.2,7.9),"wheel":[Vector3(0,3.15,7.25),.5,PI*.32,2.],"bucket":Vector3(-1.4,2.2,1.),"sails":.72,
 		"holders":[{"at":Vector3(2.1,2.65,7.6),"yaw":-2.2},{"at":Vector3(-2.1,2.65,7.6),"yaw":2.2},{"at":Vector3(2.2,2.65,-1.5),"yaw":-1.6},{"at":Vector3(-2.2,2.65,-1.5),"yaw":1.6}],"winch":Vector3(1.3,2.2,-6.3)},
 }

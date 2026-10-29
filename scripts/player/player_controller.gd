@@ -19,6 +19,8 @@ var deck_boat: CharacterBody3D
 var deck_local:=Vector3(0,1.12,2.4)
 ## -1 on the main deck, else the index of the cabin roof (hull_classes roofs) the player climbed onto.
 var deck_level: int=-1
+## Below decks: the boat's cabin spec while the player is down in it (rect, floor, foot, hatch), else empty.
+var cabin: Dictionary={}
 var swimming: bool=false
 var holding_fish: bool=false
 var fishing_active: bool=false
@@ -138,7 +140,15 @@ func _physics_process(delta: float) -> void:
 		# Each hull class has its own walkable deck; cabins, wheelhouses and masts are walked around.
 		var deck: Dictionary=deck_boat.deck_layout() if deck_boat.has_method("deck_layout") else {"y":1.12,"x":1.4,"z0":-3.3,"z1":3.1,"blocks":[]}
 		var roofs: Array=deck.get("roofs",[])
-		if deck_level>=0 and deck_level<roofs.size():
+		if not cabin.is_empty():
+			# Below decks: the room's floor, its walls and the furniture in it.
+			var room: Rect2=cabin.rect
+			deck_local.x=clampf(deck_local.x,room.position.x+.22,room.end.x-.22);deck_local.z=clampf(deck_local.z,room.position.y+.22,room.end.y-.22)
+			deck_local.y=float(cabin.floor)
+			var node: Node3D=deck_boat.get("cabin_node")
+			if node!=null:deck_local=preload("res://scripts/boats/hull_classes.gd").resolve_blocks(deck_local,node.get_meta("blocks",[]),.2)
+			jump_buffer=0.
+		elif deck_level>=0 and deck_level<roofs.size():
 			# On a cabin roof: its edges are the limit; Space by the ladder climbs back down.
 			var roof: Dictionary=roofs[deck_level];var r: Rect2=roof.rect
 			deck_local.x=clampf(deck_local.x,r.position.x+.15,r.end.x-.15);deck_local.z=clampf(deck_local.z,r.position.y+.15,r.end.y-.15)
@@ -256,16 +266,18 @@ func _update_camera(delta: float) -> void:
 	camera.position.y=move_toward(camera.position.y,0.,delta*(.3+absf(camera.position.y)*7.))
 	camera.fov=lerpf(camera.fov,BASE_FOV+(6. if is_sprinting and not first_person and not flying else 0.),minf(delta*5.,1.))
 	# Orbit distance can otherwise push a third-person camera under the water.
-	if not first_person:
+	if not first_person and cabin.is_empty():
 		pitch = minf(pitch, 0.15)
 	pivot.rotation = Vector3(pitch, yaw, 0)
-	pivot.position.y = lerpf(pivot.position.y, 1.65 if not in_boat else 2.0, minf(delta * 8.0, 1.0))
-	arm.spring_length = lerpf(arm.spring_length, 0.0 if first_person else (10.5 if in_boat else 6.8), minf(delta * 10.0, 1.0))
+	# Eye height: below decks it stays under the beams.
+	pivot.position.y = lerpf(pivot.position.y, 1.5 if not cabin.is_empty() else (1.65 if not in_boat else 2.0), minf(delta * 8.0, 1.0))
+	var close_view: bool=first_person or not cabin.is_empty()
+	arm.spring_length = lerpf(arm.spring_length, 0.0 if close_view else (10.5 if in_boat else 6.8), minf(delta * 10.0, 1.0))
 	# Over-the-shoulder framing on foot keeps the path ahead visible; centred in the boat and in first person.
 	arm.position.x=lerpf(arm.position.x,.55 if not first_person and not in_boat and not flying else 0.,minf(delta*4.,1.))
 	# First person keeps the rod and the hands' catch in view; only the body, hat and pack are hidden.
-	if visual.has_method("set_body_visible"):visual.visible=true;visual.set_body_visible(not first_person)
-	else:visual.visible = not first_person
+	if visual.has_method("set_body_visible"):visual.visible=true;visual.set_body_visible(not close_view)
+	else:visual.visible = not close_view
 
 ## Small ledges (steps, curbs, a plank on the pier) are walked over instead of stopping the player.
 func _step_up(before: Vector3,motion: Vector3) -> void:

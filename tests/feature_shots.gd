@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -612,3 +612,27 @@ func _mar4() -> void:
 	b.deck_wash.spray(side,b.global_basis.x,.9)
 	for i: int in 8:await process_frame
 	await shot("mar4_batida_costado",h+b.global_basis*Vector3(8.,2.,-6.),side+Vector3(0,1.,0),1)
+
+func _cabine() -> void:
+	var w=game.world;var b: CharacterBody3D=game.boat;var inv=game.inventory
+	var Econ=load("res://scripts/inventory/harbor_economy.gd")
+	w.ocean.hour=11.;w.ocean.weather.settle(0)
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	for id: String in ["veleiro","escuna"]:
+		inv.owned_boats.append(id);inv.boat_id=id;Econ.apply(inv,b,game.fishing)
+		for i: int in 10:await process_frame
+		if not game.player.on_deck:game.toggle_deck()
+		var c: Dictionary=b.hull_spec.cabin
+		var hatch_w: Vector3=b._hull.to_global(c.hatch)
+		await shot("cabine_%s_gaiuta"%id,hatch_w+b.global_basis*Vector3(2.,2.2,2.5),hatch_w,2)
+		game.player.deck_local=c.hatch;game.interact()
+		var r: Rect2=c.rect
+		for view: int in 2:
+			game.player.deck_local=Vector3(r.get_center().x,float(c.floor),r.end.y-.6) if view==0 else Vector3(r.get_center().x+.2,float(c.floor),r.position.y+1.3)
+			game.player.yaw=b.rotation.y+(0. if view==0 else PI);game.player.pitch=-.18
+			for i: int in 40:await process_frame
+			var eye: Transform3D=game.player.camera.global_transform
+			await shot("cabine_%s_%d"%[id,view],eye.origin,eye.origin-eye.basis.z*4.,1)
+		game.player.deck_local=c.foot;game.interact()
+		for i: int in 5:await process_frame

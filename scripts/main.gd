@@ -116,7 +116,7 @@ func _ready() -> void:
 	fishing_visual.hooked=hooked
 	holders=preload("res://scripts/fishing/rod_holders.gd").new();holders.name="SuportesDeVara";holders.game=self;holders.boat=boat;_add_system(holders)
 	holders.rebuild.call_deferred()
-	boat.hull_changed.connect(func() -> void:holders.rebuild())
+	boat.hull_changed.connect(func() -> void:holders.rebuild();player.cabin={})
 	holders.strike.connect(_on_holder_strike)
 	crew=preload("res://scripts/boats/crew_manager.gd").new();crew.name="Tripulacao";crew.game=self;crew.boat=boat;_add_system(crew)
 	boat.hull_changed.connect(func() -> void:crew.sync())
@@ -347,6 +347,7 @@ func _process(delta: float) -> void:
 
 func can_cast() -> bool:
 	if not pending_catch.is_empty() or stowing or player.swimming or hud.service_open: return false
+	if not player.cabin.is_empty():return false
 	if player.in_boat and absf(boat.speed)>=6.: return false
 	return not _cast_target().is_empty()
 
@@ -388,9 +389,33 @@ func fish_action() -> void:
 	else:
 		fishing.strike()
 
+## Down the companionway into the cabin, or back up on deck (E at the hatch / at the foot of the ladder).
+func _cabin_hint() -> String:
+	if not (player.in_boat and player.on_deck) or not boat.hull_spec.has("cabin"):return ""
+	var c: Dictionary=boat.hull_spec.cabin
+	if not player.cabin.is_empty():
+		return "E · Subir ao convés" if Vector2(player.deck_local.x-c.foot.x,player.deck_local.z-c.foot.z).length()<.9 else "Na cabine"
+	if player.deck_level<0 and Vector2(player.deck_local.x-c.hatch.x,player.deck_local.z-c.hatch.z).length()<.8:return "E · Descer à cabine"
+	return ""
+
+func _cabin_action() -> bool:
+	var hint: String=_cabin_hint()
+	if hint=="E · Descer à cabine":
+		fishing.cancel();aiming=false
+		player.cabin=boat.hull_spec.cabin;player.deck_local=boat.hull_spec.cabin.foot+Vector3(0,0,-.35)
+		if boat.cabin_node!=null:boat.cabin_node.visible=true
+		hud.notify("Na cabine. E ao pé da escada para subir.");return true
+	if hint=="E · Subir ao convés":
+		var c: Dictionary=player.cabin
+		player.cabin={};player.deck_local=c.hatch+Vector3(0,0,.55)
+		if boat.cabin_node!=null:boat.cabin_node.visible=false
+		return true
+	return false
+
 func interact() -> void:
 	aiming=false
 	if diving!=null and diving.try_open():return
+	if player.in_boat and player.on_deck and _cabin_action():return
 	if player.in_boat and player.on_deck:
 		# Whoever is closer, a crewmate or a rod holder, is what E talks to.
 		var mate: Node3D=crew.near(player.global_position) if crew!=null else null
@@ -438,6 +463,7 @@ func interact() -> void:
 func toggle_deck() -> void:
 	if not player.in_boat:return
 	fishing.cancel()
+	_leave_cabin()
 	player.on_deck=not player.on_deck;player.deck_boat=boat
 	player.visual.seated=not player.on_deck
 	if player.on_deck:
@@ -446,7 +472,13 @@ func toggle_deck() -> void:
 	boat.set_occupied(not player.on_deck)
 	hud.notify("R · Assumir o leme" if player.on_deck else "Você assumiu o leme.")
 
+func _leave_cabin() -> void:
+	if player.cabin.is_empty():return
+	player.cabin={}
+	if boat.cabin_node!=null and is_instance_valid(boat.cabin_node):boat.cabin_node.visible=false
+
 func disembark() -> void:
+	_leave_cabin()
 	var target: Vector3=boat.exit_point()
 	if near_dock() and absf(boat.speed)<2.:
 		boat.reset_to_dock();target=Vector3(0,1.55,-23)
@@ -501,6 +533,8 @@ func _interaction_hint() -> String:
 	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V · Observar"
 	if aiming:return "%.0f m · Solte para lançar"%cast_distance
 	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
+	var cabin_hint: String=_cabin_hint()
+	if cabin_hint!="":return cabin_hint
 	if player.in_boat and player.on_deck and holders!=null:
 		var i: int=holders.nearest(player.global_position)
 		if i>=0:

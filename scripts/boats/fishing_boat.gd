@@ -16,6 +16,8 @@ var integrity: float=1.
 var water_aboard: float=0.
 ## Waves against the hull, green water, water on deck and the scuppers (deck_wash.gd).
 var deck_wash: Node3D
+## The room below (cabin_interior.gd), on hulls that have one; null otherwise.
+var cabin_node: Node3D
 var _water_note: int=0
 ## Boost (SHIFT at the helm): a few seconds of extra power to outrun a monster, then the engine cools.
 var boost: float=0.
@@ -666,6 +668,7 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 	for light: Light3D in _tripo_lights:light.visible=false
 	sail_rig=null;sail_speed=0.;sail_heel=0.
 	if tripo:
+		cabin_node=null
 		crew.clear()
 		helm_wheel=_tripo_wheel;bucket=_tripo_bucket;_propeller=_tripo_propeller
 		deck_lights=_tripo_lights.duplicate();lamp_materials=_tripo_lamps.duplicate()
@@ -683,6 +686,10 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 			helm_wheel=_build_helm_wheel(_alt_body,wheel[0],float(wheel[1]),float(wheel[2]))
 		_build_bucket(_alt_body,hull_spec.bucket)
 		for roof: Dictionary in hull_spec.deck.get("roofs",[]):_build_ladder(_alt_body,roof)
+		cabin_node=null
+		if hull_spec.has("cabin"):
+			cabin_node=preload("res://scripts/boats/cabin_interior.gd").build(_alt_body,hull_spec.cabin,str(hull_spec.kind))
+			_build_hatch(_alt_body,hull_spec.cabin.hatch)
 		crew.clear()
 		var crew_index: int=0
 		for c: Dictionary in hull_spec.get("crew",[]):
@@ -709,6 +716,17 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 		var bow_z: float=-float(hull_spec.length)*.42*size_factor
 		_bow_left.position=Vector3(-half*.5,0,bow_z);_bow_right.position=Vector3(half*.5,0,bow_z)
 	update_lights()
+
+## The companionway on deck: a raised teak frame round a dark opening with the top of the ladder.
+func _build_hatch(parent: Node3D,at: Vector3) -> void:
+	var teak:=Materials.surface("teak",Color("8a5a35"),1.2)
+	var hole:=G.material(Color("1a120c"),.9)
+	var hatch:=Node3D.new();hatch.name="Gaiuta";hatch.position=at;parent.add_child(hatch)
+	G.box(hatch,Vector3(0,.012,0),Vector3(.68,.02,.62),hole)
+	for side: float in [-1.,1.]:
+		G.box(hatch,Vector3(side*.37,.09,0),Vector3(.07,.18,.72),teak)
+		G.box(hatch,Vector3(0,.09,side*.34),Vector3(.8,.18,.07),teak)
+	for side: float in [-.24,.24]:G.box(hatch,Vector3(side,.0,-.05),Vector3(.04,.04,.5),teak)
 
 ## Long-tail outboard ("rabeta") for the canoe: engine on a pivot over the transom, a long shaft
 ## trailing into the water. Steering swings the whole unit, so the returned pivot is the "wheel".

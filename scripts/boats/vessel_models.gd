@@ -101,9 +101,11 @@ static func _seat(root: Node3D,at: Vector3,facing: float) -> void:
 
 ## Lofted hull with painted bands: antifouling below the waterline, hull colour, a decorative stripe
 ## under the gunwale and a deck. `pointed_stern` gives canoe/double-ended shapes; `sheer` lifts the bow.
-static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: float,hull: Color,bottom: Color,stripe: Color,deck: Color,pointed_stern: bool=false,sheer: float=0.,open_floor: float=-1.) -> void:
+## `well`: openings cut in the deck, each Vector3(half width, z from, z to) — where a cabin below is
+## entered or roofed by a coachroof (the deck is left on either side of the opening).
+static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: float,hull: Color,bottom: Color,stripe: Color,deck: Color,pointed_stern: bool=false,sheer: float=0.,open_floor: float=-1.,well: Array=[]) -> void:
 	var mat:=StandardMaterial3D.new();mat.vertex_color_use_as_albedo=true;mat.roughness=.55;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-	var sections:=20
+	var sections:=int(clampf(L/.3,20.,80.))
 	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rings: Array=[];var colors: Array[Color]=[bottom,bottom,bottom,hull,hull,stripe,stripe,hull,deck,deck,hull,stripe,stripe,hull,hull,bottom,bottom]
 	for s: int in sections+1:
@@ -126,6 +128,15 @@ static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: floa
 			var k2:=(k+1)%n
 			var a: Vector3=rings[s][k];var b: Vector3=rings[s][k2];var c: Vector3=rings[s+1][k2];var dd: Vector3=rings[s+1][k]
 			if a.distance_to(b)<.0001 and dd.distance_to(c)<.0001:continue
+			if k==8 and open_floor<0. and not well.is_empty():
+				var mz: float=(a.z+dd.z)*.5;var hw:=-1.
+				for wl: Vector3 in well:
+					if mz>wl.y and mz<wl.z:hw=maxf(hw,wl.x)
+				if hw>0.:
+					# The deck either side of the opening.
+					var la:=Vector3(-hw,a.y,a.z);var ld:=Vector3(-hw,dd.y,dd.z);var rb:=Vector3(hw,b.y,b.z);var rc:=Vector3(hw,c.y,c.z)
+					for v: Vector3 in [a,la,ld,a,ld,dd,rb,b,c,rb,c,rc]:st.set_color(deck);st.add_vertex(v)
+					continue
 			st.set_color(colors[k]);st.add_vertex(a);st.set_color(colors[k2]);st.add_vertex(b);st.set_color(colors[k2]);st.add_vertex(c)
 			st.set_color(colors[k]);st.add_vertex(a);st.set_color(colors[k2]);st.add_vertex(c);st.set_color(colors[k]);st.add_vertex(dd)
 	if not pointed_stern:
@@ -137,6 +148,14 @@ static func _hull(root: Node3D,L: float,beam: float,freeboard: float,draft: floa
 	st.generate_normals()
 	var node:=MeshInstance3D.new();node.name="Casco";node.mesh=st.commit();node.material_override=mat;root.add_child(node)
 	root.set_meta("deck",freeboard)
+
+## A box with no bottom (four walls and a top), for coachroofs and deckhouses with a room under them.
+static func _shell(root: Node3D,centre: Vector3,size: Vector3,mat: Material) -> void:
+	var t:=.05
+	G.box(root,centre+Vector3(0,size.y*.5-t*.5,0),Vector3(size.x,t,size.z),mat)
+	for side: float in [-1.,1.]:
+		G.box(root,centre+Vector3(side*(size.x*.5-t*.5),0,0),Vector3(t,size.y,size.z),mat)
+		G.box(root,centre+Vector3(0,0,side*(size.z*.5-t*.5)),Vector3(size.x,size.y,t),mat)
 
 ## Cloth panel through three or four corners, subdivided and bellied out sideways by `belly` metres.
 static func _sail(root: Node3D,corners: Array,color: Color,belly: float) -> MeshInstance3D:
@@ -301,10 +320,13 @@ static func _pesqueiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> void
 static func _veleiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var paint: Color=_pick(rng,[Color("f4f4f0"),Color("1f3d5c"),Color("2e6b8a"),Color("7a1f2b"),Color("f4f4f0")])
 	var f:=1.1
-	_hull(root,L,L*.32,f,.45,paint,Color("23395d"),Color("c9a227") if paint.v<.5 else Color("1f3d5c"),Color("c8a878"),false,.3)
+	# The deck is open under the coachroof (the saloon below) and at the companionway aft of it.
+	var roof_z0: float=-L*.02-L*.15;var roof_z1: float=-L*.02+L*.15
+	_hull(root,L,L*.32,f,.45,paint,Color("23395d"),Color("c9a227") if paint.v<.5 else Color("1f3d5c"),Color("c8a878"),false,.3,-1.,[Vector3(L*.087,roof_z0+.05,roof_z1-.05),Vector3(.33,roof_z1-.05,roof_z1+.62)])
 	G.box(root,Vector3(0,-.95,L*.02),Vector3(.12,1.3,L*.26),_mat(Color("2a2a2a")))
 	var cabin:=_mat(Color("f4f4f0") if paint.v<.5 else Color("e4dccb"))
-	G.box(root,Vector3(0,f+.3,-L*.02),Vector3(L*.18,.6,L*.3),cabin)
+	# Coachroof as a shell (sides, ends and top, open below): the saloon is under it.
+	_shell(root,Vector3(0,f+.3,-L*.02),Vector3(L*.18,.6,L*.3),cabin)
 	_windows(root,Vector3(L*.09+.01,f+.35,-L*.02),L*.22,.18,3,true);_windows(root,Vector3(-L*.09-.01,f+.35,-L*.02),L*.22,.18,3,true)
 	var mast_z:=-L*.12;var mast_h:=L*1.25
 	var spar:=_mat(Color("c9ccd0"),.35,.6)
@@ -326,7 +348,8 @@ static func _veleiro(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 static func _escuna(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var paint: Color=_pick(rng,[Color("1d1d1d"),Color("2b3a55"),Color("5a2a1f"),Color("1f4d3a")])
 	var f:=2.2
-	_hull(root,L,L*.25,f,1.3,paint,Color("6e1f1a"),Color("c9a227"),Color("b08d5a"),false,.9)
+	# A companionway forward of the deckhouse leads down to the lower deck.
+	_hull(root,L,L*.25,f,1.3,paint,Color("6e1f1a"),Color("c9a227"),Color("b08d5a"),false,.9,-1.,[Vector3(.36,L*.145-.35,L*.145+.35)])
 	var wood:=_mat(Color("6b4f32"),.8);var spar:=_mat(Color("5a4026"),.8)
 	_detail(G.beam(root,Vector3(0,f+.6,-L*.5),Vector3(0,f+1.6,-L*.68),.12,spar))
 	G.box(root,Vector3(0,f+.55,L*.25),Vector3(L*.14,1.1,L*.16),wood)
