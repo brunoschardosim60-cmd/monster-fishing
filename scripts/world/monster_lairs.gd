@@ -141,6 +141,7 @@ func _physics_process(delta: float) -> void:
 	var boat: Node3D=game.boat
 	var b: Vector3=boat.global_position
 	for lair: Dictionary in lairs:_update(lair,delta,b,boat)
+	_update_boarding(delta)
 
 func _update(lair: Dictionary,delta: float,b: Vector3,boat: Node3D) -> void:
 	var c: Vector3=lair.center
@@ -226,8 +227,42 @@ func _hunt(lair: Dictionary,delta: float,b: Vector3,boat: Node3D,stealthy: bool)
 		lair.strike=_rng.randf_range(5.,8.)
 		_strike(lair,b,boat)
 
+## Kraken arms that break the surface right beside the hull, rear up, whip down across the deck and
+## slide back under: {node, mat, t, side}.
+var boarding: Array[Dictionary]=[]
+func _boarding_arm(boat: Node3D,side: float,along: float) -> void:
+	var Meshes:=preload("res://scripts/creatures/creature_meshes.gd")
+	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/kraken_skin.gdshader")
+	mat.set_shader_parameter("tentacle",true);mat.set_shader_parameter("arm_length",11.)
+	mat.set_shader_parameter("curl",.05);mat.set_shader_parameter("phase",_rng.randf()*TAU);mat.set_shader_parameter("wave",.05)
+	var arm:=MeshInstance3D.new();arm.name="TentaculoNoCasco";arm.mesh=Meshes.tube("kraken_boarding_arm",11.,.95,.07,30,14)
+	arm.material_override=mat;arm.extra_cull_margin=14.;add_child(arm)
+	var beam: float=float(boat.hull_spec.beam)*.5*float(boat.size_factor)
+	var at: Vector3=boat.global_position+boat.global_basis.x*side*(beam+1.4)+boat.global_basis.z*along
+	# Arm grows along +Y; its sucker side (+Z) faces the boat, so it curls over onto the deck.
+	var to_boat: Vector3=-boat.global_basis.x*side
+	arm.global_transform=Transform3D(Basis(to_boat.cross(Vector3.UP).normalized(),Vector3.UP,to_boat),at-Vector3(0,10,0))
+	boarding.append({"node":arm,"mat":mat,"t":0.,"base":at})
+	var fx=game.world.ocean.effects
+	if fx!=null:fx.splash(at,2.6,true)
+
+func _update_boarding(delta: float) -> void:
+	for i: int in range(boarding.size()-1,-1,-1):
+		var a: Dictionary=boarding[i];a.t=float(a.t)+delta
+		var t: float=a.t;var arm: MeshInstance3D=a.node;var base: Vector3=a.base
+		# 0–1.1 s rise out of the water, 1.1–1.7 s whip down, hold, 3.2–4.6 s slide back under.
+		var y: float=lerpf(-10.,-1.2,smoothstep(0.,1.1,t))-lerpf(0.,10.,smoothstep(3.2,4.6,t))
+		arm.global_position=Vector3(base.x,Waves.height_at(base)+y,base.z)
+		(a.mat as ShaderMaterial).set_shader_parameter("slam",smoothstep(1.1,1.7,t)*(1.-smoothstep(2.6,3.4,t)))
+		(a.mat as ShaderMaterial).set_shader_parameter("curl",lerpf(.02,.09,smoothstep(.4,1.1,t)))
+		if t>4.7:arm.queue_free();boarding.remove_at(i)
+
 func _strike(lair: Dictionary,b: Vector3,boat: Node3D) -> void:
 	var kind: String=lair.kind
+	if kind=="kraken":
+		var side: float=1. if _rng.randf()<.5 else -1.
+		_boarding_arm(boat,side,_rng.randf_range(-2.,2.))
+		if _rng.randf()<.6:_boarding_arm(boat,-side,_rng.randf_range(-2.5,2.5))
 	var damage: float={"kraken":.08,"serpente":.06,"leviata":.05}.get(kind,.06)
 	var kick:=(.42 if kind=="leviata" else .3)*(1. if _rng.randf()<.5 else -1.)
 	boat.take_hit(damage,kick)

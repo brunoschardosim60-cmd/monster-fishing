@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -727,3 +727,58 @@ func _peixes() -> void:
 	await shot("peixes_todos",mid+Vector3(0,.3,4.6),mid,1)
 	await shot("peixes_perto",p+Vector3(.5,.1,1.3),p+Vector3(.5,0,0),1)
 	holder.queue_free()
+
+## The three guardians hunting round the boat: a sequence of frames per monster to see them move.
+func _monstros() -> void:
+	game.world.ocean.hour=16.;game.world.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat
+	for kind: String in ["kraken","serpente","leviata"]:
+		for lair: Dictionary in game.lairs.lairs:
+			if lair.kind!=kind:continue
+			var c: Vector3=lair.center
+			b.global_position=c+Vector3(30,0,0);b.rotation=Vector3.ZERO;b.speed=0.
+			game.player.global_position=b.global_position+Vector3(0,1.5,0)
+			if not game.player.in_boat:game.interact()
+			lair.state="caca";lair.clock=6.;lair.strike=1.;lair.angle=0.
+			lair.pos=b.global_position+Vector3(30,-1.5,0);(lair.node as Node3D).visible=true
+			for i: int in 30:await physics_frame
+			for k: int in 4:
+				var at: Vector3=(lair.node as Node3D).global_position
+				var cam:=b.global_position+(b.global_position-at).normalized()*14.+Vector3(0,7,0)
+				await shot("monstro_%s_%d"%[kind,k],cam,at+Vector3(0,5 if kind!="leviata" else 0,0),1)
+				for i: int in 25:await physics_frame
+			lair.state="dormindo";(lair.node as Node3D).visible=false
+			break
+
+## Kraken arms rising beside the boat and whipping across the deck.
+func _tentaculo() -> void:
+	game.world.ocean.hour=16.;game.world.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	for lair: Dictionary in game.lairs.lairs:
+		if lair.kind!="kraken":continue
+		(lair.node as Node3D).visible=true;lair.pos=p+Vector3(0,-1.5,-34.);(lair.node as Node3D).position=lair.pos
+		for i: int in 20:await physics_frame
+		game.lairs._strike(lair,b.global_position,b)
+		for k: int in 4:
+			for i: int in [50,20,25,30][k]:await physics_frame
+			await shot("tentaculo_%d"%k,p+Vector3(12,6,14),p+Vector3(0,3,0),1)
+		break
+
+## A pirate schooner closing in, firing, and alongside.
+func _piratas() -> void:
+	game.world.ocean.hour=15.;game.world.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	var pir: Node3D=game.pirates
+	pir.spawn_near(p+Vector3(90,0,-60))
+	for i: int in 120:await physics_frame
+	pir.cannon_clock=0.
+	for i: int in 3:await physics_frame
+	await shot("pirata_canhao",p+Vector3(-8,6,14),pir.ship.global_position+Vector3(0,6,0),1)
+	await shot("pirata_perto",pir.ship.global_position+Vector3(22,9,18),pir.ship.global_position+Vector3(0,6,0),1)
+	pir.state="abordando";pir.clock=0.;pir.ship.global_position=p+Vector3(12,0,4)
+	for i: int in 90:await physics_frame
+	print("pirate gap ",pir.ship.global_position.distance_to(b.global_position)," state ",pir.state)
+	await shot("pirata_abordagem",p+Vector3(-14,9,12),p+Vector3(4,3,0),1)

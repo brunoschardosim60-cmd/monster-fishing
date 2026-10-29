@@ -50,6 +50,8 @@ var dev: CanvasLayer
 var gear: Node3D
 ## Monster territories in the deep ocean (kraken, sea serpent, leviathan).
 var lairs: Node3D
+## Pirate raids at sea (pirates.gd).
+var pirates: Node3D
 ## Story objectives and the market's order board.
 var missions: Node
 ## Dynamic monster encounters at sea, the diving system (air, depth, wrecks, chests) and the boat sonar.
@@ -126,6 +128,7 @@ func _ready() -> void:
 	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
 	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
 	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
+	pirates=preload("res://scripts/world/pirates.gd").new();pirates.game=self;pirates.name="Piratas";_add_system(pirates)
 	missions=preload("res://scripts/inventory/missions.gd").new();missions.game=self;missions.name="Missoes";_add_system(missions)
 	encounters=preload("res://scripts/world/encounters.gd").new();encounters.game=self;encounters.name="Encontros";_add_system(encounters)
 	diving=preload("res://scripts/fishing/diving.gd").new();diving.game=self;diving.name="Mergulho";_add_system(diving)
@@ -237,7 +240,9 @@ func _input(event: InputEvent) -> void:
 		var thrown: String=gear.release_net_throw()
 		if not thrown.is_empty():hud.notify(thrown)
 	if event.is_action_pressed("trap") and not event.is_echo():hud.notify(gear.trap_action())
-	if event.is_action_pressed("harpoon") and not event.is_echo():hud.notify(lairs.fire_harpoon())
+	if event.is_action_pressed("harpoon") and not event.is_echo():
+		var shot_text: String=pirates.fire_harpoon() if pirates!=null else ""
+		hud.notify(shot_text if shot_text!="" else lairs.fire_harpoon())
 	if event.is_action_pressed("flare") and not event.is_echo():
 		var flare_text: String=lairs.fire_flare()
 		if encounters.scare() and not flare_text.begins_with("Sem"):flare_text="O clarão vermelho afasta a criatura que seguia o barco!"
@@ -427,6 +432,7 @@ func _cabin_action() -> bool:
 func interact() -> void:
 	aiming=false
 	if diving!=null and diving.try_open():return
+	if player.in_boat and pirates!=null and pirates.state=="abordando":hud.notify(pirates.pay_tribute());return
 	if player.in_boat and player.on_deck and _cabin_action():return
 	if player.in_boat and player.on_deck:
 		# Whoever is closer, a crewmate or a rod holder, is what E talks to.
@@ -569,6 +575,7 @@ func _interaction_hint() -> String:
 	if marine!=null and marine.guardian_in_range() and pending_catch.is_empty() and not fishing.active():return "V · Observar"
 	if aiming:return "%.0f m · Solte para lançar"%cast_distance
 	if not pending_catch.is_empty():return "G · Guardar    X · Devolver"
+	if player.in_boat and pirates!=null and pirates.hint()!="":return pirates.hint()
 	var cabin_hint: String=_cabin_hint()
 	if cabin_hint!="":return cabin_hint
 	if player.in_boat and player.on_deck and holders!=null:
