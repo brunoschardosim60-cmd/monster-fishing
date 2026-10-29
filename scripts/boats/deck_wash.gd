@@ -138,6 +138,8 @@ func poured(at: Vector3,over: float) -> void:
 	if game!=null:game.audio.cue_at("pour",at,clampf(over*8.-4.,-6.,4.))
 
 func _process(delta: float) -> void:
+	if Engine.get_process_frames()%15==0:
+		for mist: bool in _spray_mats:preload("res://scripts/ocean/water_effects.gd").night_tint(_spray_mats[mist],Color(.95,.98,1.,.9 if not mist else .5),get_tree())
 	if boat==null or not is_instance_valid(boat._hull) or boat.sinking:
 		if sheet!=null:sheet.visible=false
 		return

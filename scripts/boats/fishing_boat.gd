@@ -40,6 +40,11 @@ var _bow_slam: float=0.
 var _bow_prev: float=0.
 var impact_cooldown: float=0.
 var lights_enabled: bool=true
+## What light the boat carries: 0 none, 1 an oil lamparina hung aft, 2 the deck lamps (bought at the workshop).
+var light_level: int=2:
+	set(value):light_level=clampi(value,0,2);update_lights()
+var lamparina: Node3D
+var lamparina_light: OmniLight3D
 var searchlight_upgraded: bool=false
 var hull_protection: float=1.
 var deck_lights: Array[Light3D]=[]
@@ -128,6 +133,7 @@ func _ready() -> void:
 		if child!=_propeller and child!=searchlight and child is Node3D:_tripo_parts.append(child)
 	_tripo_lights=deck_lights.duplicate();_tripo_lamps=lamp_materials.duplicate()
 	_tripo_wheel=helm_wheel;_tripo_bucket=bucket;_tripo_propeller=_propeller;_tripo_hydro=hydrodynamics.duplicate()
+	_build_lamparina();update_lights()
 	trail=preload("res://scripts/ocean/wake_trail.gd").new()
 	add_child(trail)
 	anchor=preload("res://scripts/boats/boat_anchor.gd").new();anchor.name="Ancora";anchor.boat=self
@@ -328,7 +334,8 @@ func _publish_hull() -> void:
 	# The cut follows the deck's footprint (just inside the topsides), never wider than the hull itself,
 	# or the sea would show a hole beside or behind the boat.
 	Waves.hull_inv=_hull.global_transform.affine_inverse()
-	Waves.hull_box=Vector4(float(deck.x)+.1,float(deck.z0)-.15,float(deck.z1)+.05,float(hull_spec.get("gunwale",float(deck.y)+.3)))
+	var cut: Vector2=hull_spec.get("cut",Vector2(float(deck.z0)-.15,float(deck.z1)+.05))
+	Waves.hull_box=Vector4(float(deck.x)+.1,cut.x,cut.y,float(hull_spec.get("gunwale",float(deck.y)+.3)))
 	Waves.hull_keel=float(hydrodynamics.draft_offset)-float(hull_spec.get("immersion",.35))*1.6-.3
 
 ## A heavy blow to the hull: damage scaled by the boat's protection, a roll and a jolt upward.
@@ -362,8 +369,13 @@ func toggle_lights() -> void:
 	update_lights()
 
 func update_lights() -> void:
-	for light: Light3D in deck_lights:light.visible=lights_enabled
-	for material: StandardMaterial3D in lamp_materials:material.emission_enabled=lights_enabled
+	var deck_on: bool=lights_enabled and light_level>=2
+	for light: Light3D in deck_lights:if is_instance_valid(light):light.visible=deck_on
+	for material: StandardMaterial3D in lamp_materials:material.emission_enabled=deck_on
+	if is_instance_valid(lamparina):
+		lamparina.visible=light_level>=1
+		lamparina_light.visible=lights_enabled and light_level>=1
+		(lamparina.get_meta("glass") as StandardMaterial3D).emission_enabled=lamparina_light.visible
 	if searchlight!=null:searchlight.visible=lights_enabled and searchlight_upgraded
 
 func _build_lights() -> void:
@@ -715,7 +727,33 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 	if _bow_left!=null:
 		var bow_z: float=-float(hull_spec.length)*.42*size_factor
 		_bow_left.position=Vector3(-half*.5,0,bow_z);_bow_right.position=Vector3(half*.5,0,bow_z)
+	_build_lamparina()
 	update_lights()
+
+## The oil lamp: a crooked pole (aft; on a canoe over the bow) with a small glass lantern swinging from it, one warm short-range light.
+## It is what the poorest boat can carry at night (the canoe has nothing else).
+func _build_lamparina() -> void:
+	if is_instance_valid(lamparina):lamparina.get_parent().remove_child(lamparina);lamparina.queue_free()
+	var deck: Dictionary=hull_spec.deck
+	var base:=Vector3(-minf(float(deck.x)*.8,1.2),float(deck.y),float(deck.z1)-.4)
+	if hull_model=="canoa":base=Vector3(0,.1,-2.25)  # over the bow, where night fishermen hang it
+	lamparina=Node3D.new();lamparina.name="Lamparina";lamparina.position=base
+	(_alt_body if is_instance_valid(_alt_body) else _hull).add_child(lamparina)
+	var wood:=G.material(Color("5b3b22"),.85);var iron:=G.material(Color("2b2622"),.5)
+	G.cylinder(lamparina,Vector3(0,.7,0),.03,1.4,wood,.025,6)
+	G.box(lamparina,Vector3(0,1.38,-.14),Vector3(.04,.04,.32),wood)
+	var hang:=Node3D.new();hang.name="Balanco";hang.position=Vector3(0,1.36,-.28);lamparina.add_child(hang)
+	G.cylinder(hang,Vector3(0,-.07,0),.004,.14,iron,-1.,4)
+	var glass:=StandardMaterial3D.new();glass.albedo_color=Color(.9,.55,.2)
+	glass.emission=Color("ff9230");glass.emission_energy_multiplier=1.4;glass.emission_enabled=true
+	G.cylinder(hang,Vector3(0,-.25,0),.085,.22,glass,.075,10)
+	G.cylinder(hang,Vector3(0,-.12,0),.095,.04,iron,.03,10)
+	G.cylinder(hang,Vector3(0,-.375,0),.1,.035,iron,-1.,10)
+	for k: int in 4:G.box(hang,Vector3(cos(k*PI*.5)*.088,-.25,sin(k*PI*.5)*.088),Vector3(.012,.22,.012),iron)
+	lamparina.set_meta("glass",glass);lamparina.set_meta("hang",hang)
+	lamparina_light=OmniLight3D.new();lamparina_light.name="LuzDaLamparina";lamparina_light.position=Vector3(0,-.25,0)
+	lamparina_light.light_color=Color("ffa04a");lamparina_light.light_energy=.85;lamparina_light.omni_range=7.;lamparina_light.omni_attenuation=1.
+	hang.add_child(lamparina_light)
 
 ## The companionway on deck: a raised teak frame round a dark opening with the top of the ladder.
 func _build_hatch(parent: Node3D,at: Vector3) -> void:
@@ -827,6 +865,14 @@ func set_winch_turning(value: bool) -> void:
 	_winch_turning=value
 func _process(delta: float) -> void:
 	if _winch_turning and is_instance_valid(_winch_drum):_winch_drum.rotation.x+=delta*6.
+	# The lantern hangs plumb from its arm whatever the hull does, swinging a little behind the motion.
+	if is_instance_valid(lamparina) and lamparina.visible:
+		var hang: Node3D=lamparina.get_meta("hang")
+		var t: float=Time.get_ticks_msec()*.001
+		var sway:=Vector3(sin(t*1.9)*.05-pitch_rate*.1,0.,sin(t*1.3)*.06-roll_rate*.1)
+		var yaw: float=lamparina.global_basis.get_euler().y
+		var q: Quaternion=hang.global_basis.get_rotation_quaternion().slerp(Quaternion.from_euler(Vector3(sway.x,yaw,sway.z)),clampf(delta*6.,0.,1.))
+		hang.global_basis=Basis(q).scaled(hang.global_basis.get_scale())
 
 ## Hull in the waves: the hull floats on buoyancy sampled at nine points over its waterline (bow, middle and
 ## stern; port, centreline and starboard), each pushing up in proportion to how deep that part of the hull is in the water,

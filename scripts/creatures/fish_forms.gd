@@ -48,7 +48,26 @@ const FORMS: Dictionary={
 		"dorsal":[[-.1,.08,.08,.4]],"anal":[[-.2,-.02,.04,.5]],"pectoral":.07},
 	"donzela":{"length":.3,"speed":1.3,"profile":[[-.5,0,0],[-.42,.05,.02],[-.3,.13,.035],[-.05,.21,.05],[.15,.22,.052],[.33,.15,.042],[.46,.06,.02],[.5,0,0]],
 		"back":"f0c419","belly":"fbe98a","pattern":"bars","pattern_color":"1c2a3a","pattern_count":5,"fin":"f5d43a","tail":"forked","tail_span":.32,"tail_len":.17,
-		"dorsal":[[-.3,.24,.14,.5]],"anal":[[-.26,.02,.08,.5]],"pectoral":.09,"belly_ratio":.9}
+		"dorsal":[[-.3,.24,.14,.5]],"anal":[[-.26,.02,.08,.5]],"pectoral":.09,"belly_ratio":.9},
+	# Species opened up by better rods.
+	"tainha":{"length":.6,"speed":1.8,"profile":[[-.5,0,0],[-.42,.035,.025],[-.28,.07,.045],[-.05,.11,.065],[.15,.12,.07],[.33,.1,.06],[.46,.05,.035],[.5,0,0]],
+		"back":"5b6b78","belly":"eef2f2","pattern":"stripe","pattern_color":"8d9aa4","fin":"9aa4ab","tail":"forked","tail_span":.3,"tail_len":.17,
+		"dorsal":[[-.18,-.04,.08,.4],[.06,.16,.07,.4]],"anal":[[-.2,-.05,.05,.5]],"pectoral":.08},
+	"garoupa":{"length":1.2,"speed":.9,"profile":[[-.5,0,0],[-.42,.05,.04],[-.28,.12,.08],[-.05,.18,.12],[.15,.19,.13],[.33,.16,.11],[.46,.08,.06],[.5,0,0]],
+		"back":"7a4a32","belly":"d8b48e","pattern":"spots","pattern_color":"4a2a1a","pattern_count":9,"fin":"6e4a32","tail":"rounded","tail_span":.3,"tail_len":.15,
+		"dorsal":[[-.3,.2,.12,.5]],"anal":[[-.26,-.06,.08,.5]],"pectoral":.13},
+	"anchova":{"length":.75,"speed":2.,"profile":[[-.5,0,0],[-.42,.035,.025],[-.28,.08,.05],[-.05,.12,.07],[.15,.13,.075],[.33,.1,.06],[.46,.05,.03],[.5,0,0]],
+		"back":"3f6f8a","belly":"e9f0ef","pattern":"none","fin":"5a8aa0","tail":"forked","tail_span":.34,"tail_len":.18,
+		"dorsal":[[-.16,.02,.08,.4],[.06,.2,.07,.4]],"anal":[[-.2,-.02,.06,.5]],"pectoral":.1},
+	"dourado":{"length":1.4,"speed":2.3,"profile":[[-.5,0,0],[-.43,.03,.02],[-.28,.08,.04],[-.05,.13,.055],[.15,.16,.06],[.33,.17,.06],[.44,.15,.05],[.5,0,0]],
+		"back":"2a9d6a","belly":"f2d34a","pattern":"spots","pattern_color":"1d6fa0","pattern_count":10,"fin":"2d8acb","tail":"forked","tail_span":.4,"tail_len":.22,
+		"dorsal":[[-.38,.44,.08,.4]],"anal":[[-.36,-.02,.06,.5]],"pectoral":.12},
+	"marlim":{"length":3.6,"speed":2.8,"profile":[[-.5,0,0],[-.43,.025,.02],[-.3,.06,.045],[-.05,.1,.07],[.15,.11,.075],[.3,.08,.06],[.38,.04,.035],[.4,0,0]],
+		"back":"183a7a","belly":"e8eef2","pattern":"bars","pattern_color":"5ab0e0","pattern_count":12,"fin":"20407a","tail":"lunate","tail_span":.5,"tail_len":.26,
+		"dorsal":[[-.1,.34,.22,.15]],"anal":[[-.26,-.1,.08,.5]],"pectoral":.2,"rostrum":.42},
+	"espadarte":{"length":3.2,"speed":2.4,"profile":[[-.5,0,0],[-.43,.025,.02],[-.3,.065,.05],[-.05,.11,.08],[.15,.115,.085],[.3,.085,.065],[.38,.04,.035],[.4,0,0]],
+		"back":"4a3d4e","belly":"c9c2c8","pattern":"none","fin":"3a2f3e","tail":"lunate","tail_span":.48,"tail_len":.26,
+		"dorsal":[[.12,.26,.2,.3]],"anal":[[-.26,-.12,.07,.5]],"pectoral":.18,"rostrum":.5}
 }
 static var cache: Dictionary={}
 static var materials: Dictionary={}

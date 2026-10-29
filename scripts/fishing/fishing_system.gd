@@ -28,7 +28,22 @@ const SPECIES: Array[Resource] = [
 	preload("res://data/fish/peixe_lua.tres"),
 	preload("res://data/fish/manjuba.tres"),
 	preload("res://data/fish/donzela.tres"),
+	preload("res://data/fish/tainha.tres"),
+	preload("res://data/fish/garoupa.tres"),
+	preload("res://data/fish/anchova.tres"),
+	preload("res://data/fish/dourado.tres"),
+	preload("res://data/fish/marlim.tres"),
+	preload("res://data/fish/espadarte.tres"),
 ]
+## Which rod a species needs before it will take your bait (0 bamboo pole, 1 fibreglass, 2 carbon,
+## 3 big-game): a better rod opens bigger and different fish, not only stronger fights.
+const ROD_TIER: Dictionary={"pargo":1,"seabass":1,"baiacu":1,"garoupa":1,"anchova":1,
+	"tuna":2,"tubarao_recife":2,"peixe_serra":2,"dourado":2,
+	"atum_rei":3,"tubarao_branco":3,"peixe_lua":3,"marlim":3,"espadarte":3}
+const ROD_NAMES: Array[String]=["Vara de bambu","Vara de fibra","Vara de carbono","Vara de alto-mar"]
+## Current rod level (from the rod bonus the shop sets: .15 per level).
+func rod_level() -> int:
+	return clampi(int(round(rod_bonus/.15)),0,3)
 const BITE_WINDOW: float = 3.2
 const CAST_DURATION: float = 0.85
 
@@ -62,7 +77,8 @@ const BASE_BITE_RATE: float=.11
 const QUIET_AFTER_LANDING: float=1.4
 ## Fight: each species has a style; the fish's weight against the tackle's capacity decides how hard it is.
 const STYLES: Dictionary={"tuna":"runner","atum_rei":"runner","mackerel":"runner","tubarao_branco":"shaker","tubarao_recife":"shaker",
-	"peixe_serra":"shaker","pargo":"diver","sargo":"diver","cirurgiao":"diver","lanternfish":"diver","seabass":"jumper","baiacu":"steady","peixe_lua":"steady"}
+	"peixe_serra":"shaker","pargo":"diver","sargo":"diver","cirurgiao":"diver","lanternfish":"diver","seabass":"jumper","baiacu":"steady","peixe_lua":"steady",
+	"tainha":"jumper","garoupa":"diver","anchova":"runner","dourado":"jumper","marlim":"jumper","espadarte":"diver"}
 var fight_phase: String="calm"
 var stamina: float=1.
 var fish_weight: float=1.
@@ -105,8 +121,9 @@ func start_cast(region: String = "coast", school_species: String = "") -> bool:
 
 func _available(region: String) -> Array[Resource]:
 	var out: Array[Resource]=[]
+	var rod: int=rod_level()
 	for item: Resource in SPECIES:
-		if item.capture_allowed and region in item.regions:out.append(item)
+		if item.capture_allowed and region in item.regions and int(ROD_TIER.get(str(item.id),0))<=rod:out.append(item)
 	return out
 
 ## Which fish takes the bait: species of these waters, weighted by abundance, the school under the float

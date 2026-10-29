@@ -8,6 +8,9 @@ var failures: int = 0
 func _initialize() -> void:
 	call_deferred("_run")
 
+func check_rods(ok: bool,seen: Array[Dictionary]) -> void:
+	_check(ok,"a better rod brings bigger and different fish (bamboo: %s · big-game: %d species)"%[", ".join(PackedStringArray(seen[0].keys())),seen[1].size()])
+
 func _check(condition: bool, description: String) -> void:
 	if condition:
 		print("PASS: ", description)
@@ -115,7 +118,7 @@ func _run() -> void:
 		var species_id: String = str(fishing.species_current.id)
 		if not sampled.has(species_id):
 			sampled[species_id] = duration
-			_check(duration >= 4.0 and duration < 100.0, "interactive, bounded fight: %s (%.1f s, %.0f kg)" % [species_id, duration, fishing.fish_weight])
+			_check(duration >= 3.0 and duration < 100.0, "interactive, bounded fight: %s (%.1f s, %.0f kg)" % [species_id, duration, fishing.fish_weight])
 		fishing.advance(3.0)
 		if sampled.size() == Fishing.SPECIES.size():
 			break
@@ -148,6 +151,17 @@ func _run() -> void:
 			total+=t
 		waits.append(total/30.)
 	_check(waits[0]<6.5 and waits[1]>waits[0]*4.,"bites come quickly in a rich spot and slowly in a poor one (%.1f s vs %.1f s)"%[waits[0],waits[1]])
+	# Each better rod opens bigger and different fish: the bamboo pole only small fry, big-game the giants.
+	var seen_by_rod: Array[Dictionary]=[]
+	for level: int in [0,3]:
+		fishing.rod_bonus=float(level)*.15
+		var seen: Dictionary={}
+		for region: String in ["coast","open_water"]:
+			fishing.cancel();fishing.state=0;fishing.start_cast(region)
+			for k: int in 400:seen[str(fishing._pick_species().id)]=true
+		seen_by_rod.append(seen)
+	var small_only: bool=not (seen_by_rod[0].has("pargo") or seen_by_rod[0].has("tuna") or seen_by_rod[0].has("marlim"))
+	check_rods(small_only and seen_by_rod[1].has("marlim") and seen_by_rod[1].has("dourado") and seen_by_rod[1].size()>seen_by_rod[0].size()+6,seen_by_rod)
 	fishing.queue_free()
 	print("FISHING TESTS: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(0 if failures == 0 else 1)

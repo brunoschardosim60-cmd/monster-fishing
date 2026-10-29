@@ -31,8 +31,8 @@ void fragment(){
 	float streaks=smoothstep(.62,.9,runnel)*clamp(fl*1.5,0.,1.);
 	float foam=clamp(edge*(.6+n2)+smoothstep(.6,.9,n1)*(.45+stir*.7)+smoothstep(.75,.95,n2)*.3+streaks*.6,0.,1.);
 	ALBEDO=mix(vec3(.2,.44,.48),vec3(.88,.93,.92),foam*.85);
-	ROUGHNESS=mix(.04,.5,foam);
-	SPECULAR=.9;
+	ROUGHNESS=mix(.14,.5,foam);
+	SPECULAR=.5;
 	METALLIC=.05;
 	float fade=smoothstep(0.,.03,min(e.x,e.y));
 	ALPHA=clamp((.55+amount*.35)*fade+foam*.35,0.,.95)*smoothstep(0.,.03,amount);

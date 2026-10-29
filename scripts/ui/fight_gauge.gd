@@ -38,7 +38,7 @@ func update_from(fishing: Node,rod_level: int,line_level: int) -> void:
 	bite_left=float(fishing.bite_time_remaining)
 	size_class=int(fishing.size_class()) if state==4 else 0
 	species_name=str(fishing.species_current.display_name) if state==4 and fishing.species_current!=null else ""
-	gear_text="Vara %d · Linha %d"%[rod_level,line_level]
+	gear_text="%s · Linha %d"%[preload("res://scripts/fishing/fishing_system.gd").ROD_NAMES[clampi(rod_level,0,3)],line_level]
 	visible=state>=1 and state<=4
 	queue_redraw()
 

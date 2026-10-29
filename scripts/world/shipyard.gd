@@ -22,6 +22,8 @@ var footprint: Vector3
 ## Felling site (x, z, radius): the town keeps it free of houses.
 var camp_area: Vector3
 var workers: Array[Node3D]=[]
+## Boats for sale moored along the pier (boat_showroom.gd).
+var showroom: Node3D
 var _out: Vector2
 var _side: Vector2
 
@@ -88,6 +90,8 @@ func _ready() -> void:
 		var q:=b+_side*corner.x*3.+_out*corner.y*6.
 		G.sphere(self,Vector3(q.x,.15,q.y),Vector3(.5,.5,.5),yellow,10)
 	G.label(self,"VAGA DO ESTALEIRO",Vector3(b.x,3.2,b.y),30)
+	showroom=preload("res://scripts/world/boat_showroom.gd").new();showroom.name="BarcosAVenda";add_child(showroom)
+	showroom.build(pier_from,pier_to,_side)
 	_people(hull_at,pile_at,shed_at,floor_y)
 
 ## Shipwrights carry planks from the timber stack to the hull on the slipway; two woodcutters bring

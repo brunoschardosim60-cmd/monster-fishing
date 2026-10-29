@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "espadarte"
+display_name = "Espadarte"
+rarity = "Rara"
+min_weight = 50.0
+max_weight = 260.0
+value_per_kg = 28.0
+difficulty = 0.92
+description = "Sobe das profundezas à noite atrás de lulas. Luta fundo e com força bruta."
+color = Color(0.3, 0.25, 0.32, 1)
+habitat = "Abismo à noite"
+regions = PackedStringArray("open_water", "abyss")
+encounter_weight = 0.2
+preferred_depth = Vector2(40, 200)

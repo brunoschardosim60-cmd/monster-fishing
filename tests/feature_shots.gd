@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -636,3 +636,33 @@ func _cabine() -> void:
 			await shot("cabine_%s_%d"%[id,view],eye.origin,eye.origin-eye.basis.z*4.,1)
 		game.player.deck_local=c.foot;game.interact()
 		for i: int in 5:await process_frame
+
+## New career: the canoe at dusk with its lamparina, seen from the side and from behind the helmsman.
+func _canoa() -> void:
+	var w=game.world;var b: CharacterBody3D=game.boat;var inv=game.inventory
+	var Econ=load("res://scripts/inventory/harbor_economy.gd")
+	game.start_career();inv.money=100;Econ.buy("lights",inv,b,game.fishing)
+	w.ocean.hour=19.2;w.ocean.weather.settle(0)
+	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=b.global_position+Vector3(0,1.,0);game.interact()
+	for i: int in 30:await process_frame
+	var p: Vector3=b.global_position
+	await shot("canoa_lado",p+Vector3(7.,2.2,1.),p+Vector3(0,.6,0),2)
+	await shot("canoa_popa",p+Vector3(1.2,2.6,7.5),p+Vector3(0,.5,-3.),2)
+	w.ocean.hour=21.5
+	for i: int in 20:await process_frame
+	await shot("canoa_noite",p+Vector3(5.,2.5,4.),p+Vector3(0,.8,1.5),2)
+
+## The yard's sales pontoon: every boat for sale moored bow-in, priced boards on the pontoon.
+func _vitrine() -> void:
+	var w=game.world;w.ocean.hour=10.5;w.ocean.weather.settle(0)
+	game.start_career()
+	var room: Node3D=w.village.shipyard.showroom
+	for i: int in 30:await process_frame
+	var a: Vector3=room.displays.canoa.at;var z: Vector3=room.displays.escuna.at
+	var mid:=(a+z)*.5;var along:=(z-a).normalized();var out:=Vector3(-along.z,0,along.x)
+	if (room.displays.veleiro.node.global_position-room.displays.veleiro.at).dot(out)<0.:out=-out
+	await shot("vitrine_alto",mid+out*30.+Vector3(0,22,0)-along*8.,mid+out*8.,2)
+	await shot("vitrine_ponte",a-along*3.+Vector3(0,1.7,0)-out*.5,a+along*10.+out*4.,2)
+	var v: Vector3=room.displays.aurora.at
+	await shot("vitrine_placa",v+out*-3.+Vector3(0,1.8,0)-along*2.,v+Vector3(0,1.6,0)+out*3.,2)

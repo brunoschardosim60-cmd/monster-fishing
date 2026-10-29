@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "marlim"
+display_name = "Marlim-azul"
+rarity = "Lendária"
+min_weight = 80.0
+max_weight = 340.0
+value_per_kg = 30.0
+difficulty = 0.95
+description = "O troféu do alto-mar: bico em lança e saltos enormes. Só uma vara de alto-mar aguenta."
+color = Color(0.1, 0.25, 0.5, 1)
+habitat = "Alto-mar profundo"
+regions = PackedStringArray("open_water")
+encounter_weight = 0.14
+preferred_depth = Vector2(0, 60)

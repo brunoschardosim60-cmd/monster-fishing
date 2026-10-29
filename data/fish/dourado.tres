@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "dourado"
+display_name = "Dourado"
+rarity = "Incomum"
+min_weight = 5.0
+max_weight = 22.0
+value_per_kg = 34.0
+difficulty = 0.78
+description = "Peixe de mar aberto de cores brilhantes que saltam no ar quando fisgado."
+color = Color(0.2, 0.62, 0.45, 1)
+habitat = "Mar aberto"
+regions = PackedStringArray("open_water")
+encounter_weight = 0.9
+preferred_depth = Vector2(0, 30)

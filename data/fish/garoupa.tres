@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "garoupa"
+display_name = "Garoupa"
+rarity = "Incomum"
+min_weight = 3.0
+max_weight = 25.0
+value_per_kg = 30.0
+difficulty = 0.72
+description = "Mora nas tocas dos costões e recifes. Fisgada, mergulha para a toca e não quer sair."
+color = Color(0.48, 0.3, 0.2, 1)
+habitat = "Costões e recifes"
+regions = PackedStringArray("coast")
+encounter_weight = 0.7
+preferred_depth = Vector2(6, 40)

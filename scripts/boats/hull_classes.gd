@@ -23,7 +23,9 @@ const SPECS: Dictionary={
 	"canoa":{"immersion":.2,"gunwale":.3,"kind":"canoa","model_length":6.2,"length":6.,"beam":.95,"mass":420.,"draft":-.12,"heave":9000.,"angular":7.,"tilt":.3,
 		"deck":{"y":.1,"x":.24,"z0":-2.,"z1":2.2,"start":Vector3(0,.1,.6),"blocks":[]},
 		"helm":Vector3(0,.1,2.25),"wheel":[Vector3(0,.42,2.95),0.,0.,-.15],"bucket":Vector3(0,.08,-1.1),"sails":0.,
-		"holders":[{"at":Vector3(.36,.42,1.4),"yaw":-2.2}]},
+		"holders":[{"at":Vector3(.36,.42,1.4),"yaw":-2.2}],
+		# The sea is kept out of the whole open hull, bow and stern included (narrow there, so the width still fits).
+		"cut":Vector2(-2.95,2.95)},
 	"veleiro":{"immersion":.8,"gunwale":1.38,"kind":"veleiro","model_length":11.,"length":10.4,"beam":3.5,"mass":6500.,"draft":.0,"heave":210000.,"angular":3.,"tilt":.38,
 		"deck":{"y":1.1,"x":1.35,"z0":-4.5,"z1":4.6,"start":Vector3(.9,1.1,2.4),"blocks":[Rect2(-.99,-1.87,1.98,3.3)],
 			"roofs":[{"rect":Rect2(-.85,-1.75,1.7,3.05),"y":1.7,"ladder":Vector3(.5,1.1,1.75),"top":Vector3(.5,1.7,1.15)}]},

@@ -6,6 +6,8 @@ extends Node3D
 @export_enum("boat", "harbor", "creature", "original") var material_family: String = "boat"
 @export var waterline_m: float = .65
 var model: Node3D
+## Optional [hull colour, top colour] painted before the static batch (boats for sale at the yard).
+var livery: Array=[]
 var bounds: AABB
 var meshes: Array[MeshInstance3D]=[]
 const Materials=preload("res://scripts/visuals/materials.gd")
@@ -37,6 +39,10 @@ func _ready() -> void:
 			part.material_override=Materials.surface(kind,tint,3.,false)
 			if part.name in ["tripo_part_8","tripo_part_11","tripo_part_13","tripo_part_17","tripo_part_18"]:
 				part.material_override=Materials.surface("paint",Color("23343a"),5.,false)
+			if livery.size()==2 and height>=.13 and not (box.size.y<.025 and height<.19) and not (box.size.y>.3 and height<=.36):
+				var paint: Color=livery[1] if height>.36 else livery[0]
+				if part.name in ["tripo_part_8","tripo_part_11","tripo_part_13","tripo_part_17","tripo_part_18"]:paint=(livery[1] as Color).darkened(.55)
+				part.material_override=Materials.surface("paint",paint,3.,false)
 		elif material_family=="creature":
 			part.material_override=Materials.surface("granite",Color("ae9c76"),5.,false)
 		elif material_family=="harbor":

@@ -8,6 +8,16 @@ var ages: Array[float]=[]
 var sizes: Array[float]=[]
 var cursor: int=0
 var total_splashes: int=0
+var _drop_mat: StandardMaterial3D
+
+## Unshaded spray would glow white at night: its brightness follows the daylight (dim blue under the moon).
+static func night_tint(mat: StandardMaterial3D,base: Color,tree: SceneTree) -> void:
+	if mat==null or tree==null:return
+	var game:=tree.get_first_node_in_group("game")
+	var day: float=1.
+	if game!=null and game.get("world")!=null and game.world.get("ocean")!=null:day=float(game.world.ocean.daylight)
+	var k: float=lerpf(.13,1.,clampf(day,0.,1.))
+	mat.albedo_color=Color(base.r*k,base.g*k,base.b*minf(1.,k*1.25),base.a)
 
 static func drop_material() -> StandardMaterial3D:
 	var mat:=StandardMaterial3D.new()
@@ -29,7 +39,7 @@ static func drop_material() -> StandardMaterial3D:
 func _ready() -> void:
 	var plane:=PlaneMesh.new()
 	plane.size=Vector2(10,10); plane.subdivide_width=20; plane.subdivide_depth=20
-	var drop:=QuadMesh.new(); drop.size=Vector2(.035,.09); drop.material=drop_material()
+	var drop:=QuadMesh.new(); drop.size=Vector2(.035,.09); drop.material=drop_material(); _drop_mat=drop.material
 	for i: int in 12:
 		var ring:=MeshInstance3D.new()
 		ring.mesh=plane
@@ -63,6 +73,7 @@ func splash(at: Vector3, strength: float=1., spray: bool=true) -> void:
 		splashed.emit(at,strength)
 
 func _process(delta: float) -> void:
+	if Engine.get_process_frames()%15==0:night_tint(_drop_mat,Color(.65,.82,.85,.5),get_tree())
 	for i: int in rings.size():
 		ages[i]+=delta
 		if ages[i]>3.5: rings[i].hide(); continue

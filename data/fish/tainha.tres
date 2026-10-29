@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MonsterFishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "tainha"
+display_name = "Tainha"
+rarity = "Comum"
+min_weight = 0.4
+max_weight = 1.8
+value_per_kg = 22.0
+difficulty = 0.3
+description = "Corre em cardumes pela beira da praia e pula fora d'água quando se assusta."
+color = Color(0.55, 0.62, 0.68, 1)
+habitat = "Costa da Ilha Principal"
+regions = PackedStringArray("coast")
+encounter_weight = 2.2
+preferred_depth = Vector2(0, 8)

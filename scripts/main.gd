@@ -57,6 +57,7 @@ var encounters: Node3D
 var diving: Node3D
 var sonar: Control
 const Economy=preload("res://scripts/inventory/harbor_economy.gd")
+const Waves=preload("res://scripts/world/wave_field.gd")
 const SaveGame=preload("res://scripts/inventory/save_game.gd")
 ## Progress is saved to user:// in normal play; tests and tools (run with --script) never touch it.
 var saving_enabled: bool=not ("--script" in OS.get_cmdline_args())
@@ -120,6 +121,8 @@ func _ready() -> void:
 	holders.strike.connect(_on_holder_strike)
 	crew=preload("res://scripts/boats/crew_manager.gd").new();crew.name="Tripulacao";crew.game=self;crew.boat=boat;_add_system(crew)
 	boat.hull_changed.connect(func() -> void:crew.sync())
+	if _showroom()!=null:
+		inventory.changed.connect(func() -> void:_showroom().refresh(inventory));_showroom().refresh(inventory)
 	marine=preload("res://scripts/creatures/marine_ecosystem.gd").new();marine.game=self;marine.name="VidaMarinha";_add_system(marine)
 	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
 	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
@@ -169,6 +172,7 @@ func save_progress() -> bool:
 func begin_play() -> void:
 	if saving_enabled and SaveGame.load_into(self):
 		hud.call_deferred("notify","Progresso carregado. Bem-vindo de volta!")
+	elif saving_enabled:start_career()
 	if crew!=null:crew.sync.call_deferred()
 	started = true
 	player.controls_enabled = true
@@ -176,6 +180,14 @@ func begin_play() -> void:
 	hud.begin_play()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	hud.notify("ESC · Controles e opções")
+
+## Fresh game: you begin in an old canoe at the pier with a bamboo pole and no light.
+func start_career() -> void:
+	Economy.start_career(inventory)
+	Economy.apply(inventory,boat,fishing)
+	boat.reset_to_dock()
+	inventory.changed.emit()
+	hud.call_deferred("notify","Uma canoa velha, uma vara de bambu e %d moedas. Pesque, venda no mercado e compre um barco melhor no estaleiro."%Economy.START_MONEY)
 
 func resume_play() -> void:
 	get_tree().paused = false
@@ -450,6 +462,8 @@ func interact() -> void:
 			hud.notify("+%d moedas" % earned)
 		else:
 			hud.notify("Sem capturas para vender.")
+	elif _showroom_near()!="":
+		showroom_take(_showroom_near())
 	else:
 		var service: String=world.village.nearby_service(player.global_position)
 		if not service.is_empty():
@@ -501,6 +515,28 @@ func hail_vessel(ship) -> void:
 		ship.activity_clock=minf(ship.activity_clock,8.)
 	else:
 		hud.notify("%s acena e segue viagem."%ship.ship_name)
+
+func _showroom() -> Node3D:
+	var yard=world.village.get("shipyard") if world!=null and world.village!=null else null
+	return yard.showroom if yard!=null else null
+
+func _showroom_near() -> String:
+	if player.in_boat:return ""
+	var room:=_showroom()
+	return room.nearest(player.global_position) if room!=null else ""
+
+## Buying (or switching to) a boat at its board on the sales pier: the yard brings it round to the berth.
+func showroom_take(id: String) -> String:
+	if id==inventory.boat_id:return ""
+	var said: String=Economy.buy_boat(id,inventory,boat,fishing)
+	if inventory.boat_id==id:
+		var yard=world.village.shipyard
+		boat.reset_to_dock()
+		boat.global_position=yard.berth;boat.rotation.y=atan2(-yard._out.x,-yard._out.y)+PI
+		boat._hull.position.y=Waves.height_at(boat.global_position)
+		said+=" Está na vaga do estaleiro, no fim do píer."
+	hud.notify(said)
+	return said
 
 func _check_berth() -> void:
 	var yard=world.village.get("shipyard") if world!=null and world.village!=null else null
@@ -564,6 +600,12 @@ func _interaction_hint() -> String:
 		return "%.0f nós · %d%% casco%s · %s    R · Convés    %s%s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),water,turbo,anchor_hint,sails]
 	if player.global_position.distance_to(boat.global_position+Vector3(0,1,0))<boat.board_radius()-1.:return "E · Embarcar"
 	if near_market():return "E · Vender capturas"
+	var shown: String=_showroom_near()
+	if shown!="":
+		var title: String=str(Economy.BOATS[shown].title)
+		if shown==inventory.boat_id:return "%s · em uso"%title.get_slice(" ·",0)
+		if shown in inventory.owned_boats:return "E · Usar %s (o estaleiro leva até a vaga)"%title.get_slice(" ·",0)
+		return "E · Comprar %s · %d moedas"%[title,int(Economy.BOATS[shown].price)]
 	var service: String=world.village.nearby_service(player.global_position)
 	if not service.is_empty():return "E · %s"%hud.SERVICE_NAMES.get(service.get_slice("_",0),service)
 	var discovery: Dictionary=world.village.nearby_discovery(player.global_position)
@@ -677,6 +719,14 @@ func _on_boat_sank() -> void:
 	await get_tree().create_timer(5.).timeout
 	var lost: int=inventory.catches.size()
 	inventory.catches.clear()
+	var wrecked: String=Economy.wreck(inventory)
+	if wrecked!="":
+		boat.integrity=1.
+		Economy.apply(inventory,boat,fishing)
+		return_to_harbor()
+		inventory.changed.emit()
+		hud.notify("Resgatado por um pesqueiro%s. %s"%[" · %d capturas perdidas"%lost if lost>0 else "",wrecked])
+		return
 	var fee:=mini(inventory.money,40);inventory.money-=fee
 	boat.integrity=.35
 	return_to_harbor()
@@ -734,7 +784,6 @@ func _rod_load() -> float:
 
 ## A following wind carries the cast further, a headwind shortens it (up to about a fifth in a gale).
 func _wind_factor() -> float:
-	var Waves=preload("res://scripts/world/wave_field.gd")
 	var forward:=Vector2(-sin(player.yaw),-cos(player.yaw))
 	return 1.+forward.dot(Waves.direction)*Waves.wind*.22
 

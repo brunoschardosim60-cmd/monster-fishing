@@ -6,7 +6,8 @@ signal changed
 
 var catches: Array[Dictionary] = []
 var money: int = 0
-var equipment: Dictionary={"rod":0,"line":0,"hook":0,"engine":0,"reel":0,"searchlight":0,"hull":0,"net":0}
+## lights: 0 none, 1 an oil lamp (lamparina), 2 electric deck lamps (a new career starts at 0).
+var equipment: Dictionary={"rod":0,"line":0,"hook":0,"engine":0,"reel":0,"searchlight":0,"hull":0,"net":0,"lights":2}
 var bait: int=0
 ## Boats owned (ids from harbor_economy.BOATS) and the one in use.
 var owned_boats: Array[String]=["aurora"]
