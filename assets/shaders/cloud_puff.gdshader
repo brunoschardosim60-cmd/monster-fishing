@@ -6,6 +6,8 @@ uniform float intensity = 1.;
 uniform bool veil = false;
 // Daylight on the cloud (unshaded): ~.12 at night so storms do not glow grey in the dark.
 uniform float light = 1.;
+// Lightning inside the cloud: the underside lights up blue-white for an instant.
+uniform float flash = 0.;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 x){vec2 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
 	return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
@@ -37,6 +39,7 @@ void fragment(){
 		float d=length(uv)*2.+(n-.5)*.45;
 		a=1.-smoothstep(.45,1.,d);
 		ALBEDO=COLOR.rgb*(.85+.3*n)*light;
+		ALBEDO+=vec3(.42,.48,.62)*flash*(1.-smoothstep(.35,1.1,d))*(.55+.45*n);
 		ALPHA=a*intensity*mix(.55,1.,COLOR.a);
 	}
 }

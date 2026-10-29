@@ -140,8 +140,12 @@ func nearest(at: Vector2) -> Array:
 func _lightning(c: Dictionary,delta: float,eye: Vector2) -> void:
 	var flash: OmniLight3D=c.flash;var bolt: MeshInstance3D=c.bolt
 	c.flash_t=maxf(0.,float(c.flash_t)-delta)
-	flash.light_energy=float(c.flash_t)/.25*14. if float(c.flash_t)>0. else 0.
-	bolt.visible=float(c.flash_t)>.08
+	# A strike flickers: the channel re-lights two or three times within a quarter second.
+	var t: float=float(c.flash_t)
+	var pulse: float=(1. if t>.18 else (.25 if t>.14 else (.9 if t>.1 else (.2 if t>.07 else (.6 if t>.04 else 0.)))))
+	flash.light_energy=pulse*14.
+	bolt.visible=pulse>.5
+	if c.has("cloud_mat") and c.cloud_mat is ShaderMaterial:(c.cloud_mat as ShaderMaterial).set_shader_parameter("flash",pulse)
 	if float(c.intensity)<.45:return
 	c.strike=float(c.strike)-delta
 	if float(c.strike)>0.:return
@@ -154,17 +158,59 @@ func _lightning(c: Dictionary,delta: float,eye: Vector2) -> void:
 	if eye.distance_to(Vector2(at.x,at.z))<3000. and world!=null and world.ocean!=null and world.ocean.has_signal("thunder"):world.ocean.thunder.emit(at)
 
 static var _bolt_mat: StandardMaterial3D
+static var _glow_mat: StandardMaterial3D
+## A forked bolt: a jagged main channel from the cloud base to the sea, with side branches that fork off
+## and die out, each drawn as two crossed ribbons (so it reads from any side), plus a wide soft glow
+## ribbon round the main channel. Thick and white at the core, thinner down the branches.
 func _bolt_mesh(seed_value: int) -> ArrayMesh:
 	if _bolt_mat==null:
-		_bolt_mat=StandardMaterial3D.new();_bolt_mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;_bolt_mat.albedo_color=Color("eef3ff")
-		_bolt_mat.emission_enabled=true;_bolt_mat.emission=Color("dfe8ff");_bolt_mat.emission_energy_multiplier=6.
+		_bolt_mat=StandardMaterial3D.new();_bolt_mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;_bolt_mat.albedo_color=Color("f4f7ff")
+		_bolt_mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+		_glow_mat=StandardMaterial3D.new();_glow_mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;_glow_mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+		_glow_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;_glow_mat.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;_glow_mat.vertex_color_use_as_albedo=true
 	var rng:=RandomNumberGenerator.new();rng.seed=seed_value
-	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var core:=SurfaceTool.new();core.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var glow:=SurfaceTool.new();glow.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var main: Array[Vector3]=[]
 	var p:=Vector3(0,300,0)
+	main.append(p)
 	while p.y>0.:
-		var q:=p+Vector3(rng.randf_range(-22.,22.),-rng.randf_range(18.,40.),rng.randf_range(-22.,22.));q.y=maxf(q.y,0.)
-		var side:=(q-p).cross(Vector3(0,0,1)).normalized()*1.4
-		for v: Vector3 in [p-side,p+side,q+side,p-side,q+side,q-side]:st.add_vertex(v)
-		p=q
-	st.set_material(_bolt_mat)
-	return st.commit()
+		p=p+Vector3(rng.randf_range(-16.,16.),-rng.randf_range(10.,26.),rng.randf_range(-16.,16.));p.y=maxf(p.y,0.);main.append(p)
+	_ribbon(core,main,2.2,.9)
+	_ribbon_glow(glow,main,16.)
+	# Branches: fork off the upper two thirds, run down and out, thinner, sometimes forking again.
+	for k: int in rng.randi_range(3,6):
+		var i: int=rng.randi_range(1,int(main.size()*.66))
+		var q: Vector3=main[i];var dir:=Vector3(rng.randf_range(-1.,1.),-rng.randf_range(.6,1.2),rng.randf_range(-1.,1.)).normalized()
+		var branch: Array[Vector3]=[q]
+		for j: int in rng.randi_range(3,7):
+			q+=dir*rng.randf_range(10.,22.)+Vector3(rng.randf_range(-6.,6.),0,rng.randf_range(-6.,6.));branch.append(q)
+			if q.y<20.:break
+		_ribbon(core,branch,1.,.3)
+		if rng.randf()<.5 and branch.size()>3:
+			var r: Vector3=branch[2];var twig: Array[Vector3]=[r]
+			for j: int in 3:r+=Vector3(rng.randf_range(-12.,12.),-rng.randf_range(8.,16.),rng.randf_range(-12.,12.));twig.append(r)
+			_ribbon(core,twig,.55,.2)
+	core.set_material(_bolt_mat)
+	var mesh:=core.commit()
+	glow.set_material(_glow_mat)
+	return glow.commit(mesh)
+
+## Two crossed ribbons along `pts`, tapering from `w0` to `w1`.
+func _ribbon(st: SurfaceTool,pts: Array[Vector3],w0: float,w1: float) -> void:
+	for i: int in pts.size()-1:
+		var a: Vector3=pts[i];var b: Vector3=pts[i+1]
+		var wa:=lerpf(w0,w1,float(i)/float(pts.size()-1));var wb:=lerpf(w0,w1,float(i+1)/float(pts.size()-1))
+		for axis: Vector3 in [Vector3(1,0,0),Vector3(0,0,1)]:
+			for v: Vector3 in [a-axis*wa,a+axis*wa,b+axis*wb,a-axis*wa,b+axis*wb,b-axis*wb]:st.add_vertex(v)
+
+## Soft glow round the main channel: wide crossed ribbons, bright in the middle, transparent at the edges.
+func _ribbon_glow(st: SurfaceTool,pts: Array[Vector3],w: float) -> void:
+	var mid:=Color(.55,.65,1.,.35);var edge:=Color(.4,.5,1.,0.)
+	for i: int in pts.size()-1:
+		var a: Vector3=pts[i];var b: Vector3=pts[i+1]
+		for axis: Vector3 in [Vector3(1,0,0),Vector3(0,0,1)]:
+			for half: float in [-1.,1.]:
+				var a2:=a+axis*w*half;var b2:=b+axis*w*half
+				st.set_color(mid);st.add_vertex(a);st.set_color(edge);st.add_vertex(a2);st.set_color(edge);st.add_vertex(b2)
+				st.set_color(mid);st.add_vertex(a);st.set_color(edge);st.add_vertex(b2);st.set_color(mid);st.add_vertex(b)

@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -693,3 +693,37 @@ func _casa() -> void:
 	await shot("casa_fundo",home.to_global(Vector3(.3,1.6,-back+.9)),home.to_global(Vector3(-.4,.8,back-1.)),2)
 	await shot("casa_cama",home.to_global(Vector3(half-1.,1.7,-.5)),home.to_global(Vector3(-half+.7,.5,back-1.2)),2)
 	await shot("casa_mesa",home.to_global(Vector3(-.6,1.5,0.)),home.to_global(Vector3(half-1.2,.7,back-2.9)),2)
+
+## A lightning strike from a storm a few hundred metres off: forked bolt, glow, lit cloud base.
+func _raio() -> void:
+	var p:=_sea_point()
+	var st: Node3D=game.world.storms
+	game.world.ocean.hour=18.5
+	st.spawn_at(p+Vector3(500,0,-500))
+	var c: Dictionary=st.cells[-1]
+	for i: int in 60:await process_frame
+	c.intensity=1.;c.strike=0.
+	for k: int in 3:
+		for i: int in 2+k:await process_frame
+		await shot("raio_%d"%k,p+Vector3(0,8,0),(c.node as Node3D).global_position+Vector3(0,140,0),1)
+		c.strike=0.
+		for i: int in 30:await process_frame
+
+## Every parametric fish form side by side at hand distance (scales, lateral line, gills, fins).
+func _peixes() -> void:
+	var Forms=load("res://scripts/creatures/fish_forms.gd")
+	game.world.ocean.hour=11.
+	var p:=_sea_point()+Vector3(0,3.,0)
+	var holder:=Node3D.new();game.add_child(holder)
+	var ids: Array=Forms.FORMS.keys()
+	var cols:=5
+	for i: int in ids.size():
+		var id: String=ids[i]
+		var m:=MeshInstance3D.new();m.mesh=Forms.mesh(id);m.material_override=Forms.material(id,true)
+		m.position=p+Vector3(float(i%cols)*1.,-float(i/cols)*.6,0);m.scale=Vector3.ONE*.8;holder.add_child(m)
+		var l:=Label3D.new();l.text=id;l.font_size=24;l.pixel_size=.004;l.position=m.position+Vector3(0,-.25,.2);holder.add_child(l)
+	for i: int in 5:await process_frame
+	var mid:=p+Vector3(2.,-.6,0)
+	await shot("peixes_todos",mid+Vector3(0,.3,4.6),mid,1)
+	await shot("peixes_perto",p+Vector3(.5,.1,1.3),p+Vector3(.5,0,0),1)
+	holder.queue_free()

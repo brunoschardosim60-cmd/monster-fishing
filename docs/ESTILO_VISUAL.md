@@ -16,6 +16,18 @@ a borda, a tábua e o desgaste.
 - Vilas costeiras estilizadas: casas com moldura de madeira, janelas com esquadria, beirais, vasos,
   redes e cordas penduradas.
 
+- Mar e tempestade (Sea of Thieves): ondas longas que levantam o barco, cristas verdes translúcidas com
+  espuma branca, céu de tempestade com nuvem escura de base iluminada por dentro a cada raio.
+- Raios: canal principal irregular, galhos finos que se abrem e morrem, brilho azulado em volta, o raio
+  pisca 2 ou 3 vezes em um quarto de segundo e se reflete no mar.
+- Redemoinho e kraken (Sea of Thieves): funil fundo com espuma em espiral; tentáculos grossos com
+  ventosas claras na face de dentro, manto com manchas e verrugas, olhos amarelos de pupila em fenda.
+- Megalodonte e serpentes marinhas estilizadas (Sketchfab): silhueta forte, pele com padrão, nadadeiras
+  com borda escura, dentes e olhos que leem de longe.
+- Peixes estilizados pintados à mão (pacotes "Stylized Fish", DREDGE): escamas visíveis, linha lateral,
+  opérculo, olho dourado com pupila grande e brilho, nadadeiras com raios. Nos peixes "aberrantes" do
+  DREDGE: o mesmo peixe com algo errado (olhos demais, dentes, cor doente), útil para os monstros.
+
 ## Regras para cada modelo novo
 
 1. **Nada de caixa lisa sozinha.** Toda caixa ganha pelo menos uma destas: borda ou moldura, divisão
@@ -44,9 +56,12 @@ a borda, a tábua e o desgaste.
 | Escotilha com grade, barril, cunho, rolo de cabo, lampião | `vessel_models.gd › _hatch / _barrel / _cleat / _coil / _lantern` |
 | Móveis (mesa, cadeira, armário, cômoda, cama, lampião, tapete, prateleira, quadro, caixote) | `scripts/visuals/furniture.gd` |
 | Lamparina do barco | `fishing_boat.gd › _build_lamparina` |
+| Peixes: escamas, linha lateral, opérculo, raios das nadadeiras, brilho | `assets/shaders/fish_form.gdshader` |
+| Olho dos peixes (íris, pupila, brilho) | `fish_forms.gd › _eye` |
+| Raio com galhos, brilho e piscar; nuvem que acende | `storms.gd › _bolt_mesh`, `cloud_puff.gdshader` |
 
 ## Como conferir
 
 Cada mudança visual ganha um cenário em `tests/feature_shots.gd` (ex.: `detalhe`, `casa`, `vitrine`,
-`canoa`) e é comparada antes e depois na imagem renderizada. Se de perto ainda parece caixa, falta
+`canoa`, `peixes`, `raio`) e é comparada antes e depois na imagem renderizada. Se de perto ainda parece caixa, falta
 detalhe.

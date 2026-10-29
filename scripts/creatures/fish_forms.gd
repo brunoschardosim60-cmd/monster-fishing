@@ -84,6 +84,9 @@ static func material(id: String,use_time: bool=false) -> ShaderMaterial:
 	var big:=float(form.length)>1.8
 	mat.set_shader_parameter("wag",.1 if big else .2);mat.set_shader_parameter("time_speed",4. if big else 8.)
 	if id=="peixe_lua":mat.set_shader_parameter("wag",.05)
+	# Smooth-skinned species carry no scales.
+	if bool(form.get("sharp",false)) or id in ["peixe_lua","baiacu"]:mat.set_shader_parameter("scale_size",0.)
+	elif big:mat.set_shader_parameter("scale_size",.02)
 	materials[key]=mat;return mat
 
 static func _cr(p0: float,p1: float,p2: float,p3: float,t: float) -> float:
@@ -216,9 +219,9 @@ static func mesh(id: String) -> ArrayMesh:
 	# Eyes: dark bead with a pale ring, set high and forward.
 	var eye_x:=x1-.14;var es:=_section(profile,eye_x);var er:=.026 if float(form.length)<1.5 else .02
 	if id=="peixe_serra":eye_x=.22;es=_section(profile,eye_x)
+	var iris: Color=Color(str(form.get("iris","d9b85c")))
 	for side: float in [-1.,1.]:
-		_blob(st,Vector3(eye_x,es.x*.35,es.y*.93*side),er*1.5,Color("e8e4cc"))
-		_blob(st,Vector3(eye_x+.003,es.x*.35,es.y*.97*side),er,Color("0b0b0d"))
+		_eye(st,Vector3(eye_x,es.x*.35,es.y*.9*side),er*1.45,side,iris)
 	# Extras per form.
 	if bool(form.get("spines",false)):
 		for i: int in 34:
@@ -236,6 +239,29 @@ static func mesh(id: String) -> ArrayMesh:
 				tri.call([Vector3(tx2,.0,half*side),Vector3(tx2+.02,.0,half*side),Vector3(tx2+.008,.0,(half+.035)*side)],Color("efe9d4"))
 	st.index()
 	var result:=st.commit();cache[id]=result;return result
+
+## Eye: a low dome on the flank, a gold (or silver) iris round a big black pupil, and a white glint.
+static func _eye(st: SurfaceTool,at: Vector3,radius: float,side: float,iris: Color) -> void:
+	var seg:=12;var rings:=4
+	var pts: Array=[]
+	for r: int in rings+1:
+		var rr:=float(r)/float(rings)
+		var ring: Array=[]
+		for k: int in seg:
+			var a:=float(k)*TAU/float(seg)
+			var d:=Vector3(cos(a)*radius*rr,sin(a)*radius*rr,side*radius*.45*sqrt(maxf(0.,1.-rr*rr)))
+			ring.append(at+d)
+		pts.append(ring)
+	for r: int in rings:
+		var c0: Color=Color("080809") if r<2 else (iris if r<3 else iris.darkened(.35))
+		var c1: Color=Color("080809") if r+1<2 else (iris if r+1<3 else iris.darkened(.35))
+		for k: int in seg:
+			var k2:=(k+1)%seg
+			var a: Vector3=pts[r][k];var b: Vector3=pts[r][k2];var c: Vector3=pts[r+1][k2];var d: Vector3=pts[r+1][k]
+			var nrm:=((b-a).cross(d-a)).normalized()*(-side if r>0 else -side)
+			for v: Array in [[a,c0],[b,c0],[c,c1],[a,c0],[c,c1],[d,c1]]:
+				st.set_color(v[1]);st.set_normal((v[0]-at).normalized() if (v[0]-at).length()>.0001 else Vector3(0,0,side));st.add_vertex(v[0])
+	_blob(st,at+Vector3(radius*.25,radius*.3,side*radius*.42),radius*.18,Color("ffffff"))
 
 static func _blob(st: SurfaceTool,at: Vector3,radius: float,color: Color) -> void:
 	# A small octahedron-ish bead; cheap and reads as an eye at any distance.
