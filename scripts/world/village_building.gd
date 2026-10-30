@@ -18,7 +18,10 @@ var keeper: Node3D
 
 func _ready() -> void:
 	var stone:=M.surface("granite",Color("afb2a6"),1.)
-	var wall:=M.surface("lime_plaster",Color.WHITE.lerp(tint,.18),.35)
+	# Painted boards in the town's faded palette (tools/blender/houses.py), not white plaster.
+	var paints: Array[Color]=[Color("86b4b0"),Color("c27560"),Color("e2c27a"),Color("9db07a"),Color("7b9cba"),Color("ded6c2")]
+	var pick: int=absi(title.hash()+int(position.x*7.+position.z*13.))
+	var wall:=M.surface("weathered_wood",paints[pick%paints.size()],1.4)
 	var trim:=M.surface("weathered_wood",Color("d6ccb2"),2.)
 	var wood:=M.surface("teak",Color("b7a180"),1.2)
 	var dark:=M.surface("weathered_wood",Color("544d3c"),1.5)
@@ -57,7 +60,7 @@ func _ready() -> void:
 	details.name="ModeledCoastalArchitecture";details.scale=Vector3(width/8.,1.,depth/7.);add_child(details)
 	for part: MeshInstance3D in details.find_children("*","MeshInstance3D",true,false):
 		if str(part.name).begins_with("Individual curved"):
-			part.material_override=M.surface("lime_plaster",Color("915c3c").lerp(Color("79554a"),float(absi(title.hash())%4)*.15),.8)
+			part.material_override=M.surface("weathered_wood",[Color("66727f"),Color("9a5844"),Color("5e7a72"),Color("a87650")][pick%4],1.)
 	var gable_mat:=wall.duplicate() as StandardMaterial3D;gable_mat.cull_mode=BaseMaterial3D.CULL_DISABLED
 	for z: float in [-back,back]:
 		G.mesh_node(self,G.polygon_mesh(PackedVector3Array([Vector3(-half,3.3,z),Vector3(half,3.3,z),Vector3(0,5.,z)]),PackedInt32Array([0,1,2])),gable_mat,Vector3.ZERO)

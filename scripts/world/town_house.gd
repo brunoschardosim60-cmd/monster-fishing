@@ -34,7 +34,7 @@ static func _glass() -> StandardMaterial3D:
 	return windows
 
 ## Footprint each modelled house was built for (metres): scaled to the plot.
-const MODEL_SIZE: Dictionary={"casa":Vector2(7,6),"sobrado":Vector2(7,6),"cabana":Vector2(5,4.5)}
+const MODEL_SIZE: Dictionary={"casa":Vector2(7,6),"sobrado":Vector2(7,6),"cabana":Vector2(5,4.5),"galpao":Vector2(10,8),"capela":Vector2(8,12)}
 static func _model(root: Node3D,kind: String,rng: RandomNumberGenerator,w: float,d: float) -> void:
 	var path:="res://assets/environment/houses/%s_%d.glb"%[kind,1+rng.randi()%3]
 	var key:="model/"+path
@@ -81,22 +81,20 @@ static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,pli
 			for x: float in [-w*.45,0.,w*.45]:
 				for z: float in [-d*.45-1.5,-d*.15,d*.45]:G.cylinder(root,Vector3(x,-plinth*.5,z),.14,plinth+.2,wood)
 			G.box(root,Vector3(0,-.12,-.75),Vector3(w+.6,.22,d+1.6),wood,true)
-			G.box(root,Vector3(0,height*.5,0),Vector3(w,height,d),planks)
-			_openings(root,w,d,1,height,door,shutter,rng,true)
-			_gable(root,w,d,height,.5,Color("8a8f94").lerp(roof_color,.3),planks)
+			_model(root,"cabana",rng,w,d)
 			var rail2:=wood
 			G.beam(root,Vector3(-w*.5-.25,1.,-d*.5-1.5),Vector3(w*.5+.25,1.,-d*.5-1.5),.05,rail2)
 			_collider(root,Vector3(w,height+2.,d),Vector3(0,(height+2.)*.5,0))
 		"capela":
 			height=7.
 			_plinth(root,w,d,plinth,stone)
-			_box_walls(root,w,d,height,_textured("lime_plaster",Color("f6f4ee"),.35),trim)
-			_gable(root,w,d,height,1.,Color("9a3f2a"),_textured("lime_plaster",Color("f6f4ee"),.35))
+			_model(root,"capela",rng,w,d)
 			var tower:=Vector3(0,0,-d*.5-1.6)
 			# The bell tower stands in front of the nave on its own footing, and its door is the way in.
 			G.box(root,tower+Vector3(0,-plinth*.5+.05,0),Vector3(3.95,plinth+.1,3.95),stone)
 			root.set_meta("front",-d*.5-3.42)
-			G.box(root,tower+Vector3(0,8.,0),Vector3(3.6,16.,3.6),_textured("lime_plaster",Color("f6f4ee"),.35))
+			G.box(root,tower+Vector3(0,8.,0),Vector3(3.6,16.,3.6),_textured("weathered_wood",Color("e8e2d4"),1.4))
+			for y: float in [.6,4.,8.,12.,15.6]:G.box(root,tower+Vector3(0,y,0),Vector3(3.75,.22,3.75),_textured("weathered_wood",Color("6a5038"),1.2))
 			for side: float in [-1.,1.]:
 				G.box(root,tower+Vector3(side*1.81,13.,0),Vector3(.06,1.8,1.1),flat(Color("1c1c1c"),.6))
 				G.box(root,tower+Vector3(0,13.,side*1.81),Vector3(1.1,1.8,.06),flat(Color("1c1c1c"),.6))
@@ -105,18 +103,12 @@ static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,pli
 			G.box(root,tower+Vector3(0,19.6,0),Vector3(.12,1.6,.12),gold);G.box(root,tower+Vector3(0,19.9,0),Vector3(.8,.12,.12),gold)
 			G.box(root,tower+Vector3(0,1.4,-1.82),Vector3(1.6,2.8,.1),door)
 			G.cylinder(root,tower+Vector3(0,6.,-1.82),.55,.08,_glass(),-1.,16).rotation.x=PI*.5
-			for i: int in 4:
-				var z:=-d*.3+float(i)*d*.2
-				for side: float in [-1.,1.]:G.box(root,Vector3(side*(w*.5+.03),3.6,z),Vector3(.06,2.6,1.),_glass())
 			_collider(root,Vector3(w,height+3.,d),Vector3(0,(height+3.)*.5,0))
 			_collider(root,Vector3(3.6,18.,3.6),tower+Vector3(0,9.,0))
 		"prefeitura":
 			height=7.
 			_plinth(root,w,d,plinth,stone)
-			_box_walls(root,w,d,height,_textured("lime_plaster",Color("efe2c8"),.35),trim)
-			G.box(root,Vector3(0,3.5,0),Vector3(w+.12,.2,d+.12),trim)
-			_openings(root,w,d,2,3.5,door,flat(Color("1f3d5c"),.6),rng,true)
-			_gable(root,w,d,height,.4,Color("4f5a63"),_textured("lime_plaster",Color("efe2c8"),.35))
+			_model(root,"sobrado",rng,w,d)
 			G.box(root,Vector3(0,.2,-d*.5-2.2),Vector3(w*.6,.4,4.4),stone)
 			for i: int in 4:G.cylinder(root,Vector3(-w*.24+float(i)*w*.16,3.6,-d*.5-3.8),.32,6.8,trim,.28,14)
 			G.box(root,Vector3(0,7.2,-d*.5-2.2),Vector3(w*.62,.5,4.6),trim)
@@ -129,19 +121,13 @@ static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,pli
 			_collider(root,Vector3(w,height+2.,d),Vector3(0,(height+2.)*.5,0))
 		"escola":
 			_plinth(root,w,d,plinth,stone)
-			_box_walls(root,w,d,height+.4,_textured("lime_plaster",Color("f5e3a1"),.35),trim)
-			_openings(root,w,d,1,height+.4,door,flat(Color("3d8b5a"),.6),rng,true)
-			_gable(root,w,d,height+.4,.45,Color("b5532f"),_textured("lime_plaster",Color("f5e3a1"),.35))
-			var bell:=Vector3(0,height+2.8,-d*.25)
+			_model(root,"casa",rng,w,d)
+			var bell:=Vector3(0,height+3.6,-d*.25)
 			G.box(root,bell,Vector3(1.4,1.6,1.4),trim);G.cylinder(root,bell+Vector3(0,1.3,0),1.1,1.,flat(Color("b5532f"),.6),.02,4).rotation.y=PI*.25
 			_collider(root,Vector3(w,height+2.,d),Vector3(0,(height+2.)*.5,0))
 		_:
-			var boards:=_textured("weathered_wood",Color("7a6a55").lerp(Color("9aa3a8"),rng.randf()*.5),1.4)
 			_plinth(root,w,d,plinth,stone)
-			G.box(root,Vector3(0,2.6,0),Vector3(w,5.2,d),boards)
-			G.box(root,Vector3(0,1.8,-d*.5-.04),Vector3(w*.42,3.6,.08),door)
-			for x: float in [-w*.3,w*.3]:G.box(root,Vector3(x,3.9,-d*.5-.04),Vector3(1.4,.8,.06),_glass())
-			_gable(root,w,d,5.2,.3,Color("8a8f94"),boards)
+			_model(root,"galpao",rng,w,d)
 			_collider(root,Vector3(w,7.,d),Vector3(0,3.5,0))
 	return root
 
