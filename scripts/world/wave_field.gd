@@ -40,12 +40,12 @@ static func sea_groups(v: Vector2,i: int) -> float:
 	var s2:=sin(-v.x*.0019+v.y*.0043-time*.007+fi*1.3)
 	var s3:=sin(v.x*.0057-v.y*.0023+time*.013+fi*.4)
 	var g:=.5+.5*(s1*.5+s2*.35+s3*.15)
-	return lerpf(.78,1.18,g) if i<3 else lerpf(.6,1.3,g)
+	return lerpf(.85,1.15,g) if i<3 else lerpf(.75,1.15,g)
 
 ## Wandering crest lines (ocean_common sea_warp).
 static func sea_warp(v: Vector2,w: Vector4,i: int) -> float:
 	var fi:=float(i)
-	return sin(v.dot(Vector2(-w.y,w.x))*.0105+fi*1.7)*1.3+sin(v.dot(Vector2(.0047,-.0063))+fi*.9)*1.1+sin(v.dot(Vector2(.021,-.017))+fi*2.3)*(.4 if i<3 else 1.2)
+	return sin(v.dot(Vector2(-w.y,w.x))*.0105+fi*1.7)*.6+sin(v.dot(Vector2(.0047,-.0063))+fi*.9)*.6+sin(v.dot(Vector2(.021,-.017))+fi*2.3)*(.2 if i<3 else .5)
 
 ## Depth of the whirlpool funnel at a point (negative), plus its ripple; 0 outside every whirlpool.
 static func whirl_offset(v: Vector2) -> float:
@@ -79,7 +79,7 @@ static func advance(delta: float, w: float, e: float, r: float, d: Vector2) -> v
 	time+=delta; wind=w; energy=e; rain=r; direction=d
 	waves.clear()
 	for i: int in 8:
-		var angle: float=[.10,-.56,.61,-.35,.48,-.62,.3,-.27][i]
+		var angle: float=[.10,-.56,.61,-.28,1.1,-1.3,.8,-.7][i]
 		var heading:=Vector2(.9,.43).normalized().lerp(d,.25 if i<3 else .8).normalized().rotated(angle)
 		var k: float=TAU/LENGTHS[i]
 		phases[i]=fposmod(phases[i]+sqrt(9.81*k)*delta,TAU)

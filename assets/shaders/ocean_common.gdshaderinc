@@ -28,7 +28,7 @@ float sea_groups(vec2 p,int i){
 	float s1=sin(p.x*.0031+p.y*.0017+sea_time*.011+fi*.6);
 	float s2=sin(-p.x*.0019+p.y*.0043-sea_time*.007+fi*1.3);
 	float s3=sin(p.x*.0057-p.y*.0023+sea_time*.013+fi*.4);
-	return i<3?mix(.78,1.18,.5+.5*(s1*.5+s2*.35+s3*.15)):mix(.6,1.3,.5+.5*(s1*.5+s2*.35+s3*.15));
+	return i<3?mix(.85,1.15,.5+.5*(s1*.5+s2*.35+s3*.15)):mix(.75,1.15,.5+.5*(s1*.5+s2*.35+s3*.15));
 }
 // Short waves fade out with distance from the camera before the grid gets too coarse to carry them,
 // otherwise they alias into long streaks and lattices across the sea. Visual only: wave_field.gd keeps
@@ -44,7 +44,7 @@ float sea_detail_fade(float reach,int i){
 // Crest lines bend and wander so the same wave train never reads as a straight repeating stripe.
 float sea_warp(vec2 p,vec4 w,int i){
 	float fi=float(i);
-	return sin(dot(p,vec2(-w.y,w.x))*.0105+fi*1.7)*1.3+sin(dot(p,vec2(.0047,-.0063))+fi*.9)*1.1+sin(dot(p,vec2(.021,-.017))+fi*2.3)*(i<3?.4:1.2);
+	return sin(dot(p,vec2(-w.y,w.x))*.0105+fi*1.7)*.6+sin(dot(p,vec2(.0047,-.0063))+fi*.9)*.6+sin(dot(p,vec2(.021,-.017))+fi*2.3)*(i<3?.2:.5);
 }
 #include "res://assets/shaders/archipelago_coast.gdshaderinc"
 float sea_exposure(vec2 p,vec4 c) {

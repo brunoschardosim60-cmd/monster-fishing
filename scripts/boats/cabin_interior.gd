@@ -84,6 +84,9 @@ static func build(parent: Node3D,spec: Dictionary,kind: String) -> Node3D:
 		"veleiro":_saloon(root,r,y0,y1,teak,cloth,white,brass,dark,blocks)
 		"chalupa":_captain_cabin(root,r,y0,y1,blocks)
 		"escuna":_lower_deck(root,r,y0,y1,teak,cloth,white,brass,dark,blocks)
+	# Furniture from the joinery set brings its own colliders for houses; aboard, the cabin's blocks do
+	# that job, and a static body inside the boat would snag its own hull.
+	for body: Node in root.find_children("*","StaticBody3D",true,false):body.queue_free()
 	root.set_meta("blocks",blocks)
 	root.visible=false
 	return root

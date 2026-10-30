@@ -101,7 +101,7 @@ static func build(kind: String) -> Node3D:
 		var spin:=Node3D.new();spin.name="RodaDoLeme";mount.add_child(spin)
 		for part: Node3D in wheel_parts:
 			var t: Transform3D=_to_root(part,root)
-			part.get_parent().remove_child(part);spin.add_child(part);part.transform=mount.transform.affine_inverse()*t
+			part.owner=null;part.get_parent().remove_child(part);spin.add_child(part);part.transform=mount.transform.affine_inverse()*t
 		root.set_meta("wheel",spin)
 	return root
 

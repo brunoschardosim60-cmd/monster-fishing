@@ -40,7 +40,7 @@ func _run() -> void:
 	game.fishing_visual.target=Vector3(25,0,-80)
 	game.fishing_visual.update_line(game.player.rod_tip(),2,0.)
 	var bobber: Vector3=game.fishing_visual.bobber.global_position
-	_check(absf(bobber.y-Waves.height_at(bobber)-.13)<.001,"fishing float stays on the rendered wave surface")
+	_check(absf(bobber.y-Waves.height_at(bobber)-.02)<.001,"fishing float rides in the rendered wave surface, half its bulb under water")
 	var old_time:=Waves.time
 	paused=true
 	for i: int in 10: await process_frame
