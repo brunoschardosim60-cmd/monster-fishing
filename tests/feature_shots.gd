@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -744,8 +744,9 @@ func _monstros() -> void:
 			for i: int in 30:await physics_frame
 			for k: int in 4:
 				var at: Vector3=(lair.node as Node3D).global_position
-				var cam:=b.global_position+(b.global_position-at).normalized()*14.+Vector3(0,7,0)
-				await shot("monstro_%s_%d"%[kind,k],cam,at+Vector3(0,5 if kind!="leviata" else 0,0),1)
+				var away: float={"kraken":30.,"serpente":14.,"leviata":40.}[kind]
+				var cam:=b.global_position+(b.global_position-at).normalized()*away+Vector3(0,9,0)
+				await shot("monstro_%s_%d"%[kind,k],cam,at+Vector3(0,8,0),1)
 				for i: int in 25:await physics_frame
 			lair.state="dormindo";(lair.node as Node3D).visible=false
 			break
@@ -939,3 +940,63 @@ func _chalupa() -> void:
 	for i: int in 20:await process_frame
 	var eye: Transform3D=game.player.camera.global_transform
 	await shot("chalupa_cabine",b._hull.to_global(Vector3(1.2,2.7,3.7)),b._hull.to_global(Vector3(-.3,1.4,6.3)),1)
+
+## Survey of the town as it stands: houses, ground, trees and people up close.
+func _vila() -> void:
+	var w=game.world;w.ocean.cycle_enabled=false;w.ocean.hour=10.;w.ocean.weather.settle(0)
+	for i: int in 30:await process_frame
+	var t=w.village.town
+	var res: Array=[]
+	for n in w.find_children("*","Node3D",true,false):
+		if n.get_script()!=null and str(n.get_script().resource_path).ends_with("village_resident.gd"):res.append(n)
+	await shot("vila_porto",Vector3(20,9,-10),Vector3(-10,4,30),1)
+	await shot("vila_rua",Vector3(-140,6,10),Vector3(-160,4,40),1)
+	await shot("vila_alto",Vector3(-110,40,-40),Vector3(-160,0,40),1)
+	if res.size()>0:
+		var r: Node3D=res[0]
+		await shot("vila_npc",r.global_position+(-r.global_basis.z)*2.4+Vector3(0,1.4,0)+r.global_basis.x*.6,r.global_position+Vector3(0,1.,0),1)
+		var r2: Node3D=res[mini(5,res.size()-1)]
+		await shot("vila_npc2",r2.global_position+(-r2.global_basis.z)*3.+Vector3(.8,1.6,0),r2.global_position+Vector3(0,1.,0),1)
+	var seen:=0
+	for h: Node3D in t.houses:
+		if not str(h.get_meta("style","")) in ["costeira","sobrado","cabana"]:continue
+		var front: Vector3=h.global_transform*Vector3(5.,3.,-12.)
+		await shot("vila_casa%d"%seen,front,h.global_transform*Vector3(0,2.5,0),1)
+		seen+=1
+		if seen>=3:break
+	# Trees: aim at real grove instances near home, the eye on the ground beside them.
+	var shown:=0
+	for g in root.get_tree().get_nodes_in_group("nature_near"):
+		var mm: MultiMesh=(g as MultiMeshInstance3D).multimesh
+		if mm.instance_count==0:continue
+		var at: Vector3=(g as Node3D).global_transform*mm.get_instance_transform(0).origin
+		if Vector2(at.x,at.z).length()>600.:continue
+		var eye:=at+Vector3(16,0,12);eye.y=_ground(eye)+3.
+		await shot("vila_mata%d"%shown,eye,at+Vector3(0,5,0),1)
+		var low:=at+Vector3(5,0,4);low.y=_ground(low)+1.6
+		await shot("vila_chao%d"%shown,low,at+Vector3(-3,-1.,-3).lerp(at,.2),1)
+		shown+=1
+		if shown>=3:break
+
+func _ground(p: Vector3) -> float:
+	var q:=PhysicsRayQueryParameters3D.create(Vector3(p.x,300,p.z),Vector3(p.x,-50,p.z))
+	var hit:=game.get_world_3d().direct_space_state.intersect_ray(q)
+	return float(hit.position.y) if not hit.is_empty() else 0.
+
+## The remote islands: each seen from the sea and from its own shore.
+func _ilhas() -> void:
+	var w=game.world;w.ocean.cycle_enabled=false;w.ocean.hour=10.;w.ocean.weather.settle(0)
+	var n:=0
+	for isl in w.find_children("Island_*","MeshInstance3D",true,false):
+		var box: AABB=(isl as MeshInstance3D).get_aabb();var c: Vector3=(isl as Node3D).global_transform*box.get_center()
+		var r: float=maxf(box.size.x,box.size.z)*.5
+		var out:=Vector3(c.x,0,c.z).normalized() if Vector2(c.x,c.z).length()>1. else Vector3.FORWARD
+		var eye:=c+out*(r+70.);eye.y=18.
+		w.position=w.position
+		game.boat.global_position=eye+Vector3(0,-18,0)
+		for i: int in 40:await process_frame
+		await shot("ilha%d_mar"%n,eye,Vector3(c.x,8,c.z),1)
+		var shore:=c+out*r*.45;shore.y=_ground(shore)+1.7
+		await shot("ilha%d_chao"%n,shore,Vector3(c.x,_ground(c)+3.,c.z),1)
+		n+=1
+		if n>=4:break

@@ -172,10 +172,10 @@ func _slaps(delta: float) -> void:
 		_slap_cool[i]=maxf(0.,_slap_cool[i]-delta)
 		# Forward motion drives the bow into the waves too.
 		var drive: float=speed+(maxf(0.,float(boat.speed))*.12 if i<2 else 0.)
-		if drive>.75 and rel>-.35 and _slap_cool[i]<=0. and delta>0.:
+		if drive>.55 and rel>-.35 and _slap_cool[i]<=0. and delta>0.:
 			_slap_cool[i]=randf_range(.35,.6)
 			slaps+=1
-			var hard: float=clampf((drive-.75)/2.5,0.,1.)
+			var hard: float=clampf((drive-.55)/2.5,0.,1.)
 			if game!=null:
 				var ear: float=game.player.global_position.distance_to(side_world)
 				if ear<60.:game.audio.cue_at("slap",side_world,-8.+hard*10.)

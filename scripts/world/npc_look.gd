@@ -24,4 +24,6 @@ static func for_id(id: int) -> Dictionary:
 	look["backpack"]=(id%3)!=1
 	look["height"]=.93+float((id*7)%9)*.0175
 	look["build"]=.96+float((id*5)%7)*.012
+	# Stylised body (fisher in oilskins, sailor, innkeeper, old captain, market women, cabin boy, docker).
+	look["body"]=preload("res://scripts/visuals/folk_body.gd").path_for(id)
 	return look

@@ -42,6 +42,26 @@ void fragment(){
 	vec3 painted=mix(biome_ground,biome_accent,smoothstep(.36,.66,macro)*.9+smoothstep(10.,34.,wp.y)*.3);
 	painted*=(.5+.6*lum)*mix(.86,1.14,detail)*mix(.9,1.1,macro2);
 	turf=saturate_color(turf*vec3(.84,1.07,.79),1.2);
+	// Painted ground (Sea of Thieves look): broad soft patches of warm, mid and cool greens; the photo
+	// texture only modulates brightness, so no tiling shows from afar. Dry yellow grass where the turf
+	// thins towards the sand, bare earth patches, darker cooler grass on slopes.
+	float tl=dot(turf,vec3(.3333));
+	float shade=mix(.78,1.18,clamp(tl*2.2,0.,1.))*mix(.9,1.1,detail);
+	vec3 g_cool=vec3(.035,.1,.04),g_mid=vec3(.1,.23,.045),g_warm=vec3(.3,.38,.07),g_dry=vec3(.42,.36,.13),earth=vec3(.2,.12,.06);
+	float big=texture(noise_tex,wp.xz*.013+vec2(.71,.23)).r;
+	vec3 pg=mix(g_cool,g_mid,smoothstep(.3,.52,big+macro2*.25-.1));
+	pg=mix(pg,g_warm,smoothstep(.55,.78,macro+n*.18)*.85);
+	float slope=1.-normalize(wn).y;
+	pg=mix(pg,g_cool*.9,smoothstep(.12,.35,slope)*.7);
+	float edge=1.-smoothstep(.55,.95,grass);
+	pg=mix(pg,g_dry,clamp(edge*1.6+smoothstep(.72,.9,macro2)*.5,0.,1.)*.85);
+	float bare=smoothstep(.3,.12,texture(noise_tex,wp.xz*.045+vec2(.13,.57)).r+detail*.08);
+	pg=mix(pg,earth*mix(.8,1.2,detail),bare*.8);
+	turf=mix(turf,pg*shade*1.1,.9*(1.-biome_paint));
+	// Remote islands get the same painterly breakup in their own colours: big light/dark patches,
+	// darker slopes, sun-bleached flats.
+	painted*=mix(.74,1.16,smoothstep(.25,.75,big))*mix(1.,.8,smoothstep(.12,.4,slope));
+	painted=mix(painted,painted*vec3(1.12,1.1,1.0)+.03,smoothstep(.62,.85,macro2)*(1.-smoothstep(.1,.3,slope))*.6);
 	turf=mix(turf,painted,biome_paint);
 	sand*=vec3(1.05,1.0,.9);
 	float wash=.12+.1*sin(sea_time*1.15-wp.x*.12-wp.z*.14);

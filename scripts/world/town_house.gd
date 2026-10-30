@@ -33,6 +33,28 @@ static func _glass() -> StandardMaterial3D:
 		windows.emission_enabled=true;windows.emission=Color("ffc875");windows.emission_energy_multiplier=0.
 	return windows
 
+## Footprint each modelled house was built for (metres): scaled to the plot.
+const MODEL_SIZE: Dictionary={"casa":Vector2(7,6),"sobrado":Vector2(7,6),"cabana":Vector2(5,4.5)}
+static func _model(root: Node3D,kind: String,rng: RandomNumberGenerator,w: float,d: float) -> void:
+	var path:="res://assets/environment/houses/%s_%d.glb"%[kind,1+rng.randi()%3]
+	var key:="model/"+path
+	if not _cache.has(key):_cache[key]=load(path)
+	var node: Node3D=(_cache[key] as PackedScene).instantiate();node.name="Modelo";root.add_child(node)
+	var size: Vector2=MODEL_SIZE[kind]
+	node.scale=Vector3(w/size.x,1.,d/size.y)
+	for mesh: MeshInstance3D in node.find_children("*","MeshInstance3D",true,false):
+		mesh.visibility_range_end=420.
+		for i: int in mesh.mesh.get_surface_count():
+			var src: Material=mesh.mesh.surface_get_material(i)
+			var name: String=str(src.resource_name) if src!=null else ""
+			if name.begins_with("Vidro"):mesh.set_surface_override_material(i,_glass());continue
+			var mkey:="painted/"+name
+			if not _cache.has(mkey):
+				var m:=StandardMaterial3D.new();m.vertex_color_use_as_albedo=true;m.roughness=.5 if name.begins_with("Ferro") else .88
+				if name.begins_with("Ferro"):m.metallic=.4
+				_cache[mkey]=m
+			mesh.set_surface_override_material(i,_cache[mkey])
+
 ## Builds a building. `plinth` is how far the stone base reaches below the floor (metres).
 static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,plinth: float) -> Node3D:
 	var root:=Node3D.new();root.name="Casa_"+style
@@ -48,42 +70,11 @@ static func build(style: String,w: float,d: float,rng: RandomNumberGenerator,pli
 	var door:=_textured("teak",Color("7a4e2d").lerp(SHUTTERS[rng.randi()%SHUTTERS.size()],.3),1.2)
 	var height:=3.2
 	match style:
-		"costeira":
+		"costeira","sobrado","cabana":
+			# Plank houses modelled in Blender (tools/blender/houses.py): boards, shingles, stones, shutters.
+			if style=="sobrado":height=6.4
 			_plinth(root,w,d,plinth,stone)
-			_box_walls(root,w,d,height,wall,trim)
-			_openings(root,w,d,1,height,door,shutter,rng,true)
-			_gable(root,w,d,height,.62,roof_color,wall)
-			if rng.randf()<.6:_chimney(root,w,d,height,stone)
-			_collider(root,Vector3(w,height+2.,d),Vector3(0,(height+2.)*.5,0))
-		"sobrado":
-			height=6.4
-			_plinth(root,w,d,plinth,stone)
-			_box_walls(root,w,d,height,wall,trim)
-			G.box(root,Vector3(0,3.2,0),Vector3(w+.12,.18,d+.12),trim)
-			_openings(root,w,d,2,3.2,door,shutter,rng,true)
-			_gable(root,w,d,height,.55,roof_color,wall)
-			var balcony_w:=minf(w*.6,5.)
-			G.box(root,Vector3(0,3.25,-d*.5-.6),Vector3(balcony_w,.14,1.2),stone)
-			var rail:=flat(Color("2b2f33"),.4,.6)
-			G.beam(root,Vector3(-balcony_w*.5,4.25,-d*.5-1.15),Vector3(balcony_w*.5,4.25,-d*.5-1.15),.04,rail)
-			for i: int in int(balcony_w/.5)+1:
-				var x:=-balcony_w*.5+float(i)*.5
-				G.beam(root,Vector3(x,3.3,-d*.5-1.15),Vector3(x,4.25,-d*.5-1.15),.02,rail)
-			_chimney(root,w,d,height,stone)
-			_collider(root,Vector3(w,height+2.5,d),Vector3(0,(height+2.5)*.5,0))
-		"cabana":
-			var logs:=_textured("weathered_wood",Color("6b4f32").lerp(Color("8a6a4a"),rng.randf()),1.2)
-			_plinth(root,w,d,plinth,stone)
-			G.box(root,Vector3(0,height*.5,0),Vector3(w,height,d),logs)
-			for i: int in 7:
-				var y:=.25+float(i)*.45
-				for side: float in [-1.,1.]:G.box(root,Vector3(0,y,side*(d*.5+.03)),Vector3(w+.25,.1,.06),wood)
-			_openings(root,w,d,1,height,door,flat(Color("3a2a1c"),.8),rng,false)
-			_gable(root,w,d,height,.9,Color("3e3a36").lerp(Color("5a4a3a"),rng.randf()),logs)
-			_chimney(root,w,d,height,stone)
-			G.box(root,Vector3(0,.15,-d*.5-1.),Vector3(w*.8,.25,2.),wood)
-			for x: float in [-w*.38,w*.38]:G.cylinder(root,Vector3(x,1.4,-d*.5-1.8),.09,2.5,wood)
-			var porch:=G.box(root,Vector3(0,2.75,-d*.5-1.),Vector3(w*.85,.08,2.2),wood);porch.rotation.x=-.18
+			_model(root,{"costeira":"casa"}.get(style,style),rng,w,d)
 			_collider(root,Vector3(w,height+2.,d),Vector3(0,(height+2.)*.5,0))
 		"palafita":
 			var planks:=_textured("weathered_wood",Color("a08a68").lerp(wall_color,.25),1.5)

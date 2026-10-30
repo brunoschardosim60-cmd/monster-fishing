@@ -361,12 +361,12 @@ func _decorate_remote_island(center: Vector3,size: Vector2,biome: String,palette
 
 ## Flora mix per biome: [kind, weight]. Kinds starting with "glb" use the imported meshes, the rest are procedural.
 const FLORA_MIX: Dictionary={
-	"tropical":[["glb2",.34],["glb3",.26],["shrub",.28],["reed",.12]],
+	"tropical":[["glb2",.3],["glb3",.22],["glb1",.12],["glb7",.24],["reed",.12]],
 	"frost":[["snowpine",.55],["glb0",.2],["shrub",.1],["dead",.15]],
-	"mountain":[["pine",.55],["glb0",.2],["windpine",.15],["shrub",.1]],
+	"mountain":[["glb6",.45],["glb0",.2],["windpine",.15],["glb7",.2]],
 	"desert":[["cactus",.38],["agave",.4],["dead",.22]],
 	"volcanic":[["charred",.7],["dead",.12],["agave",.18]],
-	"storm":[["windpine",.55],["dead",.25],["shrub",.2]],
+	"storm":[["glb6",.3],["windpine",.3],["dead",.2],["glb7",.2]],
 	"shadow":[["twisted_violet",.6],["dead",.25],["reed",.15]],
 	"mystic":[["twisted_teal",.6],["glb1",.15],["reed",.25]],
 }
@@ -507,7 +507,7 @@ func _populate_wildlife(center: Vector3,size: Vector2,biome: String,lobe: int) -
 
 func _plant_remote_flora(center: Vector3,size: Vector2,biome: String,palette: Dictionary,lobe: int) -> void:
 	var mix: Array=FLORA_MIX.get(biome,[["glb1",.45],["glb0",.2],["shrub",.25],["reed",.1]])
-	var count:=int(float(palette["trees"])*clampf(size.x*size.y/90000.,.6,4.5)*4.0)
+	var count:=int(float(palette["trees"])*clampf(size.x*size.y/90000.,.6,4.5)*9.0)
 	var groups: Dictionary={}
 	var clusters: Array[Vector2]=[]
 	for c: int in 5:clusters.append(Vector2(rng.randf()*TAU,rng.randf_range(.2,.5)))

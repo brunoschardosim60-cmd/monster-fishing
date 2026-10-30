@@ -1,7 +1,9 @@
 extends RefCounted
 ## Shared imported meshes. Wind is GPU-driven; no per-tree process callbacks.
 const G=preload("res://scripts/world/geometry.gd")
-const NAMES: Array[String]=["island_tree_01","island_tree_02","coconut_palm_0","coconut_palm_1","fern_02","coastal_cliff_02"]
+const NAMES: Array[String]=["island_tree_01","island_tree_02","coconut_palm_0","coconut_palm_1","fern_02","coastal_cliff_02","pine_01","bush_01"]
+## Kinds that are trees (impostors far away, shadow proxies, wind sway by height).
+const TREES: Array[int]=[0,1,2,3,6]
 static var cache: Dictionary={}
 static func wind(time: float,strength: float,direction: Vector2) -> void:
 	for entries: Array in cache.values():
@@ -18,7 +20,7 @@ static func parts(kind: int) -> Array[Dictionary]:
 	var bounds:=AABB();var first:=true
 	for part: Dictionary in raw:
 		var b: AABB=part.transform*part.mesh.get_aabb();bounds=b if first else bounds.merge(b);first=false
-	var desired: float=[12.,10.,9.,11.,.7,12.][kind]
+	var desired: float=[12.,10.,9.,11.,.7,12.,13.,2.4][kind]
 	var factor:=desired/maxf(bounds.size.y,.01)
 	var shift:=Vector3(bounds.get_center().x,bounds.position.y,bounds.get_center().z)
 	var result: Array[Dictionary]=[]
@@ -27,7 +29,7 @@ static func parts(kind: int) -> Array[Dictionary]:
 		transform.origin-=shift;transform=Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*factor),Vector3.ZERO)*transform
 		var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES);st.append_from(part.mesh,part.surface,transform)
 		var material: Material=part.material
-		var foliage:=kind<5 and (kind==4 or "leav" in str(material.resource_name).to_lower() or "frond" in str(material.resource_name).to_lower())
+		var foliage:=kind!=5 and (kind==4 or "leav" in str(material.resource_name).to_lower() or "frond" in str(material.resource_name).to_lower())
 		if foliage and material is StandardMaterial3D:
 			var wind:=ShaderMaterial.new();wind.shader=preload("res://assets/shaders/living_foliage.gdshader")
 			wind.set_shader_parameter("albedo_tex",material.albedo_texture);wind.set_shader_parameter("tint",material.albedo_color)
@@ -36,6 +38,7 @@ static func parts(kind: int) -> Array[Dictionary]:
 			material=wind
 		elif material is StandardMaterial3D:
 			material=material.duplicate();material.cull_mode=BaseMaterial3D.CULL_DISABLED;material.roughness=.9
+			if material.albedo_texture==null:material.vertex_color_use_as_albedo=true
 		result.append({"mesh":st.commit(),"material":material,"foliage":foliage})
 	source.free();cache[kind]=result;return result
 
@@ -49,23 +52,23 @@ static func plant(parent: Node3D,kind: int,at: Vector3,size: float=1.,angle: flo
 	var node:=Node3D.new();node.name=NAMES[kind];parent.add_child(node);node.position=at;node.scale=Vector3.ONE*size;node.rotation.y=angle
 	for part: Dictionary in parts(kind):
 		var mesh:=G.mesh_node(node,part.mesh,part.material,Vector3.ZERO)
-		mesh.visibility_range_end=260. if kind<4 else 1200.
+		mesh.visibility_range_end=260. if kind in TREES else 1200.
 	return node
 
 static func grove(parent: Node3D,kind: int,transforms: Array[Transform3D]) -> void:
 	if transforms.is_empty():return
 	var far_path: String="res://assets/environment/nature/"+NAMES[kind]+"_impostor.png"
-	var has_far:=kind<4 and ResourceLoader.exists(far_path)
+	var has_far:=kind in TREES and ResourceLoader.exists(far_path)
 	for part: Dictionary in parts(kind):
 		var mm:=MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.mesh=part.mesh;mm.instance_count=transforms.size()
 		for i: int in transforms.size():mm.set_instance_transform(i,transforms[i])
 		var node:=MultiMeshInstance3D.new();node.multimesh=mm;node.material_override=part.material
-		node.visibility_range_end=125. if has_far else (110. if kind==4 else 1100.);node.visibility_range_end_margin=18.
+		node.visibility_range_end=125. if has_far else (110. if kind in [4,7] else 1100.);node.visibility_range_end_margin=18.
 		if part.foliage:node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(node)
 		if has_far:node.add_to_group("nature_near")
 		if part.foliage:node.add_to_group("nature_foliage")
-	if kind<4:
+	if kind in TREES:
 		var proxy:=SphereMesh.new();proxy.radius=3.8 if kind<2 else 2.7;proxy.height=6. if kind<2 else 2.;proxy.radial_segments=12;proxy.rings=6
 		proxy.material=G.material(Color("384c36"))
 		var mm:=MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.mesh=proxy;mm.instance_count=transforms.size()

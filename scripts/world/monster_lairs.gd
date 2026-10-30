@@ -18,13 +18,14 @@ const Waves=preload("res://scripts/world/wave_field.gd")
 ## name, kind, rough position (searched for deep water), territory radius, observation reward.
 ## Height of the sea serpent model in metres (about a third of it stays under water).
 const SERPENT_SIZE: float=30.
+const KRAKEN_SCALE: float=1.8
 ## Harpoon hits needed, chase speed (m/s) and bounty per guardian.
 const HEALTH: Dictionary={"kraken":5,"serpente":6,"leviata":8}
 const CHASE: Dictionary={"kraken":7.,"serpente":10.,"leviata":8.}
 const BOUNTY: Dictionary={"kraken":160,"serpente":190,"leviata":240}
 ## Height above its node where each guardian is hit (the part above water).
-const TARGET_HEIGHT: Dictionary={"kraken":3.,"serpente":16.,"leviata":1.}
-const TARGET_RADIUS: Dictionary={"kraken":7.,"serpente":7.,"leviata":14.}
+const TARGET_HEIGHT: Dictionary={"kraken":5.,"serpente":16.,"leviata":7.}
+const TARGET_RADIUS: Dictionary={"kraken":12.,"serpente":7.,"leviata":12.}
 var _shots: Array[Dictionary]=[]
 const LAIRS: Array=[["Fossa do Kraken","kraken",Vector2(-1500,-1450),240.,60],
 	["Abismo da Serpente","serpente",Vector2(1700,-2250),260.,70],
@@ -109,6 +110,8 @@ func _build(kind: String) -> Node3D:
 				arm.transform=Transform3D(Basis(side,out,up),Vector3(cos(a)*2.6,.2,sin(a)*2.6));arm.name="Tentaculo_%d"%k
 				arm.extra_cull_margin=16.;root.add_child(arm);arms.append(arm_mat)
 			root.set_meta("arms",arms)
+			# A real kraken: the mantle stands ~19 m out of the water and the arms reach 25 m.
+			root.scale=Vector3.ONE*KRAKEN_SCALE
 		"serpente":
 			# Bruno's sea-dragon model, painted by the pipeline: the coil stays under water, neck and head
 			# rise above it. The shader sways the upper body and throws it forward when it strikes.
@@ -119,11 +122,21 @@ func _build(kind: String) -> Node3D:
 			body.extra_cull_margin=12.;root.add_child(body)
 			root.set_meta("body",body)
 		_:
-			# The leviathan: a colossal dark whale with a spined back and rows of glowing photophores.
-			var levi:=preload("res://scripts/creatures/big_animals.gd").whale(36.,true)
-			for child: Node in levi.get_children():levi.remove_child(child);root.add_child(child)
-			for key: String in levi.get_meta_list():root.set_meta(key,levi.get_meta(key))
-			levi.free()
+			# The leviathan: a 90 m sea serpent modelled in Blender (tools/blender/leviathan.py): scaled back
+			# in bands, dorsal spikes, fins and frills, a dragon head with horns and a jaw that opens, and
+			# glowing photophores. leviathan_body.gdshader swims it, raises the head and lunges.
+			var model: Node3D=load("res://assets/monsters/leviata/leviata.glb").instantiate();model.name="Leviata";root.add_child(model)
+			var parts: Array[GeometryInstance3D]=[]
+			var shader:=preload("res://assets/shaders/leviathan_body.gdshader")
+			for mi: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
+				for i: int in mi.mesh.get_surface_count():
+					var src: Material=mi.mesh.surface_get_material(i)
+					var nm: String=str(src.resource_name) if src!=null else ""
+					var m:=ShaderMaterial.new();m.shader=shader
+					m.set_shader_parameter("is_jaw",nm.begins_with("Mandibula"));m.set_shader_parameter("glow",nm.begins_with("Brilho"))
+					mi.set_surface_override_material(i,m)
+				mi.extra_cull_margin=30.;parts.append(mi)
+			root.set_meta("parts",parts)
 	return root
 
 func _bubbles() -> CPUParticles3D:
@@ -188,12 +201,12 @@ func _hunt(lair: Dictionary,delta: float,b: Vector3,boat: Node3D,stealthy: bool)
 	var kind: String=lair.kind
 	var t: float=lair.clock
 	lair.angle=float(lair.angle)+delta*(.12 if kind=="kraken" else (.1 if kind=="serpente" else .08))
-	var orbit:={"kraken":30.,"serpente":30.,"leviata":45.}
+	var orbit:={"kraken":38.,"serpente":30.,"leviata":55.}
 	var r: float=orbit.get(kind,30.)
 	var want:=b+Vector3(cos(float(lair.angle)),0,sin(float(lair.angle)))*r
 	var surface:=Waves.height_at(want)
 	var rise:=smoothstep(0.,5.,t)
-	var depth: float={"kraken":-1.5,"serpente":0.,"leviata":-6.}.get(kind,-2.)
+	var depth: float={"kraken":-2.5,"serpente":0.,"leviata":-1.2}.get(kind,-2.)
 	want.y=lerpf(surface-(34. if kind=="serpente" else 14.),surface+depth,rise)
 	# It chases at a limited speed: a boat on turbo can open the gap and leave the territory.
 	var p: Vector3=lair.pos
@@ -233,15 +246,15 @@ var boarding: Array[Dictionary]=[]
 func _boarding_arm(boat: Node3D,side: float,along: float) -> void:
 	var Meshes:=preload("res://scripts/creatures/creature_meshes.gd")
 	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/kraken_skin.gdshader")
-	mat.set_shader_parameter("tentacle",true);mat.set_shader_parameter("arm_length",11.)
+	mat.set_shader_parameter("tentacle",true);mat.set_shader_parameter("arm_length",16.)
 	mat.set_shader_parameter("curl",.05);mat.set_shader_parameter("phase",_rng.randf()*TAU);mat.set_shader_parameter("wave",.05)
-	var arm:=MeshInstance3D.new();arm.name="TentaculoNoCasco";arm.mesh=Meshes.tube("kraken_boarding_arm",11.,.95,.07,30,14)
-	arm.material_override=mat;arm.extra_cull_margin=14.;add_child(arm)
+	var arm:=MeshInstance3D.new();arm.name="TentaculoNoCasco";arm.mesh=Meshes.tube("kraken_boarding_arm_big",16.,1.4,.09,34,14)
+	arm.material_override=mat;arm.extra_cull_margin=20.;add_child(arm)
 	var beam: float=float(boat.hull_spec.beam)*.5*float(boat.size_factor)
 	var at: Vector3=boat.global_position+boat.global_basis.x*side*(beam+1.4)+boat.global_basis.z*along
 	# Arm grows along +Y; its sucker side (+Z) faces the boat, so it curls over onto the deck.
 	var to_boat: Vector3=-boat.global_basis.x*side
-	arm.global_transform=Transform3D(Basis(to_boat.cross(Vector3.UP).normalized(),Vector3.UP,to_boat),at-Vector3(0,10,0))
+	arm.global_transform=Transform3D(Basis(to_boat.cross(Vector3.UP).normalized(),Vector3.UP,to_boat),at-Vector3(0,15,0))
 	boarding.append({"node":arm,"mat":mat,"t":0.,"base":at})
 	var fx=game.world.ocean.effects
 	if fx!=null:fx.splash(at,2.6,true)
@@ -251,7 +264,7 @@ func _update_boarding(delta: float) -> void:
 		var a: Dictionary=boarding[i];a.t=float(a.t)+delta
 		var t: float=a.t;var arm: MeshInstance3D=a.node;var base: Vector3=a.base
 		# 0–1.1 s rise out of the water, 1.1–1.7 s whip down, hold, 3.2–4.6 s slide back under.
-		var y: float=lerpf(-10.,-1.2,smoothstep(0.,1.1,t))-lerpf(0.,10.,smoothstep(3.2,4.6,t))
+		var y: float=lerpf(-15.,-3.,smoothstep(0.,1.1,t))-lerpf(0.,14.,smoothstep(3.2,4.6,t))
 		arm.global_position=Vector3(base.x,Waves.height_at(base)+y,base.z)
 		(a.mat as ShaderMaterial).set_shader_parameter("slam",smoothstep(1.1,1.7,t)*(1.-smoothstep(2.6,3.4,t)))
 		(a.mat as ShaderMaterial).set_shader_parameter("curl",lerpf(.02,.09,smoothstep(.4,1.1,t)))
@@ -292,8 +305,13 @@ func _animate(lair: Dictionary,t: float) -> void:
 			body.set_instance_shader_parameter("lunge",sin(strike*PI))
 			body.set_instance_shader_parameter("sway",lerpf(.6,1.4,.5+.5*sin(t*.37)))
 		_:
-			preload("res://scripts/creatures/big_animals.gd").beat_fluke(node)
-			if slam>0.:node.position.y+=sin(slam/1.2*PI)*.12
+			# Head held up out of the water, swaying; a strike lunges at the boat with the jaw wide open.
+			var strike:=sin(clampf(slam/1.2,0.,1.)*PI)
+			var raise_head: float=smoothstep(2.,6.,t)*(.75+.25*sin(t*.4))
+			for part: GeometryInstance3D in node.get_meta("parts"):
+				part.set_instance_shader_parameter("raise",raise_head)
+				part.set_instance_shader_parameter("lunge",strike)
+				part.set_instance_shader_parameter("jaw",.12+.08*sin(t*.9)+strike*.55)
 
 
 ## Glowing eggs on the bottom at the heart of the territory.

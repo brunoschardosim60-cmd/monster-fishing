@@ -54,6 +54,8 @@ var left_hand: int=-1
 var rod_grip_basis:=Basis.IDENTITY
 var headwear: Node3D
 var backpack: Node3D
+## The stylised body (folk_body.gd) that replaces the survivalist mesh on NPCs, if any.
+var folk: MeshInstance3D
 var head_bone: int=-1
 var _props: Array=[]
 var chest_bone: int=-1
@@ -119,6 +121,12 @@ func apply_look(look: Dictionary) -> void:
 	mat.set_shader_parameter("skin_mul",look.get("skin",Vector3.ONE));mat.set_shader_parameter("hair_mul",look.get("hair",Vector3.ONE))
 	if ResourceLoader.exists("res://assets/characters/skin_zone_mask.png"):mat.set_shader_parameter("zone_tex",load("res://assets/characters/skin_zone_mask.png"))
 	body.set_surface_override_material(0,mat)
+	if look.has("body"):
+		# Stylised townsfolk (folk_body.gd): own clothes, hair and hat on the same rig and animations.
+		body.visible=false
+		if folk!=null:folk.queue_free()
+		folk=preload("res://scripts/visuals/folk_body.gd").attach(skeleton,str(look.body))
+		look=look.duplicate();look["headwear"]="none";look["backpack"]=false
 	var kind: String=str(look.get("headwear","fisher"))
 	if kind!="fisher":
 		headwear.queue_free()
