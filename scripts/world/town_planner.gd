@@ -42,16 +42,30 @@ var _streets: Array=[]
 var _plazas: Array=[]
 var _clock: float=0.
 var _street: Material
+var _dirt: Material
 var _curb: Material
+## [district name, polyline] of each avenue; lanes of each district are kept in its record ("lanes").
+var _avenue_curves: Array=[]
+## Where the door path of the building being placed goes (a point on a lane, or the square's edge).
+var _yaw_jitter: float=0.
+## Cottages and shacks scattered over the island outside the districts.
+var homesteads: Array=[]
 
 func _ready() -> void:
 	_rng.seed=1977
 	_street=M.surface("cobblestone",Color("c7c1ad"),.35)
+	_dirt=M.surface("forest_floor",Color("c9a878"),.45)
 	_curb=House.flat(Color("9a9b90"),.9)
-	# Every district's avenue is known before any house goes up, so no house is built across one.
+	# Every district's avenue is known before any house goes up, so no house is built across one. Avenues
+	# bend: a gentle S between the square and where they join the rest of the town.
 	for data: Array in DISTRICTS:
-		for link: Vector2 in data[6]:_avenues.append([data[1],link])
+		for link: Vector2 in data[6]:
+			var start: Vector2=data[1]+(link-data[1]).normalized()*(PLAZA_R-.5)
+			var curve:=_bend(start,link,.18)
+			_avenue_curves.append([data[0],curve])
+			for i: int in curve.size()-1:_avenues.append([curve[i],curve[i+1]])
 	for data: Array in DISTRICTS:_district(data)
+	_scatter_homesteads()
 	_bridge(Vector3(-61,1.4,-4),Vector3(-93,Layout.ground(Vector2(-93,-4))+.25,-4),1.6)
 	_clear_ground_cover()
 	var dynamic: Array[Node3D]=[];dynamic.append_array(residents)
@@ -64,9 +78,12 @@ func _district(data: Array) -> void:
 	var styles: Array=data[4];var landmark: String=data[5];var links: Array=data[6];var water: bool=data[7]
 	var record:={"name":name_text,"centre":centre,"houses":[],"doors":[]}
 	var plaza_y:=Layout.ground(centre)+.08
-	if not water:_plaza(centre,plaza_y)
-	for link: Vector2 in links:
-		_street_line(centre,link,3.2)
+	if not water:
+		_plaza(centre,plaza_y)
+		record["lanes"]=_lanes(centre,radius)
+		for lane: PackedVector2Array in record.lanes:_street_path(lane,3.,_street)
+	for av: Array in _avenue_curves:
+		if av[0]==name_text:_street_path(av[1],3.2,_street)
 	G.label(self,name_text,Vector3(centre.x,plaza_y+4.5,centre.y),28)
 	if not landmark.is_empty():
 		var size:=_size_of(landmark)
@@ -85,19 +102,34 @@ func _district(data: Array) -> void:
 		for attempt: int in 60:
 			var angle:=_rng.randf()*TAU
 			if _place("loja_pesca",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+8.+float(attempt)*.4),_size_of("loja_pesca"),centre,water,record):break
-	if name_text in SITE_DISTRICTS:
+	if not water:
 		for attempt: int in 80:
 			var angle:=_rng.randf()*TAU
-			if _place("obra",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+12.+float(attempt)*.4),_size_of("obra"),centre,water,record):break
+			if _place("obra",centre+Vector2(cos(angle),sin(angle))*(PLAZA_R+12.+float(attempt)*.4),_size_of("obra"),centre,water,record) and (record.houses as Array).filter(func(h: Node3D) -> bool:return str(h.get_meta("style",""))=="obra").size()>=2:break
 	var tries:=0
+	var lanes: Array=record.get("lanes",[])
 	while (record.houses as Array).size()<count+(1 if not landmark.is_empty() else 0) and tries<1500:
 		tries+=1
-		# When the inner rings fill up, look a little further out.
-		var ring:=PLAZA_R+8.+_rng.randf()*(radius-PLAZA_R-6.+float(tries/250)*6.)
-		var angle:=_rng.randf()*TAU
-		var at:=centre+Vector2(cos(angle),sin(angle))*ring
 		var style: String=styles[_rng.randi()%styles.size()]
-		_place(style,at,_size_of(style),centre,water,record)
+		var size:=_size_of(style)
+		if water or lanes.is_empty():
+			# Stilt houses: around the point, as before.
+			var ring:=PLAZA_R+8.+_rng.randf()*(radius-PLAZA_R-6.+float(tries/250)*6.)
+			var angle:=_rng.randf()*TAU
+			_yaw_jitter=0.
+			_place(style,centre+Vector2(cos(angle),sin(angle))*ring,size,centre,water,record)
+			continue
+		# Along a lane: either side, set back by a varying yard, turned a little off square to it; one in
+		# four stands further back, up the slope, with its own path down.
+		var lane: PackedVector2Array=lanes[_rng.randi()%lanes.size()]
+		var k: int=_rng.randi_range(1,lane.size()-2)
+		var p: Vector2=lane[k];var dir: Vector2=(lane[k+1]-lane[k-1]).normalized()
+		var normal:=Vector2(-dir.y,dir.x)*(1. if _rng.randf()<.5 else -1.)
+		var back: float=_rng.randf_range(2.5,6.) if _rng.randf()<.75 else _rng.randf_range(10.,22.)
+		var at: Vector2=p+normal*(size.y*.5+back)+dir*_rng.randf_range(-2.,2.)
+		_yaw_jitter=_rng.randf_range(-.3,.3)
+		_place(style,at,size,p,water,record)
+	_yaw_jitter=0.
 	districts.append(record)
 	if water:_boardwalks(record)
 	_dress(record,water,radius)
@@ -205,7 +237,7 @@ func _size_of(style: String) -> Vector2:
 		"prefeitura":return Vector2(15.,10.)
 		"escola":return Vector2(14.,8.)
 		"galpao":return Vector2(11.,9.)
-		"taberna":return Vector2(7.6,13.6)
+		"taberna":return Vector2(9.5,8.5)
 		"loja_pesca":return Vector2(9.,7.)
 		"obra":return Vector2(8.,6.)
 	return Vector2(_rng.randf_range(7.,9.),_rng.randf_range(6.,7.5))
@@ -214,6 +246,7 @@ func _size_of(style: String) -> Vector2:
 func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,record: Dictionary) -> bool:
 	var to_face:=(face-at).normalized()
 	if to_face.length()<.5:to_face=Vector2(0,-1)
+	to_face=to_face.rotated(_yaw_jitter)
 	var yaw:=atan2(-to_face.x,-to_face.y)
 	var half:=size*.5;var reach:=half.length()
 	# Village core, lighthouses, landmarks and other buildings stay clear.
@@ -234,9 +267,9 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 		if _rect_meets_segment(at,half,yaw,st[0],st[1],float(st[2])*.5+.6):return false
 	for tree: Vector2 in _plaza_trees:
 		if _rect_meets_segment(at,half+Vector2(0.,3.5),yaw,tree,tree,2.5):return false
-	if not water:
+	if not water and not bool(record.get("isolated",false)):
 		var door_at:=at+to_face*(half.y+(3.42 if style=="capela" else 0.)+1.6)
-		var square_at:=Vector2(record.centre)+(door_at-Vector2(record.centre)).normalized()*PLAZA_R*.9
+		var square_at:=_door_target(record,door_at)
 		for r: Array in _rects:
 			if _rect_meets_segment(r[0],r[1],r[2],door_at,square_at,1.5):return false
 	var basis:=Basis(Vector3.UP,yaw)
@@ -254,10 +287,10 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 	var depth:=floor_y-lowest+(.3 if water else .5)
 	var building: Node3D
 	if style=="taberna":
-		building=Node3D.new()
-		House._plinth(building,size.x,size.y,depth,M.surface("granite",Color("a9aa9c"),1.))
-		Props.spawn(building,"Tabern",Vector3.ZERO,9.,0.,false,500.)
-		House._collider(building,Vector3(size.x,9.,size.y),Vector3(0,4.5,0))
+		# The tavern: the two-storey plank house in the town's style, with a sign board over the door.
+		building=House.build("sobrado",size.x,size.y,_rng,depth)
+		var board:=G.box(building,Vector3(0,3.6,-size.y*.5-.9),Vector3(2.4,.7,.08),M.surface("weathered_wood",Color("6a4a32"),1.2))
+		G.label(building,"TABERNA",Vector3(0,3.6,-size.y*.5-.96),20)
 	elif style=="obra":
 		building=Node3D.new()
 		House._plinth(building,size.x,size.y,depth,M.surface("granite",Color("a9aa9c"),1.))
@@ -287,8 +320,119 @@ func _place(style: String,at: Vector2,size: Vector2,face: Vector2,water: bool,re
 	_rects.append([at+to_face*steps_len*.5,half+Vector2(0.,steps_len*.5),yaw])
 	(record.doors as Array).append(door)
 	# A building site has no front door yet, so no street of its own.
-	if not water and style!="obra":_street_line(door,Vector2(record.centre)+(door-Vector2(record.centre)).normalized()*PLAZA_R*.9,1.8)
+	if not water and style!="obra" and not bool(record.get("isolated",false)):
+		var target:=_door_target(record,door)
+		# Landmarks and shops face the square on paving; houses have a beaten-earth path to their lane.
+		if style in ["capela","prefeitura","escola","loja_pesca","taberna"]:_street_path(_bend(door,target,.12),1.8,_street)
+		else:_street_path(PackedVector2Array([door,door.lerp(target,.5)+Vector2(-(target-door).y,(target-door).x).normalized()*_rng.randf_range(-.6,.6),target]),1.3,_dirt)
 	return true
+
+## Where a door's path joins the town: the nearest point on the district's lanes, or the square's edge.
+func _door_target(record: Dictionary,door: Vector2) -> Vector2:
+	var centre: Vector2=record.centre
+	var best:=centre+(door-centre).normalized()*PLAZA_R*.9
+	var best_d:=door.distance_to(best)
+	for lane: PackedVector2Array in record.get("lanes",[]):
+		for i: int in lane.size()-1:
+			var ab:=lane[i+1]-lane[i];var t:=clampf((door-lane[i]).dot(ab)/maxf(ab.length_squared(),.001),0.,1.)
+			var q:=lane[i]+ab*t
+			if door.distance_to(q)<best_d:best_d=door.distance_to(q);best=q
+	return best
+
+## A gentle S from a to b: a cubic through two side offsets, sampled every ~4 m.
+func _bend(a: Vector2,b: Vector2,amount: float) -> PackedVector2Array:
+	var d:=b-a;var n:=Vector2(-d.y,d.x).normalized()
+	var c1:=a+d*.33+n*d.length()*amount*_rng.randf_range(-1.,1.)
+	var c2:=a+d*.66+n*d.length()*amount*_rng.randf_range(-1.,1.)
+	var out:=PackedVector2Array()
+	var steps: int=maxi(3,int(d.length()/4.))
+	for i: int in steps+1:
+		var t:=float(i)/float(steps);var u:=1.-t
+		out.append(a*u*u*u+c1*3.*u*u*t+c2*3.*u*t*t+b*t*t*t)
+	return out
+
+## Lanes leaving a square: 3–4 of them, each wandering outwards a step at a time, choosing at every step
+## the heading (of three) that climbs least, so they wind along the slopes instead of running straight.
+func _lanes(centre: Vector2,radius: float) -> Array:
+	var lanes: Array=[]
+	var count: int=3+_rng.randi()%2
+	var start_angle:=_rng.randf()*TAU
+	for l: int in count:
+		var out_angle:=start_angle+TAU*float(l)/float(count)+_rng.randf_range(-.35,.35)
+		var p:=centre+Vector2(cos(out_angle),sin(out_angle))*(PLAZA_R-.5)
+		# Leave the square at a slant, not straight out like a spoke.
+		var heading:=out_angle+_rng.randf_range(.55,.95)*(1. if _rng.randf()<.5 else -1.)
+		var pts:=PackedVector2Array([p])
+		var drift:=_rng.randf_range(-.1,.1)
+		var pull:=-signf(angle_difference(out_angle,heading))*.09   # curls back outwards over the first steps
+		for step: int in int(radius*1.25/4.5):
+			var best_h:=heading;var best_cost:=1e9
+			for dh: float in [-.32,0.,.32]:
+				var h:=heading+dh+drift+(pull if step<6 else 0.)
+				var q:=p+Vector2(cos(h),sin(h))*4.5
+				var cost:=absf(Layout.ground(q)-Layout.ground(p))+absf(dh)*.6+_rng.randf()*.25
+				if q.distance_to(centre)>radius*1.25 or Layout.coast(q).x>-6. or not _lane_clear(q):cost+=100.
+				if cost<best_cost:best_cost=cost;best_h=h
+			if best_cost>=100.:break
+			heading=best_h;p+=Vector2(cos(heading),sin(heading))*4.5;pts.append(p)
+		if pts.size()>=4:lanes.append(pts)
+	return lanes
+
+func _lane_clear(q: Vector2) -> bool:
+	if absf(q.x)<95. and q.y>-30. and q.y<72.:return false
+	for k: Vector3 in KEEP_CLEAR:
+		if q.distance_to(Vector2(k.x,k.y))<k.z+3.:return false
+	for f: Vector3 in footprints:
+		if q.distance_to(Vector2(f.x,f.y))<f.z+2.:return false
+	return true
+
+## A ribbon following a polyline and the ground: mitred joints, so a winding lane reads as one paved way.
+func _street_path(pts: PackedVector2Array,width: float,material: Material) -> void:
+	if pts.size()<2:return
+	for i: int in pts.size()-1:_streets.append([pts[i],pts[i+1],width])
+	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var dense:=PackedVector2Array()
+	for i: int in pts.size()-1:
+		var n: int=maxi(1,int(pts[i].distance_to(pts[i+1])/1.5))
+		for k: int in n:dense.append(pts[i].lerp(pts[i+1],float(k)/float(n)))
+	dense.append(pts[pts.size()-1])
+	var any:=false
+	var prev_l:=Vector3.ZERO;var prev_r:=Vector3.ZERO;var have:=false
+	for i: int in dense.size():
+		var a:=dense[maxi(i-1,0)];var b:=dense[mini(i+1,dense.size()-1)]
+		var dir:=(b-a).normalized();var side:=Vector2(-dir.y,dir.x)*width*.5
+		# Edges wobble a little, so the way looks laid by hand.
+		var wob:=1.+.08*sin(float(i)*1.7)
+		var l2:=dense[i]-side*wob;var r2:=dense[i]+side*wob
+		var dry:=Layout.coast(dense[i]).x<-.5
+		var l3:=Vector3(l2.x,Layout.ground(l2)+.07,l2.y);var r3:=Vector3(r2.x,Layout.ground(r2)+.07,r2.y)
+		if have and dry:
+			for v: Vector3 in [prev_l,r3,prev_r,prev_l,l3,r3,prev_l,prev_r,r3,prev_l,r3,l3]:st.set_normal(Vector3.UP);st.add_vertex(v)
+			any=true
+		prev_l=l3;prev_r=r3;have=dry
+	if not any:return
+	var node:=MeshInstance3D.new();node.name="Rua_%d"%get_child_count();node.mesh=st.commit();node.material_override=material;add_child(node)
+
+## Fishermen's homesteads all over the island, away from the districts: a cottage or a shack on its own
+## plot (some on the hillsides, some by the shore), a few with a frame going up beside them.
+func _scatter_homesteads() -> void:
+	var rec:={"name":"Sítios","centre":Vector2.ZERO,"houses":[],"doors":[],"isolated":true}
+	var placed:=0;var tries:=0
+	while placed<16 and tries<2500:
+		tries+=1
+		var at:=Vector2(_rng.randf_range(-460.,380.),_rng.randf_range(-60.,1100.))
+		if Layout.coast(at).x>-10.:continue
+		var near:=false
+		for data: Array in DISTRICTS:
+			if at.distance_to(data[1])<float(data[2])+18.:near=true;break
+		if near:continue
+		var style: String=["cabana","cabana","costeira","cabana","obra"][placed%5]
+		rec.centre=at+Vector2(_rng.randf_range(-1.,1.),_rng.randf_range(-1.,1.)).normalized()*20.
+		_yaw_jitter=_rng.randf_range(-.5,.5)
+		if _place(style,at,_size_of(style),rec.centre,false,rec):placed+=1
+	_yaw_jitter=0.
+	homesteads=rec.houses
+
 
 ## Hides the island's grass tufts that would poke through streets, squares and floors.
 func _clear_ground_cover() -> void:

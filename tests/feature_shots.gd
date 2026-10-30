@@ -952,6 +952,9 @@ func _vila() -> void:
 	await shot("vila_porto",Vector3(20,9,-10),Vector3(-10,4,30),1)
 	await shot("vila_rua",Vector3(-140,6,10),Vector3(-160,4,40),1)
 	await shot("vila_alto",Vector3(-110,40,-40),Vector3(-160,0,40),1)
+	await shot("vila_aerea_oeste",Vector3(-160,170,-60),Vector3(-160,0,40),1)
+	await shot("vila_aerea_leste",Vector3(170,170,-70),Vector3(175,0,50),1)
+	await shot("vila_ilha",Vector3(0,420,-260),Vector3(0,0,250),1)
 	if res.size()>0:
 		var r: Node3D=res[0]
 		await shot("vila_npc",r.global_position+(-r.global_basis.z)*2.4+Vector3(0,1.4,0)+r.global_basis.x*.6,r.global_position+Vector3(0,1.,0),1)

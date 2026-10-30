@@ -46,8 +46,8 @@ static func surface(kind: String, tint: Color = Color.WHITE, scale_value: float 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = vivid(tint)
 	var extension: String="png" if ResourceLoader.exists("res://assets/textures/%s_color.png"%kind) else "jpg"
-	# Calçada de pedra mantém o detalhe original: ela é o "chão" de leitura da vila.
-	mat.albedo_texture = painted("res://assets/textures/%s_color.%s" % [kind,extension], kind == "cobblestone")
+	# Every surface, paving included, gets the same painted treatment (one style across the game).
+	mat.albedo_texture = painted("res://assets/textures/%s_color.%s" % [kind,extension], false)
 	var normal_path: String="res://assets/textures/%s_normal.%s" % [kind,extension]
 	mat.normal_enabled = ResourceLoader.exists(normal_path)
 	if mat.normal_enabled:mat.normal_texture = load(normal_path)
