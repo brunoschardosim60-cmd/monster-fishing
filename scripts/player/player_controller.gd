@@ -86,6 +86,9 @@ func _ready() -> void:
 	add_child(shape)
 	visual = preload("res://scripts/player/imported_angler.gd").new() if ResourceLoader.exists("res://assets/characters/survivalist_rigged.glb") else Visual.new()
 	add_child(visual)
+	# The player's own stylised fisherman (tools/blender/folk.py "jogador"): red knit cap, teal sweater, ochre vest.
+	if visual.has_method("apply_look") and ResourceLoader.exists("res://assets/characters/folk/jogador.glb"):
+		visual.apply_look({"body":"res://assets/characters/folk/jogador.glb"})
 	pivot = Node3D.new()
 	pivot.position.y = 1.65
 	add_child(pivot)

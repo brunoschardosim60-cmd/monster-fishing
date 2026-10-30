@@ -642,7 +642,7 @@ func _canoa() -> void:
 	var w=game.world;var b: CharacterBody3D=game.boat;var inv=game.inventory
 	var Econ=load("res://scripts/inventory/harbor_economy.gd")
 	game.start_career();inv.money=100;Econ.buy("lights",inv,b,game.fishing)
-	w.ocean.hour=19.2;w.ocean.weather.settle(0)
+	w.ocean.cycle_enabled=false;w.ocean.hour=15.;w.ocean.weather.settle(0)
 	b.global_position=_sea_point();b.rotation=Vector3.ZERO;b.speed=0.
 	game.player.global_position=b.global_position+Vector3(0,1.,0);game.interact()
 	for i: int in 30:await process_frame

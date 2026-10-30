@@ -296,16 +296,26 @@ static func _open_boat_joinery(root: Node3D,L: float,beam: float,freeboard: floa
 		_detail(G.beam(root,foot,tip+Vector3(0,.12,0)-Vector3(0,0,signf(tip.z)*.04),.06,dark))
 
 static func _canoa(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
-	var wood: Color=_pick(rng,[Color("8a5a2b"),Color("a0522d"),Color("6b4226"),Color("b8433a"),Color("2f6f8f")])
-	_hull(root,L,.95,.42,.16,wood,wood.darkened(.35),wood.lightened(.25),Color("c9a46a"),true,.18,.06)
 	var oak:=_mat(Color("d8b07a"))
-	var trim:=_mat(Color("c79a62"),.75);var frame:=_mat(Color("6b4a2c"),.85)
-	_open_boat_joinery(root,L,.95,.42,.18,.06,trim,frame)
-	for i: int in 2:
-		var z:=(float(i)-.5)*L*.38
-		_detail(G.box(root,Vector3(0,.3,z),Vector3(.8,.04,.22),oak))
-		# Knees under the thwart ends.
-		for sx: float in [-1.,1.]:_detail(G.beam(root,Vector3(sx*.36,.29,z),Vector3(sx*.33,.12,z),.03,frame))
+	# The plank canoe modelled in Blender (tools/blender/shipwright.py canoa): strakes, ribs, floorboards,
+	# rails, thwarts and posts, in this same frame (waterline at the origin, 6.2 m).
+	const CANOE_GLB: String="res://assets/boats/ships/canoa.glb"
+	if ResourceLoader.exists(CANOE_GLB):
+		var model: Node3D=load(CANOE_GLB).instantiate();model.name="CanoaModelo";model.scale=Vector3.ONE*L/6.2;root.add_child(model)
+		var SM:=preload("res://scripts/boats/ship_models.gd")
+		for mi: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
+			for k: int in mi.mesh.get_surface_count():
+				var src: Material=mi.mesh.surface_get_material(k)
+				mi.set_surface_override_material(k,SM._material(str(src.resource_name) if src!=null else ""))
+	else:
+		var wood: Color=_pick(rng,[Color("8a5a2b"),Color("a0522d"),Color("6b4226"),Color("b8433a"),Color("2f6f8f")])
+		_hull(root,L,.95,.42,.16,wood,wood.darkened(.35),wood.lightened(.25),Color("c9a46a"),true,.18,.06)
+		var trim:=_mat(Color("c79a62"),.75);var frame:=_mat(Color("6b4a2c"),.85)
+		_open_boat_joinery(root,L,.95,.42,.18,.06,trim,frame)
+		for i: int in 2:
+			var z:=(float(i)-.5)*L*.38
+			_detail(G.box(root,Vector3(0,.3,z),Vector3(.8,.04,.22),oak))
+			for sx: float in [-1.,1.]:_detail(G.beam(root,Vector3(sx*.36,.29,z),Vector3(sx*.33,.12,z),.03,frame))
 	# Bow gear: a coiled line, a little grapnel anchor and a bailer cut from a jug.
 	var rope:=_mat(Color("c8b58a"),.95)
 	for r: int in 4:
