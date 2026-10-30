@@ -157,6 +157,18 @@ func _draw() -> void:
 				if not game.world.village.discovered.has(m.id):continue
 				var mc:=point(Vector2((m.pos as Vector3).x,(m.pos as Vector3).z))
 				draw_rect(Rect2(mc-Vector2(3,3),Vector2(6,6)),Color("f0d28a"))
+		# Treasure maps you hold: a red X on the island; the pirate ship while it hunts you.
+		if game.get("treasure")!=null:
+			for m: Dictionary in game.treasure.open_maps():
+				var xc:=point(Vector2((m.pos as Vector3).x,(m.pos as Vector3).z))
+				draw_line(xc-Vector2(6,6),xc+Vector2(6,6),Color("e23b2e"),3.);draw_line(xc+Vector2(-6,6),xc+Vector2(6,-6),Color("e23b2e"),3.)
+				draw_string(font,xc+Vector2(9,-6),"tesouro",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("ffb0a0"))
+			if is_instance_valid(game.treasure.bottle):
+				var bp: Vector3=game.treasure.bottle.global_position;draw_circle(point(Vector2(bp.x,bp.z)),4.,Color("9ee6a0"))
+		if game.get("pirates")!=null and game.pirates.active() and is_instance_valid(game.pirates.ship):
+			var pp: Vector3=game.pirates.ship.global_position;var pc:=point(Vector2(pp.x,pp.z))
+			draw_circle(pc,6.,Color("111111"));draw_arc(pc,7.,0.,TAU,16,Color("e23b2e"),2.)
+			draw_string(font,pc+Vector2(9,-6),"PIRATAS",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("ff8a7a"))
 		var events: Node3D=game.world.sea_events
 		if events.current!=null:
 			var ev: Vector3=events.current.global_position

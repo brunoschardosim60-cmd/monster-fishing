@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -782,3 +782,30 @@ func _piratas() -> void:
 	for i: int in 90:await physics_frame
 	print("pirate gap ",pir.ship.global_position.distance_to(b.global_position)," state ",pir.state)
 	await shot("pirata_abordagem",p+Vector3(-14,9,12),p+Vector3(4,3,0),1)
+
+## A treasure X on the island, the dug-up chest, a bottle at sea, and the chart in the sailboat's cabin.
+func _tesouro() -> void:
+	game.world.ocean.hour=10.;game.world.ocean.weather.settle(0)
+	var tr: Node3D=game.treasure
+	tr.give_map()
+	var m: Dictionary=tr.maps[-1];var p: Vector3=m.pos
+	for i: int in 20:await process_frame
+	await shot("tesouro_x",p+Vector3(3.,2.2,3.),p+Vector3(0,.2,0),1)
+	game.player.global_position=p+Vector3(.5,.3,.3);for i: int in 3:await physics_frame
+	tr.dig(game.player.global_position)
+	for i: int in 10:await process_frame
+	await shot("tesouro_bau",p+Vector3(2.,1.6,2.),p+Vector3(0,.4,0),1)
+	var sea:=_sea_point()
+	tr.spawn_bottle(sea)
+	for i: int in 10:await process_frame
+	await shot("tesouro_garrafa",sea+Vector3(2.5,1.2,2.5),sea,1)
+	var b: CharacterBody3D=game.boat;var inv=game.inventory
+	b.global_position=sea+Vector3(30,0,0);b.rotation=Vector3.ZERO
+	game.player.global_position=b.global_position+Vector3(0,1.5,0);game.interact()
+	inv.owned_boats.append("veleiro");inv.boat_id="veleiro";load("res://scripts/inventory/harbor_economy.gd").apply(inv,b,game.fishing)
+	for i: int in 10:await process_frame
+	if not game.player.on_deck:game.toggle_deck()
+	game.player.deck_local=b.hull_spec.cabin.hatch;game.interact()
+	for i: int in 10:await process_frame
+	var chart: Vector3=b._hull.to_global(b.cabin_node.get_meta("chart"))
+	await shot("tesouro_carta",chart+Vector3(0,1.5,0)+b.global_basis.z*.3,chart+b.global_basis.x*.4+Vector3(0,.8,0),1)

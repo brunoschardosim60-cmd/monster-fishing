@@ -34,6 +34,10 @@ static func save(game: Node,path: String=PATH) -> bool:
 		for lair: Dictionary in game.lairs.lairs:lairs[lair.name]={"observed":lair.observed,"victories":int(lair.get("victories",0))}
 		data["lairs"]=lairs
 	if game.get("diving")!=null:data["chests"]=(game.diving.opened as Dictionary).duplicate()
+	if game.get("treasure")!=null:
+		var maps: Array=[]
+		for m: Dictionary in game.treasure.maps:maps.append({"pos":m.pos,"island":m.island,"found":m.found})
+		data["treasure"]={"maps":maps,"found":game.treasure.found}
 	if not game.boat.sinking:
 		data["boat"]={"position":game.boat.global_position,"yaw":game.boat.rotation.y}
 	if not game.player.in_boat and not game.player.swimming and not game.player.flying:
@@ -68,6 +72,7 @@ static func load_into(game: Node,path: String=PATH) -> bool:
 	game.boarded_once=bool(flags.get("boarded",false));game.sailed_once=bool(flags.get("sailed",false))
 	game.caught_once=bool(flags.get("caught",false));game.sold_once=bool(flags.get("sold",false))
 	game.world.ocean.hour=float(data.get("hour",game.world.ocean.hour));game.world.ocean.day=int(data.get("day",0))
+	if data.has("treasure") and game.get("treasure")!=null:game.treasure.restore(data.treasure)
 	if data.has("missions") and game.missions!=null:
 		var m: Dictionary=data.missions
 		game.missions.step=int(m.get("step",0));game.missions.completed_contracts=int(m.get("completed",0))

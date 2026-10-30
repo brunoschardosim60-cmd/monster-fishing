@@ -114,7 +114,8 @@ static func _saloon(root: Node3D,r: Rect2,y0: float,y1: float,teak: Material,clo
 	blocks.append(Rect2(x0,gz-.42,.6,.84))
 	G.box(root,Vector3(x1-.3,y0+.4,gz),Vector3(.55,.8,.8),teak)
 	G.box(root,Vector3(x1-.3,y0+.81,gz),Vector3(.57,.04,.82),teak)
-	G.box(root,Vector3(x1-.3,y0+.835,gz),Vector3(.42,.005,.55),G.material(Color("e8dcc0"),.9))
+	_chart(root,Vector3(x1-.3,y0+.836,gz),Vector2(.42,.55))
+	root.set_meta("chart",Vector3(x1-.68,y0,gz-.15))
 	blocks.append(Rect2(x1-.6,gz-.42,.6,.84))
 
 static func _lower_deck(root: Node3D,r: Rect2,y0: float,y1: float,teak: Material,cloth: Material,white: Material,brass: Material,dark: Material,blocks: Array[Rect2]) -> void:
@@ -151,7 +152,8 @@ static func _lower_deck(root: Node3D,r: Rect2,y0: float,y1: float,teak: Material
 	var az: float=z1-.6
 	G.box(root,Vector3(x1-.55,y0+.4,az),Vector3(.9,.8,.6),teak)
 	G.box(root,Vector3(x1-.55,y0+.81,az),Vector3(.95,.04,.65),dark)
-	G.box(root,Vector3(x1-.55,y0+.83,az),Vector3(.6,.005,.4),G.material(Color("e8dcc0"),.9))
+	_chart(root,Vector3(x1-.55,y0+.832,az),Vector2(.6,.4))
+	root.set_meta("chart",Vector3(x1-.55,y0,az-.75))
 	blocks.append(Rect2(x1-1.,az-.35,1.,.7))
 	G.box(root,Vector3(x0+.45,y0+.3,az),Vector3(.8,.6,.5),dark)
 	for k: int in 3:G.box(root,Vector3(x0+.45,y0+.3,az-.25+float(k)*.25),Vector3(.82,.05,.03),brass)
@@ -165,3 +167,41 @@ static func _lower_deck(root: Node3D,r: Rect2,y0: float,y1: float,teak: Material
 	var fire:=G.material(Color("ff8a3a"));fire.emission_enabled=true;fire.emission=Color("ff7a20");fire.emission_energy_multiplier=2.
 	G.box(root,stove_at+Vector3(-.31,.3,0),Vector3(.02,.18,.3),fire)
 	blocks.append(Rect2(x1-.75,z1-2.35,.75,.7))
+
+## A sea chart lying on the table: the archipelago painted on parchment (islands from the layout, a
+## compass rose, rhumb lines), with brass dividers on it.
+static var _chart_tex: ImageTexture
+static func _chart(root: Node3D,at: Vector3,size: Vector2) -> void:
+	if _chart_tex==null:
+		var Layout=load("res://scripts/world/archipelago_layout.gd")
+		var w:=256;var h:=256;var img:=Image.create(w,h,false,Image.FORMAT_RGB8)
+		var span:=11000.
+		for y: int in h:
+			for x: int in w:
+				var n:=sin(float(x)*.31+float(y)*.17)*.02+sin(float(x*y)*.001)*.015
+				img.set_pixel(x,y,Color(.86+n,.8+n,.64+n))
+		for l: Vector4 in Layout.LOBES:
+			var cx:=(l.x/span+.5)*float(w);var cy:=(l.y/span+.5)*float(h)
+			var rx:=maxf(1.5,l.z/span*float(w)*1.2);var ry:=maxf(1.5,l.w/span*float(h)*1.2)
+			for y: int in range(int(cy-ry-3),int(cy+ry+4)):
+				for x: int in range(int(cx-rx-3),int(cx+rx+4)):
+					if x<0 or y<0 or x>=w or y>=h:continue
+					var d:=Vector2((float(x)-cx)/rx,(float(y)-cy)/ry).length()
+					if d<1.:img.set_pixel(x,y,Color(.55,.62,.38) if d<.8 else Color(.78,.7,.5))
+					elif d<1.35:img.set_pixel(x,y,img.get_pixel(x,y).lerp(Color(.55,.72,.78),.5))
+		for k: int in 16:
+			var a:=float(k)*TAU/16.
+			for r: int in 120:
+				var x:=int(128+cos(a)*float(r));var y:=int(128+sin(a)*float(r))
+				if x>=0 and y>=0 and x<w and y<h and r%3!=0:img.set_pixel(x,y,img.get_pixel(x,y).darkened(.12))
+		for r: int in 14:
+			for k: int in 4:
+				var a:=float(k)*PI*.5
+				img.set_pixel(int(220+cos(a)*float(r)),int(36+sin(a)*float(r)),Color(.55,.12,.1))
+		_chart_tex=ImageTexture.create_from_image(img)
+	var mat:=StandardMaterial3D.new();mat.albedo_texture=_chart_tex;mat.roughness=.9
+	var plane:=PlaneMesh.new();plane.size=size
+	G.mesh_node(root,plane,mat,at)
+	var brass:=G.material(Color("b8913f"),.3);brass.metallic=.8
+	G.beam(root,at+Vector3(-size.x*.2,.01,size.y*.1),at+Vector3(size.x*.05,.01,-size.y*.2),.006,brass)
+	G.beam(root,at+Vector3(-size.x*.2,.01,size.y*.1),at+Vector3(size.x*.15,.01,-size.y*.05),.006,brass)

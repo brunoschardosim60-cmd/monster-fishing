@@ -52,6 +52,8 @@ var gear: Node3D
 var lairs: Node3D
 ## Pirate raids at sea (pirates.gd).
 var pirates: Node3D
+## Treasure maps, X marks and bottles at sea (treasure.gd).
+var treasure: Node3D
 ## Story objectives and the market's order board.
 var missions: Node
 ## Dynamic monster encounters at sea, the diving system (air, depth, wrecks, chests) and the boat sonar.
@@ -129,6 +131,7 @@ func _ready() -> void:
 	gear=preload("res://scripts/fishing/sea_gear.gd").new();gear.game=self;gear.name="Apetrechos";_add_system(gear)
 	lairs=preload("res://scripts/world/monster_lairs.gd").new();lairs.game=self;lairs.name="TerritoriosDosMonstros";_add_system(lairs)
 	pirates=preload("res://scripts/world/pirates.gd").new();pirates.game=self;pirates.name="Piratas";_add_system(pirates)
+	treasure=preload("res://scripts/world/treasure.gd").new();treasure.game=self;treasure.name="Tesouros";_add_system(treasure)
 	missions=preload("res://scripts/inventory/missions.gd").new();missions.game=self;missions.name="Missoes";_add_system(missions)
 	encounters=preload("res://scripts/world/encounters.gd").new();encounters.game=self;encounters.name="Encontros";_add_system(encounters)
 	diving=preload("res://scripts/fishing/diving.gd").new();diving.game=self;diving.name="Mergulho";_add_system(diving)
@@ -411,7 +414,13 @@ func _cabin_hint() -> String:
 	if not (player.in_boat and player.on_deck) or not boat.hull_spec.has("cabin"):return ""
 	var c: Dictionary=boat.hull_spec.cabin
 	if not player.cabin.is_empty():
-		return "E · Subir ao convés" if Vector2(player.deck_local.x-c.foot.x,player.deck_local.z-c.foot.z).length()<.9 else "Na cabine"
+		var foot_d: float=Vector2(player.deck_local.x-c.foot.x,player.deck_local.z-c.foot.z).length()
+		if boat.cabin_node!=null and boat.cabin_node.has_meta("chart"):
+			var chart: Vector3=boat.cabin_node.get_meta("chart")
+			var chart_d: float=Vector2(player.deck_local.x-chart.x,player.deck_local.z-chart.z).length()
+			if chart_d<.8 and chart_d<foot_d:return "E · Abrir a carta náutica"
+		if foot_d<.9:return "E · Subir ao convés"
+		return "Na cabine"
 	if player.deck_level<0 and Vector2(player.deck_local.x-c.hatch.x,player.deck_local.z-c.hatch.z).length()<.8:return "E · Descer à cabine"
 	return ""
 
@@ -422,6 +431,8 @@ func _cabin_action() -> bool:
 		player.cabin=boat.hull_spec.cabin;player.deck_local=boat.hull_spec.cabin.foot+Vector3(0,0,-.35)
 		if boat.cabin_node!=null:boat.cabin_node.visible=true
 		hud.notify("Na cabine. E ao pé da escada para subir.");return true
+	if hint=="E · Abrir a carta náutica":
+		hud.map_view.visible=not hud.map_view.visible;return true
 	if hint=="E · Subir ao convés":
 		var c: Dictionary=player.cabin
 		player.cabin={};player.deck_local=c.hatch+Vector3(0,0,.55)
@@ -468,6 +479,8 @@ func interact() -> void:
 			hud.notify("+%d moedas" % earned)
 		else:
 			hud.notify("Sem capturas para vender.")
+	elif treasure!=null and treasure.hint(player.global_position)!="":
+		hud.notify(treasure.dig(player.global_position))
 	elif _showroom_near()!="":
 		showroom_take(_showroom_near())
 	else:
@@ -607,6 +620,7 @@ func _interaction_hint() -> String:
 		return "%.0f nós · %d%% casco%s · %s    R · Convés    %s%s"%[absf(boat.speed)*1.94,int(boat.integrity*100.),water,turbo,anchor_hint,sails]
 	if player.global_position.distance_to(boat.global_position+Vector3(0,1,0))<boat.board_radius()-1.:return "E · Embarcar"
 	if near_market():return "E · Vender capturas"
+	if treasure!=null and treasure.hint(player.global_position)!="":return treasure.hint(player.global_position)
 	var shown: String=_showroom_near()
 	if shown!="":
 		var title: String=str(Economy.BOATS[shown].title)
