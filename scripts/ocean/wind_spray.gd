@@ -13,12 +13,14 @@ var _size: PackedFloat32Array=PackedFloat32Array()
 var _rng:=RandomNumberGenerator.new()
 var _spawn_clock: float=0.
 var _next: int=0
+var _mat: ShaderMaterial
 
 func _ready() -> void:
 	_rng.seed=4242;add_to_group("wind_spray")
 	multimesh=MultiMesh.new();multimesh.transform_format=MultiMesh.TRANSFORM_3D;multimesh.use_colors=true
 	var quad:=QuadMesh.new();quad.size=Vector2.ONE;multimesh.mesh=quad;multimesh.instance_count=COUNT
 	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/spray_puff.gdshader")
+	_mat=mat
 	var node:=MultiMeshInstance3D.new();node.name="Borrifos";node.multimesh=multimesh;node.material_override=mat
 	node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;node.extra_cull_margin=400.;add_child(node)
 	_pos.resize(COUNT);_vel.resize(COUNT);_life.resize(COUNT);_size.resize(COUNT)
@@ -35,6 +37,11 @@ func active_count() -> int:
 	return n
 
 func _physics_process(delta: float) -> void:
+	if Engine.get_physics_frames()%15==0 and _mat!=null:
+		var game:=get_tree().get_first_node_in_group("game")
+		var day: float=1.
+		if game!=null and game.get("world")!=null:day=float(game.world.ocean.daylight)
+		_mat.set_shader_parameter("light",lerpf(.09,1.,clampf(day,0.,1.)))
 	var camera:=get_viewport().get_camera_3d()
 	var wind: float=Waves.wind
 	var dir:=Vector3(Waves.direction.x,0.,Waves.direction.y)

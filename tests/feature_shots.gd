@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -891,3 +891,31 @@ func _naufragio() -> void:
 	for k: int in 3:
 		for i: int in [40,90,140][k]:await physics_frame
 		await shot("naufragio_%d"%k,p+Vector3(10,5,12),p+Vector3(0,.5,0),1)
+
+## Night storm next to a galleon: spray must not glow (it filled the view with white discs).
+func _noite_tempestade() -> void:
+	var w=game.world;var p:=_sea_point()
+	w.ocean.cycle_enabled=false;w.ocean.hour=23.
+	w.storms.spawn_at(p)
+	var b: CharacterBody3D=game.boat;b.global_position=p;b.rotation=Vector3.ZERO
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	var g: Node3D=_ships("galeao")[0];_park(g,p+Vector3(-10,0,-30),.9)
+	for i: int in 240:await physics_frame
+	await shot("noite_tempestade",p+Vector3(4,3.5,8),g.global_position+Vector3(0,8,0),1)
+
+## The same angles as Bruno's screenshots: looking down on a whirlpool from ~15 m, inside a storm at
+## 5 m, and the boat from above in a rough sea.
+func _conferir_mar() -> void:
+	var w=game.world;w.ocean.cycle_enabled=false;w.ocean.hour=12.5
+	var p:=_sea_point()+Vector3(0,0,-150)
+	var wp: Node3D=w.whirlpools;wp.spawn_near(p);wp.sites[-1].strength=1.
+	for i: int in 60:await physics_frame
+	var c: Vector3=Vector3(wp.sites[-1].pos.x,0,wp.sites[-1].pos.y) if wp.sites[-1].pos is Vector2 else wp.sites[-1].pos
+	await shot("conferir_redemoinho",c+Vector3(0,16,26),c,1)
+	w.storms.spawn_at(p+Vector3(600,0,0))
+	for i: int in 120:await physics_frame
+	var s:=p+Vector3(600,0,0)
+	await shot("conferir_tempestade",s+Vector3(0,6,0),s+Vector3(60,0,-40),1)
+	var b: CharacterBody3D=game.boat;b.global_position=s+Vector3(20,0,0);b.rotation=Vector3.ZERO
+	for i: int in 60:await physics_frame
+	await shot("conferir_barco",b.global_position+Vector3(6,6,8),b.global_position,1)

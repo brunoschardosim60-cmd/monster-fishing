@@ -66,11 +66,17 @@ void fragment() {
 	vec2 pr=mat2(vec2(.8,-.6),vec2(.6,.8))*p;
 	vec3 n3=texture(normal_tex,pr*.031+sea_time*vec2(.006,-.013)).xyz*2.-1.;
 	float gust=smoothstep(.25,.75,texture(foam_tex,p*.0035-wind_direction*sea_time*.004).r);
-	vec3 detail=vec3((n1.x+n2.x+n3.x*.8),0,(n1.y+n2.y+n3.y*.8))*(.08+wind_strength*.2)*mix(.45,1.45,gust)*mix(.3,1.,distance_fade)*mix(.35,1.,exposure);
+	// Kept gentle: strong fine normals mirror the sky into zebra stripes and moiré rings.
+	float fine=1.-smoothstep(.25,.9,length(fwidth(p)));
+	vec3 detail=vec3((n1.x+n2.x*fine)*.8+n3.x*.3,0,(n1.y+n2.y*fine)*.8+n3.y*.3)*(.07+wind_strength*.13)*mix(.8,1.2,gust)*mix(.2,1.,distance_fade)*mix(.35,1.,exposure);
 	vec2 cell=floor(p*3.); vec2 local=fract(p*3.)-.5;
 	float random=fract(sin(dot(cell,vec2(127.1,311.7)))*43758.5453);
 	float age=fract(sea_time*1.3+random);
 	float drop=sin((length(local)-age*.7)*60.)*exp(-abs(length(local)-age*.7)*28.)*(1.-age)*rain_strength;
+	// Rain rings are ~10 cm across: once a pixel covers more than a few centimetres of sea they can no
+	// longer be drawn and alias into big moiré rings over the whole storm, so they fade with the pixel size.
+	float footprint=length(fwidth(p));
+	drop*=1.-smoothstep(.012,.035,footprint);
 	detail.xz+=normalize(local+vec2(.001))*drop*.045*distance_fade;
 	vec3 wn=normalize(wave_normal+detail);
 	NORMAL=normalize((VIEW_MATRIX*vec4(wn,0)).xyz);

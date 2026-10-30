@@ -39,7 +39,8 @@ static func sea_groups(v: Vector2,i: int) -> float:
 	var s1:=sin(v.x*.0031+v.y*.0017+time*.011+fi*.6)
 	var s2:=sin(-v.x*.0019+v.y*.0043-time*.007+fi*1.3)
 	var s3:=sin(v.x*.0057-v.y*.0023+time*.013+fi*.4)
-	return lerpf(.5,1.4,.5+.5*(s1*.5+s2*.35+s3*.15))
+	var g:=.5+.5*(s1*.5+s2*.35+s3*.15)
+	return lerpf(.78,1.18,g) if i<3 else lerpf(.6,1.3,g)
 
 ## Wandering crest lines (ocean_common sea_warp).
 static func sea_warp(v: Vector2,w: Vector4,i: int) -> float:
@@ -116,12 +117,12 @@ static func height_at(p: Vector3) -> float:
 	var h:=0.
 	var storm:=storm_factor(v)
 	var halo:=storm_halo(v)
-	var sharp:=.15+.3*smoothstep(.4,1.,energy)+.2*storm+.08*halo
+	var sharp:=.15+.25*smoothstep(.4,1.,energy)+.12*storm
 	for i: int in 8:
 		var w:=waves[i]
 		var phase:=v.dot(Vector2(w.x,w.y))-w.w+sin(v.dot(Vector2(.019,.027))+float(i))*.37+sea_warp(v,w,i)
-		var fade:=(lod_long*(1.+open_sea*1.2) if i<3 else lod*(1.+open_sea*.4))*(1.+storm*(1.5 if i<3 else .35))*sea_groups(v,i)*(1.+halo*(.8 if i<3 else .35))
-		h+=(sin(phase)+sharp*sin(2.*phase))*w.z*lerpf(.32 if i<3 else .1,1.,exposed)*(1.-channel*(.2 if i<3 else .65))*fade
+		var fade:=(lod_long*(1.+open_sea*.8) if i<3 else lod*(1.+open_sea*.4))*(1.+storm*(.9 if i<3 else .35))*sea_groups(v,i)*(1.+maxf(halo-storm,0.)*(.6 if i<3 else .3))
+		h+=(sin(phase)+(sharp*lod if i<3 else 0.)*sin(2.*phase))*w.z*lerpf(.32 if i<3 else .1,1.,exposed)*(1.-channel*(.2 if i<3 else .65))*fade
 	var wash:=sin(c.x*.85-time*1.15)*.12*(.3+energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x)
 	var swash_s:=fposmod(time/7.5+sin(v.x*.031)*.35+cos(v.y*.027)*.35-c.x*.012,1.)
 	wash+=smoothstep(0.,.18,swash_s)*(1.-smoothstep(.18,1.,swash_s))*.5*(.35+energy)*smoothstep(-9.,-1.,c.x)*(1.-smoothstep(2.,14.,c.x))

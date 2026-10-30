@@ -651,12 +651,15 @@ static func _merchant_painted(root: Node3D,L: float,rng: RandomNumberGenerator,f
 ## Three-masted galleon from Bruno's model: square rig, ochre gun stripe, quarterdeck aft.
 static func _galeao(root: Node3D,L: float,rng: RandomNumberGenerator) -> void:
 	var paint: Color=_pick(rng,[Color("3a2416"),Color("2a1d14"),Color("1e2a35")])
-	_painted(root,"sailing_ship",L,paint,rng)
+	var hull:=_painted(root,"sailing_ship",L,paint,rng)
+	# Parts of this model are painted as lamp glass and window rows: they must not glow (they bloomed into
+	# rows of white discs on the sails and rail at night). Its real lamps are the two lanterns aft.
+	hull.set_instance_shader_parameter("lamp_glow",0.)
 	var deck:=.068*L
 	_flag(root,Vector3(0,.63*L,.13*L),1.4,rng)
 	for side: float in [-1.,1.]:
-		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=.9
-		_detail(G.sphere(root,Vector3(side*L*.07,deck+L*.06,L*.47),Vector3.ONE*.35,lamp,8))
+		var lamp:=_mat(Color("ffcf86"),.4);lamp.emission_enabled=true;lamp.emission=Color("ffb85c");lamp.emission_energy_multiplier=.6
+		_lantern(root,Vector3(side*L*.07,deck+L*.05,L*.47),.45,lamp,_mat(Color("2b2724"),.55,.4))
 	root.set_meta("deck",deck)
 	root.set_meta("helm",Vector3(0,deck+L*.025,L*.38));root.set_meta("walk",[Vector3(-L*.05,deck,-L*.22),Vector3(-L*.05,deck,L*.2)])
 	_rail(root,Vector3(L*.085,deck,-L*.05),-PI*.5);_rail(root,Vector3(-L*.085,deck,L*.08),PI*.5);_rail(root,Vector3(0,deck+L*.02,-L*.33),0.)

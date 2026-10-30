@@ -9,6 +9,9 @@ render_mode cull_disabled;
 //   10 scales (serpent) · 11 weathered paint over wood · 12 galleon side (gun stripe)
 instance uniform float model_scale = 1.;      // metres per mesh unit
 instance uniform float night = 0.;            // 0 day … 1 night: windows and lamps light up
+// Some models carry parts the painter takes for lamp glass or windows (the galleon's rigging and sails):
+// 0 keeps them dark at night.
+instance uniform float lamp_glow = 1.;
 uniform float wear = .5;
 // Creatures: the upper body sways and can lunge forward (-Z); weight grows with height in mesh units.
 instance uniform float sway = 0.;
@@ -93,7 +96,7 @@ void fragment(){
 			if(win>.5){
 				c=srgb(vec3(.06,.09,.12));rough=.08;metal=.4;
 				float lit=step(.35,hash(vec3(id2,3.)));
-				emit=srgb(vec3(1.,.78,.45))*lit*night*1.6;
+				emit=srgb(vec3(1.,.78,.45))*lit*night*1.6*lamp_glow;
 			}
 		}
 	}else if(id==4){
@@ -123,7 +126,7 @@ void fragment(){
 		c=base*(.8+.3*grime); rough=.6; metal=.35;
 	}else if(id==8){
 		// Lamp glass: a warm, modest glow at night (strong values bloom into big white blobs).
-		c=base*.6; emit=srgb(vec3(1.,.74,.42))*night*.55; rough=.1;
+		c=base*.6; emit=srgb(vec3(1.,.74,.42))*night*.55*lamp_glow; rough=.1;
 	}else if(id==9){
 		c=base*(.88+.22*vnoise(p.xz*1.3+p.y*.9));
 		rough=.32; metal=0.;
