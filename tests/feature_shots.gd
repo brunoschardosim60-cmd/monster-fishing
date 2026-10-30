@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas","galeao","bergantim","submarino"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas","galeao","bergantim","submarino","hud"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -1054,3 +1054,35 @@ func _submarino() -> void:
 	print("sub depth ",b.dive_depth," hull y ",b._hull.global_position.y)
 	await shot("sub_fundo",b._hull.to_global(Vector3(8,1,-10)),b._hull.to_global(Vector3(0,0,0)),1)
 	await shot("sub_frente",b._hull.to_global(Vector3(0,1.5,-14)),b._hull.to_global(Vector3(0,0,0)),1)
+
+## The HUD over the game: start/pause menu, the in-game labels, the fishing instrument, a shop and the log.
+func _hud() -> void:
+	view.size=Vector2i(1600,900)
+	var h=game.hud;h.show()
+	var b: CharacterBody3D=game.boat;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	for i: int in 20:await process_frame
+	var eye:=p+Vector3(9,4,12);var at:=p+Vector3(0,1.5,0)
+	h.show_pause();for i: int in 5:await process_frame
+	await shot("hud_menu",eye,at,1)
+	h.hide_pause();h.begin_play()
+	h.sea_label.text="15:30  /  BRISA";h.stats.text="128 moedas  ·  3 capturas\nCasco 96%";h.compass.text="NE  ·  047°"
+	h.prompt.text="E · Embarcar";h.notify("Um cardume de tainhas passa por perto!")
+	for i: int in 5:await process_frame
+	await shot("hud_jogo",eye,at,1)
+	h.fishing_box.show();h.update_fishing(4,.62,.4,0.);h.fishing_box.show()
+	var g=h.fight_gauge;g.state=4;g.tension=.62;g.progress=.4;g.stamina=.55;g.species_name="Garoupa";g.size_class=2;g.gear_text="Vara de fibra";g.phase="pull"
+	game.set_process(false);g.show()
+	for i: int in 5:await process_frame
+	await shot("hud_pesca",eye,at,1)
+	game.set_process(true)
+	h.fishing_box.hide();h.fight_gauge.hide()
+	h.open_service("gear",game.inventory,b)
+	for i: int in 5:await process_frame
+	await shot("hud_loja",eye,at,1)
+	h.close_service()
+	var catches: Array[Dictionary]=[{"name":"Tainha","weight":1.3,"value":24},{"name":"Garoupa","weight":4.1,"value":88}]
+	h.toggle_ledger(catches,112)
+	for i: int in 5:await process_frame
+	await shot("hud_caderno",eye,at,1)
+	view.size=Vector2i(960,560)

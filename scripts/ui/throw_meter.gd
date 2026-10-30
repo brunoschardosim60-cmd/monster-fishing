@@ -1,9 +1,9 @@
 extends Control
 ## Cast-net swing meter (bottom centre): a bar with the sweet spot in green; the needle rides up and down
 ## with the swing; let go of N while it is in the green.
-const NAVY:=Color(.05,.11,.16,.72)
-const BRASS:=Color("d4b17b")
-const CREAM:=Color("e4edf1")
+const NAVY:=Color("ecdfbf",.95)
+const BRASS:=Color("9a3a1c")
+const CREAM:=Color("3b2614")
 var value: float=-1.
 var sweet: float=.82
 var band: float=.07
@@ -18,7 +18,7 @@ func show_value(v: float,sweet_at: float,band_w: float) -> void:
 
 func _draw() -> void:
 	if value<0.:return
-	var b:=StyleBoxFlat.new();b.bg_color=NAVY;b.border_color=Color(BRASS,.65);b.set_border_width_all(1);b.set_corner_radius_all(8)
+	var b:=StyleBoxFlat.new();b.bg_color=NAVY;b.border_color=Color("4a3018");b.set_border_width_all(2);b.set_corner_radius_all(4)
 	draw_style_box(b,Rect2(Vector2.ZERO,size))
 	var font:=get_theme_default_font()
 	draw_string(font,Vector2(14,22),"TARRAFA · solte na faixa verde",HORIZONTAL_ALIGNMENT_LEFT,-1,13,CREAM)

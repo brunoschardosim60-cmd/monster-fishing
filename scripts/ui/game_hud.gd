@@ -23,6 +23,7 @@ var resolution_slider: HSlider
 var resolution_label: Label
 var vsync_button: CheckButton
 
+const UI=preload("res://scripts/ui/ui_style.gd")
 const INK := Color("071d2b")
 const CREAM := Color("e4edf1")
 const GOLD := Color("d4b17b")
@@ -61,6 +62,7 @@ func _ready() -> void:
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = UI.theme()
 	add_child(root)
 	sea_label=_label(root, "", 13, CREAM)
 	sea_label.position=Vector2(30,28)
@@ -219,20 +221,21 @@ func show_encyclopedia(entries: Dictionary,discoveries: Dictionary) -> void:
 
 func _make_overlay() -> void:
 	overlay = ColorRect.new()
-	overlay.color = Color(0.025, 0.09, 0.115, 0.68)
+	overlay.color = Color(0.12, 0.07, 0.03, 0.6)
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(overlay)
 	var content := VBoxContainer.new()
-	content.position = Vector2(100, 150)
+	content.position = Vector2(100, 70)
 	content.size = Vector2(620, 550)
 	content.add_theme_constant_override("separation", 20)
 	overlay.add_child(content)
 	_label(content, "VILA DA AURORA. UM OCEANO DE HISTÓRIAS.", 14, SEA)
 	overlay_title = _label(content, "Monster\nFishing", 76, CREAM)
-	var serif := SystemFont.new()
-	serif.font_names = PackedStringArray(["Georgia", "DejaVu Serif"])
-	overlay_title.add_theme_font_override("font", serif)
+	overlay_title.add_theme_font_override("font", UI.title_font())
+	overlay_title.add_theme_color_override("font_color", UI.GOLD)
 	overlay_body = _label(content, "O dia ainda tem algumas horas de luz.\nPegue sua vara, solte as amarras e encontre seu lugar no mar.\n\nPesque no cais ou embarque. Venda a captura no mercado.\nNa disputa, segure para recolher e solte antes de romper a linha.", 18, CREAM)
+	# The controls list is long: it keeps its old size so the buttons stay on screen.
+	overlay_body.add_theme_font_size_override("font_size", 18)
 	play_button = _button(content, "COMEÇAR A EXPLORAR  →")
 	play_button.pressed.connect(func() -> void:
 		if started: resume_requested.emit()
@@ -246,7 +249,8 @@ func _make_overlay() -> void:
 	quit_button = _button(content, "Sair do jogo")
 	quit_button.pressed.connect(func() -> void: quit_requested.emit())
 	var build_label := _label(overlay, "ARQUIPÉLAGO DA AURORA  /  EXPLORAÇÃO, PESCA E VIDA NO PORTO", 13, SEA)
-	build_label.position = Vector2(100, 820)
+	build_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	build_label.offset_left = 100; build_label.offset_top = -44; build_label.offset_bottom = -20
 	var weather_panel:=_panel(overlay,Vector2.ZERO,Vector2(395,530))
 	graphics_panel=weather_panel
 	weather_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -361,13 +365,24 @@ func _set_hud(value: bool) -> void:
 func _label(parent: Node, text_value: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text_value
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_shadow_color", Color(0.01, 0.03, 0.04, 0.8))
-	label.add_theme_constant_override("shadow_offset_x", 1)
-	label.add_theme_constant_override("shadow_offset_y", 1)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(label)
+	# Parchment panels take brown ink; text over the scene stays cream with a brown outline.
+	var paper: bool = UI.on_parchment(parent)
+	var header: bool = color == GOLD and font_size >= 16
+	if paper:
+		color = {CREAM: UI.INK, GOLD: UI.RUST, SEA: UI.SEA_INK}.get(color, color)
+	else:
+		color = {CREAM: UI.CREAM, GOLD: UI.GOLD}.get(color, color)
+		label.add_theme_color_override("font_outline_color", UI.WOOD_DARK)
+		label.add_theme_constant_override("outline_size", 3)
+		label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.35))
+		label.add_theme_constant_override("shadow_offset_x", 1)
+		label.add_theme_constant_override("shadow_offset_y", 2)
+	if header:label.add_theme_font_override("font", UI.title_font())
+	# IM FELL runs small: a size up keeps the old proportions.
+	label.add_theme_font_size_override("font_size", int(font_size * (1.25 if header else (1.15 if paper else 1.3))))
+	label.add_theme_color_override("font_color", color)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
 func _panel(parent: Node, pos: Vector2, dimensions: Vector2) -> PanelContainer:
@@ -375,15 +390,8 @@ func _panel(parent: Node, pos: Vector2, dimensions: Vector2) -> PanelContainer:
 	panel.position = pos
 	panel.size = dimensions
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.035, 0.12, 0.15, 0.88)
-	style.border_color = Color(0.6, 0.8, 0.73, 0.25)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.content_margin_left = 20
-	style.content_margin_right = 20
-	style.content_margin_top = 16
-	style.content_margin_bottom = 16
+	var style := UI.parchment(20.)
+	panel.set_meta("parchment", true)
 	panel.add_theme_stylebox_override("panel", style)
 	parent.add_child(panel)
 	return panel
@@ -400,10 +408,10 @@ func _bar(parent: Node, color: Color) -> ProgressBar:
 	bar.custom_minimum_size = Vector2(420, 12)
 	bar.show_percentage = false
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color("233f45")
-	bg.set_corner_radius_all(5)
+	bg.bg_color = Color(UI.WOOD_DARK, .85)
+	bg.set_corner_radius_all(3)
 	var fill := StyleBoxFlat.new()
-	fill.bg_color = color
+	fill.bg_color = {SEA: UI.SEA_INK, GOLD: UI.RUST}.get(color, color)
 	fill.set_corner_radius_all(5)
 	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fill)
@@ -415,17 +423,8 @@ func _button(parent: Node, label: String) -> Button:
 	button.text = label
 	button.custom_minimum_size = Vector2(390, 48)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	button.add_theme_font_size_override("font_size", 17)
-	button.add_theme_color_override("font_color", CREAM)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("24655f")
-	style.set_corner_radius_all(5)
-	style.content_margin_left = 24
-	style.content_margin_right = 24
-	button.add_theme_stylebox_override("normal", style)
-	var hover: StyleBoxFlat = style.duplicate()
-	hover.bg_color = Color("397f71")
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("focus", hover)
+	button.add_theme_font_size_override("font_size", 19)
+	# Long shop lines wrap inside the button instead of running past the panel.
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(button)
 	return button
