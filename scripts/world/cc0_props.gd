@@ -26,6 +26,23 @@ static func _fix_materials(instance: Node3D) -> void:
 				mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.albedo_color=Color(0,0,0,0);mat.albedo_texture=null
 			else:
 				mat.metallic=0.;mat.metallic_specular=.3;mat.roughness=maxf(mat.roughness,.75)
+				# One look across the game: the kit's colours go through the same painted grading as every
+				# other surface (lower contrast, a little lighter, warmer), with the same soft rim light.
+				if mat.albedo_texture!=null:mat.albedo_texture=_graded(mat.albedo_texture)
+				mat.albedo_color=mat.albedo_color*Color(1.,.97,.9)
+				mat.rim_enabled=true;mat.rim=.14;mat.rim_tint=.45
+
+static var _graded_cache: Dictionary={}
+static func _graded(tex: Texture2D) -> Texture2D:
+	if _graded_cache.has(tex):return _graded_cache[tex]
+	var img: Image=tex.get_image()
+	if img==null:return tex
+	img=img.duplicate()
+	if img.is_compressed() and img.decompress()!=OK:return tex
+	img.adjust_bcs(1.1,.72,.8)
+	img.generate_mipmaps()
+	var out:=ImageTexture.create_from_image(img);_graded_cache[tex]=out
+	return out
 
 static func path_of(model: String) -> String:
 	return NATURE%model.trim_prefix("nature:") if model.begins_with("nature:") else ROOT%model

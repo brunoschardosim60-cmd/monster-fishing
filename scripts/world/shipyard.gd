@@ -118,7 +118,7 @@ func _people(hull_at: Vector2,pile_at: Vector2,shed_at: Vector2,floor_y: float) 
 	var bark:=G.material(Color("6b4e33"),.95);var cut:=G.material(Color("d8b884"),.8)
 	for k: int in 3:
 		var t:=camp-_out*(4.+float(k)*2.5)+_side*(float(k)*3.-3.)
-		Props.spawn(self,"nature:CommonTree_%d"%(k%3+1),Vector3(t.x,Layout.ground(t),t.y),7.5+float(k),float(k)*1.7)
+		preload("res://scripts/world/nature_library.gd").plant(self,k%2,Vector3(t.x,Layout.ground(t),t.y),.6+.05*float(k),float(k)*1.7)
 	for k: int in 3:
 		var st:=camp+_side*(float(k)*2.2-1.)+_out*1.8
 		G.cylinder(self,Vector3(st.x,Layout.ground(st)+.22,st.y),.3,.5,bark,.28,10)

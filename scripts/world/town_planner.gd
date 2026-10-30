@@ -535,8 +535,8 @@ func _plaza(centre: Vector2,y: float) -> void:
 		var p:=centre+Vector2(cos(a),sin(a))*(PLAZA_R+3.)
 		var tree_at:=Vector3(p.x,Layout.ground(p),p.y)
 		_plaza_trees.append(p)
-		if Props.exists("nature:CherryBlossom_1"):Props.spawn(self,"nature:CherryBlossom_1" if i==0 else "nature:CommonTree_%d"%(i+1),tree_at,_rng.randf_range(6.,8.),_rng.randf()*TAU,false,600.)
-		else:village.world._make_tree(tree_at,1.2)
+		# The island's own broadleaf trees (tools/blender/naturalist.py), kept a size smaller in the square.
+		preload("res://scripts/world/nature_library.gd").plant(self,i%2,tree_at,_rng.randf_range(.55,.7),_rng.randf()*TAU)
 
 ## A house on sloping ground stands on its plinth with the floor level; where the ground in front of the
 ## door is lower than a step, stone steps lead down to it (each block reaches the ground, so none hangs
