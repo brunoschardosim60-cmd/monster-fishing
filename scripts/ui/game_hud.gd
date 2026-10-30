@@ -254,7 +254,7 @@ func _make_overlay() -> void:
 	var weather_box:=_vbox(weather_panel)
 	_label(weather_box,"CONDIÇÕES DO MAR",18,GOLD)
 	weather_picker=OptionButton.new()
-	for text: String in ["Clima dinâmico","Mar calmo","Brisa","Mar agitado","Tempestade","Após a tempestade"]: weather_picker.add_item(text)
+	for text: String in ["Clima dinâmico","Mar calmo","Brisa","Mar agitado","Tempestade","Após a tempestade","Chuva"]: weather_picker.add_item(text)
 	weather_picker.custom_minimum_size=Vector2(325,44)
 	weather_box.add_child(weather_picker)
 	weather_picker.item_selected.connect(func(index: int) -> void: weather_selected.emit(index-1))

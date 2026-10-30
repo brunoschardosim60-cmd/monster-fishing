@@ -13,7 +13,7 @@ func run() -> void:
 	var deep:=0
 	for l: Dictionary in lairs:
 		if Layout.coast(Vector2(l.center.x,l.center.z)).x>300.:deep+=1
-	check(lairs.size()==3 and deep==3,"three monster territories in deep water")
+	check(lairs.size()==4 and deep==4,"four monster territories in deep water (kraken, serpent, leviathan, megalodon)")
 	var lair: Dictionary=lairs[0]
 	var c: Vector3=lair.center;var r: float=lair.radius
 	game.boat.set_occupied(true);game.player.set_boating(true);game.boat.speed=0.

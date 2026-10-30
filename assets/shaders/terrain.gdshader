@@ -21,6 +21,8 @@ uniform float biome_paint=0.;
 uniform float biome_rock=0.;
 uniform vec3 biome_ground=vec3(.3,.5,.3);
 uniform vec3 biome_accent=vec3(.4,.6,.3);
+// Desert: wind ripples across the sand and lighter, sun-bleached dune crests.
+uniform float biome_dunes=0.;
 vec3 saturate_color(vec3 c,float s){return mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,s);}
 varying vec3 wp;
 varying vec3 wn;
@@ -62,6 +64,13 @@ void fragment(){
 	// darker slopes, sun-bleached flats.
 	painted*=mix(.74,1.16,smoothstep(.25,.75,big))*mix(1.,.8,smoothstep(.12,.4,slope));
 	painted=mix(painted,painted*vec3(1.12,1.1,1.0)+.03,smoothstep(.62,.85,macro2)*(1.-smoothstep(.1,.3,slope))*.6);
+	if(biome_dunes>0.){
+		vec2 wd=normalize(vec2(.8,.6));
+		float rip=sin(dot(wp.xz,wd)*1.4+texture(noise_tex,wp.xz*.02).r*14.);
+		float crest=smoothstep(.55,.85,texture(noise_tex,wp.xz*.008+vec2(.3,.6)).r);
+		painted*=mix(1.,.9+.1*rip,biome_dunes)*mix(1.,1.18,crest*biome_dunes);
+		painted=mix(painted,painted*vec3(.82,.66,.58),smoothstep(.15,.4,slope)*biome_dunes);
+	}
 	turf=mix(turf,painted,biome_paint);
 	sand*=vec3(1.05,1.0,.9);
 	float wash=.12+.1*sin(sea_time*1.15-wp.x*.12-wp.z*.14);

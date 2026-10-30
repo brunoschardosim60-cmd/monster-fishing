@@ -47,7 +47,7 @@ func _input(event: InputEvent) -> void:
 	if not active or not event is InputEventKey or not event.pressed or event.echo:return
 	match (event as InputEventKey).keycode:
 		KEY_F7:
-			var w=game.world.ocean.weather;var next:int=(int(w.state)+1)%5;w.settle(next)
+			var w=game.world.ocean.weather;var next:int=(int(w.state)+1)%6;w.settle(next)
 			game.hud.notify("Clima: "+str(w.LABELS[next]))
 		KEY_F8:
 			game.world.ocean.hour=fmod(float(game.world.ocean.hour)+3.,24.);game.hud.notify("Hora: %02d:00"%int(game.world.ocean.hour))

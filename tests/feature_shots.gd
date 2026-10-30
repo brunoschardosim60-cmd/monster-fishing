@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas","galeao","bergantim"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -732,7 +732,7 @@ func _peixes() -> void:
 func _monstros() -> void:
 	game.world.ocean.hour=16.;game.world.ocean.weather.settle(0)
 	var b: CharacterBody3D=game.boat
-	for kind: String in ["kraken","serpente","leviata"]:
+	for kind: String in ["kraken","serpente","leviata","megalodonte"]:
 		for lair: Dictionary in game.lairs.lairs:
 			if lair.kind!=kind:continue
 			var c: Vector3=lair.center
@@ -744,7 +744,7 @@ func _monstros() -> void:
 			for i: int in 30:await physics_frame
 			for k: int in 4:
 				var at: Vector3=(lair.node as Node3D).global_position
-				var away: float={"kraken":30.,"serpente":14.,"leviata":40.}[kind]
+				var away: float={"kraken":30.,"serpente":25.,"leviata":40.,"megalodonte":22.}[kind]
 				var cam:=b.global_position+(b.global_position-at).normalized()*away+Vector3(0,9,0)
 				await shot("monstro_%s_%d"%[kind,k],cam,at+Vector3(0,8,0),1)
 				for i: int in 25:await physics_frame
@@ -1000,3 +1000,40 @@ func _ilhas() -> void:
 		await shot("ilha%d_chao"%n,shore,Vector3(c.x,_ground(c)+3.,c.z),1)
 		n+=1
 		if n>=4:break
+
+func _galeao() -> void:
+	var w=game.world;w.ocean.cycle_enabled=false;w.ocean.hour=15.;w.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat;var inv=game.inventory;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	inv.owned_boats.append("galeao");inv.boat_id="galeao";load("res://scripts/inventory/harbor_economy.gd").apply(inv,b,game.fishing)
+	for i: int in 40:await physics_frame
+	await shot("galeao_frente",p+Vector3(32,12,-30),p+Vector3(0,8,0),1)
+	await shot("galeao_popa",p+Vector3(-26,10,36),p+Vector3(0,7,0),1)
+	if not game.player.on_deck:game.toggle_deck()
+	for i: int in 10:await process_frame
+	await shot("galeao_conves",b._hull.to_global(Vector3(2.4,4.5,-6.)),b._hull.to_global(Vector3(-.5,3.,6.)),1)
+	await shot("galeao_leme",b._hull.to_global(Vector3(2.,7.,14.)),b._hull.to_global(Vector3(0,4.5,-6.)),1)
+	game.player.deck_local=b.hull_spec.cabin.hatch;game.interact()
+	for i: int in 20:await process_frame
+	await shot("galeao_cabine",b._hull.to_global(Vector3(2.,3.9,7.3)),b._hull.to_global(Vector3(-.5,2.6,12.)),1)
+	game.interact();for i: int in 10:await process_frame
+	game.player.deck_local=b.hull_spec.hold.hatch+Vector3(0,0,1.2);game.interact()
+	for i: int in 20:await process_frame
+	print("porao: ",game.player.cabin.get("hold",false)," hint ",game._cabin_hint())
+	await shot("galeao_porao",b._hull.to_global(Vector3(1.8,1.2,5.)),b._hull.to_global(Vector3(-.5,.2,-4.)),1)
+
+func _bergantim() -> void:
+	var w=game.world;w.ocean.cycle_enabled=false;w.ocean.hour=15.;w.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat;var inv=game.inventory;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	inv.owned_boats.append("bergantim");inv.boat_id="bergantim";load("res://scripts/inventory/harbor_economy.gd").apply(inv,b,game.fishing)
+	for i: int in 40:await physics_frame
+	await shot("bergantim_frente",p+Vector3(26,10,-24),p+Vector3(0,7,0),1)
+	if not game.player.on_deck:game.toggle_deck()
+	for i: int in 10:await process_frame
+	game.player.deck_local=b.hull_spec.hold.hatch+Vector3(0,0,1.2);game.interact()
+	for i: int in 20:await process_frame
+	print("porao bergantim: ",game.player.cabin.get("hold",false))
+	await shot("bergantim_porao",b._hull.to_global(Vector3(1.4,.9,3.6)),b._hull.to_global(Vector3(-.4,0.,-4.)),1)

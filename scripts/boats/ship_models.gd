@@ -4,7 +4,7 @@ extends RefCounted
 ## seams and patches, rope, iron, brass, glowing stern windows), and reads the layout JSON beside it
 ## (decks, helm, cabin, stairs, mast) so the boat systems know where things are.
 const M=preload("res://scripts/visuals/materials.gd")
-const KINDS: Dictionary={"chalupa":"res://assets/boats/ships/chalupa.glb"}
+const KINDS: Dictionary={"chalupa":"res://assets/boats/ships/chalupa.glb","galeao_sot":"res://assets/boats/ships/galeao.glb","bergantim_sot":"res://assets/boats/ships/bergantim.glb"}
 static var _layouts: Dictionary={}
 static var _mats: Dictionary={}
 
@@ -85,10 +85,12 @@ static func build(kind: String) -> Node3D:
 		var mi: MeshInstance3D=sail_mi
 		if not mi.name.begins_with("Vela_"):continue
 		var box: AABB=mi.transform*mi.get_aabb()
-		var tack:=Vector3(mast.x,box.end.y,mast.z)
+		# One mast: its position from the layout. Several (galleon): the sail hangs .5 m before its own mast.
+		var tack:=Vector3(mast.x,box.end.y,mast.z) if lay0.has("mast") else Vector3(0.,box.end.y,box.get_center().z+.5)
 		mi.set_meta("tack",tack);mi.set_meta("square",true)
 		for y: Node3D in yards:
-			if absf(y.position.y-box.end.y)<.6:y.set_meta("from",tack)
+			var yc: Vector3=y.position if y.position!=Vector3.ZERO else (y as MeshInstance3D).transform*(y as MeshInstance3D).get_aabb().get_center()
+			if absf(yc.y-box.end.y)<.6 and absf(yc.z-tack.z)<2.:y.set_meta("from",tack)
 		rigged.append(mi)
 	root.set_meta("booms",yards)
 	root.set_meta("sails",rigged);root.set_meta("layout",layout(kind))

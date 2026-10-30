@@ -145,7 +145,7 @@ func _physics_process(delta: float) -> void:
 			var room: Rect2=cabin.rect
 			deck_local.x=clampf(deck_local.x,room.position.x+.22,room.end.x-.22);deck_local.z=clampf(deck_local.z,room.position.y+.22,room.end.y-.22)
 			deck_local.y=float(cabin.floor)
-			var node: Node3D=deck_boat.get("cabin_node")
+			var node: Node3D=deck_boat.get("hold_node") if bool(cabin.get("hold",false)) else deck_boat.get("cabin_node")
 			if node!=null:deck_local=preload("res://scripts/boats/hull_classes.gd").resolve_blocks(deck_local,node.get_meta("blocks",[]),.2)
 			# Pushed off a piece of furniture, still never through a wall.
 			deck_local.x=clampf(deck_local.x,room.position.x+.22,room.end.x-.22);deck_local.z=clampf(deck_local.z,room.position.y+.22,room.end.y-.22)

@@ -411,32 +411,42 @@ func fish_action() -> void:
 
 ## Down the companionway into the cabin, or back up on deck (E at the hatch / at the foot of the ladder).
 func _cabin_hint() -> String:
-	if not (player.in_boat and player.on_deck) or not boat.hull_spec.has("cabin"):return ""
-	var c: Dictionary=boat.hull_spec.cabin
+	if not (player.in_boat and player.on_deck):return ""
 	if not player.cabin.is_empty():
+		var c: Dictionary=player.cabin
 		var foot_d: float=Vector2(player.deck_local.x-c.foot.x,player.deck_local.z-c.foot.z).length()
-		if boat.cabin_node!=null and boat.cabin_node.has_meta("chart"):
+		if not bool(c.get("hold",false)) and boat.cabin_node!=null and boat.cabin_node.has_meta("chart"):
 			var chart: Vector3=boat.cabin_node.get_meta("chart")
 			var chart_d: float=Vector2(player.deck_local.x-chart.x,player.deck_local.z-chart.z).length()
 			if chart_d<.8 and chart_d<foot_d:return "E · Abrir a carta náutica"
 		if foot_d<.9:return "E · Subir ao convés"
-		return "Na cabine"
-	if player.deck_level<0 and Vector2(player.deck_local.x-c.hatch.x,player.deck_local.z-c.hatch.z).length()<.8:return "E · Descer à cabine"
+		return "No porão" if bool(c.get("hold",false)) else "Na cabine"
+	if player.deck_level>=0:return ""
+	if boat.hull_spec.has("cabin"):
+		var cb: Dictionary=boat.hull_spec.cabin
+		if Vector2(player.deck_local.x-cb.hatch.x,player.deck_local.z-cb.hatch.z).length()<.8:return "E · Descer à cabine"
+	if boat.hull_spec.has("hold"):
+		var hd: Dictionary=boat.hull_spec.hold
+		if Vector2(player.deck_local.x-hd.hatch.x,player.deck_local.z-hd.hatch.z).length()<1.5:return "E · Descer ao porão"
 	return ""
 
 func _cabin_action() -> bool:
 	var hint: String=_cabin_hint()
-	if hint=="E · Descer à cabine":
+	if hint=="E · Descer à cabine" or hint=="E · Descer ao porão":
 		fishing.cancel();aiming=false
-		player.cabin=boat.hull_spec.cabin;player.deck_local=boat.hull_spec.cabin.foot+Vector3(0,0,-.35)
-		if boat.cabin_node!=null:boat.cabin_node.visible=true
-		hud.notify("Na cabine. E ao pé da escada para subir.");return true
+		var hold: bool=hint=="E · Descer ao porão"
+		var spec: Dictionary=(boat.hull_spec.hold if hold else boat.hull_spec.cabin).duplicate();spec["hold"]=hold
+		player.cabin=spec;player.deck_local=spec.foot+Vector3(0,0,-.35)
+		var room: Node3D=boat.hold_node if hold else boat.cabin_node
+		if room!=null:room.visible=true
+		hud.notify(("No porão." if hold else "Na cabine.")+" E ao pé da escada para subir.");return true
 	if hint=="E · Abrir a carta náutica":
 		hud.map_view.visible=not hud.map_view.visible;return true
 	if hint=="E · Subir ao convés":
 		var c: Dictionary=player.cabin
-		player.cabin={};player.deck_local=c.hatch+Vector3(0,0,.55)
-		if boat.cabin_node!=null:boat.cabin_node.visible=false
+		player.cabin={};player.deck_local=c.hatch+Vector3(0,0,.55 if not bool(c.get("hold",false)) else 1.4)
+		var room2: Node3D=boat.hold_node if bool(c.get("hold",false)) else boat.cabin_node
+		if room2!=null:room2.visible=false
 		return true
 	return false
 
@@ -509,6 +519,7 @@ func _leave_cabin() -> void:
 	if player.cabin.is_empty():return
 	player.cabin={}
 	if boat.cabin_node!=null and is_instance_valid(boat.cabin_node):boat.cabin_node.visible=false
+	if boat.hold_node!=null and is_instance_valid(boat.hold_node):boat.hold_node.visible=false
 
 func disembark() -> void:
 	_leave_cabin()

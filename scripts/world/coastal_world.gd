@@ -217,7 +217,7 @@ const BIOME_PAINT: Dictionary={
 	"shadow":{"paint":.9,"rock":.45,"accent":Color("55407a")},
 	"storm":{"paint":.8,"rock":.6,"accent":Color("4f6b70")},
 }
-const RELIEF: Dictionary={"tropical":.3,"frost":.42,"volcanic":.38,"mountain":.4,"desert":.26,"mystic":.32,"storm":.32,"shadow":.34}
+const RELIEF: Dictionary={"tropical":.3,"frost":.42,"volcanic":.38,"mountain":.4,"desert":.32,"mystic":.32,"storm":.32,"shadow":.34}
 
 ## World-space offset from an island centre for a normalised radius (0 centre, 1 mesh rim) and angle.
 func _island_offset(lobe: int, size: Vector2, angle: float, radius: float) -> Vector2:
@@ -275,6 +275,7 @@ func _make_island(center: Vector3, size: Vector2, playable: bool, biome: String=
 		mat.set_shader_parameter("biome_land",1.)
 		mat.set_shader_parameter("biome_paint",paint["paint"])
 		mat.set_shader_parameter("biome_rock",paint["rock"])
+		mat.set_shader_parameter("biome_dunes",1. if biome=="desert" else 0.)
 		var ground_c: Color=(palette["ground"] as Color).srgb_to_linear();var accent_c: Color=(paint["accent"] as Color).srgb_to_linear()
 		mat.set_shader_parameter("biome_ground",Vector3(ground_c.r,ground_c.g,ground_c.b))
 		mat.set_shader_parameter("biome_accent",Vector3(accent_c.r,accent_c.g,accent_c.b))
@@ -364,7 +365,7 @@ const FLORA_MIX: Dictionary={
 	"tropical":[["glb2",.3],["glb3",.22],["glb1",.12],["glb7",.24],["reed",.12]],
 	"frost":[["snowpine",.55],["glb0",.2],["shrub",.1],["dead",.15]],
 	"mountain":[["glb6",.45],["glb0",.2],["windpine",.15],["glb7",.2]],
-	"desert":[["cactus",.38],["agave",.4],["dead",.22]],
+	"desert":[["cactus",.36],["agave",.34],["dead",.18],["glb5",.12]],
 	"volcanic":[["charred",.7],["dead",.12],["agave",.18]],
 	"storm":[["glb6",.3],["windpine",.3],["dead",.2],["glb7",.2]],
 	"shadow":[["twisted_violet",.6],["dead",.25],["reed",.15]],

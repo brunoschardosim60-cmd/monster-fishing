@@ -94,10 +94,8 @@ func start_serpent() -> void:
 	if Layout.coast(Vector2(start.x,start.z)).x<200.:return
 	serpent_dir=(boat.global_position-start).normalized().rotated(Vector3.UP,_rng.randf_range(-.6,.6))
 	serpent=Node3D.new();serpent.name="SerpenteMigratoria";add_child(serpent)
-	var body:=MeshInstance3D.new();body.mesh=load("res://assets/models/imported/serpent.res")
-	var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/imported_model.gdshader");body.material_override=mat
-	body.scale=Vector3.ONE*16.;body.set_instance_shader_parameter("model_scale",16.);body.set_instance_shader_parameter("sway",1.)
-	body.position.y=-16.*.42;serpent.add_child(body);serpent.set_meta("body",body)
+	# The same 60 m serpent breed as the lair's (tools/blender/leviathan.py), swimming with its head low.
+	preload("res://scripts/world/monster_lairs.gd").serpent_model(serpent,"res://assets/monsters/serpente/serpente.glb",60.)
 	serpent.global_position=start;serpent.rotation.y=atan2(-serpent_dir.x,-serpent_dir.z)
 	serpent_clock=0.
 	game.hud.notify("Ao longe, um dorso longo corta a água… uma serpente marinha em migração.")

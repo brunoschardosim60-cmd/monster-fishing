@@ -82,7 +82,8 @@ static func build(parent: Node3D,spec: Dictionary,kind: String) -> Node3D:
 	var blocks: Array[Rect2]=[]
 	match kind:
 		"veleiro":_saloon(root,r,y0,y1,teak,cloth,white,brass,dark,blocks)
-		"chalupa":_captain_cabin(root,r,y0,y1,blocks)
+		"chalupa","galeao_sot","bergantim_sot":_captain_cabin(root,r,y0,y1,blocks)
+		"porao":_hold(root,r,y0,y1,blocks,spec.foot)
 		"escuna":_lower_deck(root,r,y0,y1,teak,cloth,white,brass,dark,blocks)
 	# Furniture from the joinery set brings its own colliders for houses; aboard, the cabin's blocks do
 	# that job, and a static body inside the boat would snag its own hull.
@@ -94,6 +95,41 @@ static func build(parent: Node3D,spec: Dictionary,kind: String) -> Node3D:
 ## The sloop's captain's cabin under the helm deck (Sea of Thieves style): entered by the door forward;
 ## the captain's table with the chart and chairs in the middle, the bunk along the starboard side,
 ## a sea chest and shelves to port, lanterns, under the stern windows a bench. The doorway stays clear.
+## The hold (hull_classes "hold"): cargo stowed along both sides and lashed — crates, barrels on chocks,
+## sacks, coils of rope, fish boxes on ice, nets hung from the beams and a couple of hammocks — leaving
+## a gangway down the middle from the ladder.
+static func _hold(root: Node3D,r: Rect2,y0: float,y1: float,blocks: Array[Rect2],foot: Vector3) -> void:
+	var F=preload("res://scripts/visuals/furniture.gd")
+	var rng:=RandomNumberGenerator.new();rng.seed=int(r.size.x*100.+r.size.y)
+	var wood:=M.surface("weathered_wood",Color("8a6238"),1.2);var iron:=G.material(Color("2a2622"),.5)
+	var sack:=G.material(Color("b9a27a"),.95);var ice:=G.material(Color("d8eef2"),.2);var net:=G.material(Color("6a7a5a"),.9)
+	var lane: float=.75
+	var z: float=r.position.y+.5
+	while z<r.end.y-.5:
+		for side: float in [-1.,1.]:
+			var x: float=r.get_center().x+side*(r.size.x*.5-.55)
+			if absf(z-foot.z)<1. and absf(x-foot.x)<1.:continue
+			match rng.randi()%4:
+				0:F.crate(root,Vector3(x,y0,z),rng.randf_range(-.2,.2),Vector3(.8,.6,.7),false)
+				1:
+					var b:=G.cylinder(root,Vector3(x,y0+.42,z),.34,.84,wood,.3,12)
+					for hy: float in [.15,.69]:G.cylinder(root,Vector3(x,y0+hy,z),.36,.05,iron,-1.,12)
+				2:
+					for k: int in 3:G.sphere(root,Vector3(x+rng.randf_range(-.15,.15),y0+.2+float(k)*.22,z+rng.randf_range(-.2,.2)),Vector3(.32,.2,.26),sack,8)
+				_:
+					G.box(root,Vector3(x,y0+.2,z),Vector3(.9,.4,.6),wood)
+					G.box(root,Vector3(x,y0+.38,z),Vector3(.8,.06,.5),ice)
+			blocks.append(Rect2(x-.5,z-.45,1.,.9))
+		z+=1.1
+	# Nets drooping from the beams and two hammocks slung fore and aft.
+	for k: int in 3:
+		var nz: float=lerpf(r.position.y+.8,r.end.y-.8,float(k)/2.)
+		var drape:=G.sphere(root,Vector3(r.get_center().x+(1. if k%2==0 else -1.)*(r.size.x*.5-.4),y1-.45,nz),Vector3(.25,.5,.9),net,8)
+	for hz: float in [r.position.y+.6]:
+		var hm:=G.box(root,Vector3(r.get_center().x,y1-.75,hz),Vector3(r.size.x-.6,.06,.7),G.material(Color("d8cfb8"),.95))
+		for side: float in [-1.,1.]:G.beam(root,Vector3(r.get_center().x+side*(r.size.x*.5-.3),y1-.75,hz),Vector3(r.get_center().x+side*(r.size.x*.5-.05),y1-.1,hz),.015,net)
+	F.oil_lamp(root,Vector3(r.get_center().x,y1-.4,lerpf(r.position.y,r.end.y,.3)))
+
 static func _captain_cabin(root: Node3D,r: Rect2,y0: float,y1: float,blocks: Array[Rect2]) -> void:
 	var F=preload("res://scripts/visuals/furniture.gd")
 	var x0: float=r.position.x;var x1: float=r.end.x;var z0: float=r.position.y;var z1: float=r.end.y

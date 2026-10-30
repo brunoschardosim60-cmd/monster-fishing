@@ -1,9 +1,12 @@
 extends RefCounted
 ## Wind responds first; the swell retains its energy after a front passes.
-enum State { CALM, BREEZE, ROUGH, STORM, AFTERMATH }
-const LABELS := ["MAR CALMO", "BRISA", "MAR AGITADO", "TEMPESTADE", "ONDULAÇÃO RESIDUAL"]
-const PRESETS := [Vector4(.09,0.,.18,.0004), Vector4(.32,0.,.32,.00065), Vector4(.68,.35,.72,.002), Vector4(1.,1.,1.,.006), Vector4(.22,.08,.42,.0012)]
-const DURATIONS := [100.,150.,100.,85.,130.]
+enum State { CALM, BREEZE, ROUGH, STORM, AFTERMATH, RAIN }
+const LABELS := ["MAR CALMO", "BRISA", "MAR AGITADO", "TEMPESTADE", "ONDULAÇÃO RESIDUAL", "CHUVA"]
+const PRESETS := [Vector4(.09,0.,.18,.0004), Vector4(.32,0.,.32,.00065), Vector4(.68,.35,.72,.002), Vector4(1.,1.,1.,.006), Vector4(.22,.08,.42,.0012), Vector4(.42,.62,.88,.0024)]
+const DURATIONS := [100.,150.,100.,85.,130.,120.]
+## The background cycle (storms come as local cells, storms.gd): a front brings showers, then rough seas.
+const CYCLE: Array[int]=[State.CALM,State.BREEZE,State.RAIN,State.BREEZE,State.ROUGH,State.AFTERMATH]
+var _step: int=1
 var state: int = State.BREEZE
 var automatic: bool = true
 var age: float = 0.
@@ -21,15 +24,14 @@ var _base:=Vector4(.32,0.,.32,.00065)
 
 func choose(index: int) -> void:
 	automatic=index<0
-	if index>=0: state=clampi(index,0,4)
+	if index>=0: state=clampi(index,0,5)
 	age=0.
 
 func advance(delta: float) -> void:
 	clock+=delta; age+=delta
 	if automatic and age>DURATIONS[state]:
 		# Storms are local cells now (storms.gd); the background cycle only goes as far as rough seas.
-		state=(state+1)%5; age=0.
-		if state==State.STORM: state=State.AFTERMATH
+		_step=(_step+1)%CYCLE.size();state=CYCLE[_step];age=0.
 	var target: Vector4=PRESETS[state]
 	var blend:=1.-exp(-delta/18.)
 	var gust:=1.+sin(clock*.19)*.07+sin(clock*.071)*.06

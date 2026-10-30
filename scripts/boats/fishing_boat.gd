@@ -18,6 +18,8 @@ var water_aboard: float=0.
 var deck_wash: Node3D
 ## The room below (cabin_interior.gd), on hulls that have one; null otherwise.
 var cabin_node: Node3D
+## The hold below the main deck (hull_classes "hold"), if the ship has one.
+var hold_node: Node3D
 var _water_note: int=0
 ## Boost (SHIFT at the helm): a few seconds of extra power to outrun a monster, then the engine cools.
 var boost: float=0.
@@ -360,6 +362,7 @@ func _debris_kinds() -> Array:
 	match hull_model:
 		"canoa":return ["plank","plank","paddle","plank","rope"]
 		"veleiro":return ["plank","ring","crate","plank","rope","plank"]
+		"galeao","bergantim":return ["plank","barrel","crate","plank","rope","plank","barrel","ring"]
 		"escuna":return ["plank","barrel","crate","plank","rope","barrel","plank"]
 	return ["plank","tire","ring","crate","plank","tire"]
 
@@ -734,6 +737,9 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 		if hull_spec.has("cabin"):
 			cabin_node=preload("res://scripts/boats/cabin_interior.gd").build(_alt_body,hull_spec.cabin,str(hull_spec.kind))
 			if not hull_spec.cabin.get("door",false):_build_hatch(_alt_body,hull_spec.cabin.hatch)
+		hold_node=null
+		if hull_spec.has("hold"):
+			hold_node=preload("res://scripts/boats/cabin_interior.gd").build(_alt_body,hull_spec.hold,"porao");hold_node.name="Porao";hold_node.visible=false
 		crew.clear()
 		var crew_index: int=0
 		for c: Dictionary in hull_spec.get("crew",[]):

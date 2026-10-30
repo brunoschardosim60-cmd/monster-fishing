@@ -20,16 +20,17 @@ const Waves=preload("res://scripts/world/wave_field.gd")
 const SERPENT_SIZE: float=30.
 const KRAKEN_SCALE: float=1.8
 ## Harpoon hits needed, chase speed (m/s) and bounty per guardian.
-const HEALTH: Dictionary={"kraken":5,"serpente":6,"leviata":8}
-const CHASE: Dictionary={"kraken":7.,"serpente":10.,"leviata":8.}
-const BOUNTY: Dictionary={"kraken":160,"serpente":190,"leviata":240}
+const HEALTH: Dictionary={"kraken":5,"serpente":6,"leviata":8,"megalodonte":6}
+const CHASE: Dictionary={"kraken":7.,"serpente":10.,"leviata":8.,"megalodonte":12.}
+const BOUNTY: Dictionary={"kraken":160,"serpente":190,"leviata":240,"megalodonte":200}
 ## Height above its node where each guardian is hit (the part above water).
-const TARGET_HEIGHT: Dictionary={"kraken":5.,"serpente":16.,"leviata":7.}
-const TARGET_RADIUS: Dictionary={"kraken":12.,"serpente":7.,"leviata":12.}
+const TARGET_HEIGHT: Dictionary={"kraken":5.,"serpente":7.,"leviata":7.,"megalodonte":3.}
+const TARGET_RADIUS: Dictionary={"kraken":12.,"serpente":10.,"leviata":12.,"megalodonte":8.}
 var _shots: Array[Dictionary]=[]
 const LAIRS: Array=[["Fossa do Kraken","kraken",Vector2(-1500,-1450),240.,60],
 	["Abismo da Serpente","serpente",Vector2(1700,-2250),260.,70],
-	["Trono do Leviatã","leviata",Vector2(-2300,2300),300.,80]]
+	["Trono do Leviatã","leviata",Vector2(-2300,2300),300.,80],
+	["Rota do Megalodonte","megalodonte",Vector2(2300,1700),260.,70]]
 var game: Node3D
 var lairs: Array[Dictionary]=[]
 var _rng:=RandomNumberGenerator.new()
@@ -113,31 +114,35 @@ func _build(kind: String) -> Node3D:
 			# A real kraken: the mantle stands ~19 m out of the water and the arms reach 25 m.
 			root.scale=Vector3.ONE*KRAKEN_SCALE
 		"serpente":
-			# Bruno's sea-dragon model, painted by the pipeline: the coil stays under water, neck and head
-			# rise above it. The shader sways the upper body and throws it forward when it strikes.
-			var body:=MeshInstance3D.new();body.name="Corpo";body.mesh=load("res://assets/models/imported/serpent.res")
-			var mat:=ShaderMaterial.new();mat.shader=preload("res://assets/shaders/imported_model.gdshader");body.material_override=mat
-			body.scale=Vector3.ONE*SERPENT_SIZE;body.position.y=-.3*SERPENT_SIZE
-			body.set_instance_shader_parameter("model_scale",SERPENT_SIZE);body.set_instance_shader_parameter("sway",1.)
-			body.extra_cull_margin=12.;root.add_child(body)
-			root.set_meta("body",body)
+			# A 60 m sea serpent, the leviathan's moss-green cousin with a blood-red crest (tools/blender/leviathan.py,
+			# VARIANT=serpente), swum by the same shader.
+			serpent_model(root,"res://assets/monsters/serpente/serpente.glb",60.)
+		"megalodonte":
+			# A 22 m prehistoric shark (tools/blender/megalodon.py): only the dorsal fin cuts the surface while
+			# it circles; it rams the hull and breaches with the jaw wide open.
+			serpent_model(root,"res://assets/monsters/megalodonte/megalodonte.glb",24.,{"jaw_hinge":Vector3(0,-1.6,-1.6),"head_start":-6.,"head_reach":10.,"wave_amp":3.})
 		_:
 			# The leviathan: a 90 m sea serpent modelled in Blender (tools/blender/leviathan.py): scaled back
 			# in bands, dorsal spikes, fins and frills, a dragon head with horns and a jaw that opens, and
 			# glowing photophores. leviathan_body.gdshader swims it, raises the head and lunges.
-			var model: Node3D=load("res://assets/monsters/leviata/leviata.glb").instantiate();model.name="Leviata";root.add_child(model)
-			var parts: Array[GeometryInstance3D]=[]
-			var shader:=preload("res://assets/shaders/leviathan_body.gdshader")
-			for mi: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
-				for i: int in mi.mesh.get_surface_count():
-					var src: Material=mi.mesh.surface_get_material(i)
-					var nm: String=str(src.resource_name) if src!=null else ""
-					var m:=ShaderMaterial.new();m.shader=shader
-					m.set_shader_parameter("is_jaw",nm.begins_with("Mandibula"));m.set_shader_parameter("glow",nm.begins_with("Brilho"))
-					mi.set_surface_override_material(i,m)
-				mi.extra_cull_margin=30.;parts.append(mi)
-			root.set_meta("parts",parts)
+			serpent_model(root,"res://assets/monsters/leviata/leviata.glb",90.)
 	return root
+
+## Loads a serpent GLB (body, jaw, teeth, glow) under `root` with leviathan_body.gdshader on every surface.
+static func serpent_model(root: Node3D,path: String,length: float,extra: Dictionary={}) -> void:
+	var model: Node3D=load(path).instantiate();model.name="Modelo";root.add_child(model)
+	var parts: Array[GeometryInstance3D]=[]
+	var shader:=preload("res://assets/shaders/leviathan_body.gdshader")
+	for mi: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
+		for i: int in mi.mesh.get_surface_count():
+			var src: Material=mi.mesh.surface_get_material(i)
+			var nm: String=str(src.resource_name) if src!=null else ""
+			var m:=ShaderMaterial.new();m.shader=shader;m.set_shader_parameter("body_length",length)
+			m.set_shader_parameter("is_jaw",nm.begins_with("Mandibula"));m.set_shader_parameter("glow",nm.begins_with("Brilho"))
+			for key: String in extra:m.set_shader_parameter(key,extra[key])
+			mi.set_surface_override_material(i,m)
+		mi.extra_cull_margin=30.;parts.append(mi)
+	root.set_meta("parts",parts)
 
 func _bubbles() -> CPUParticles3D:
 	var p:=CPUParticles3D.new();p.amount=90;p.lifetime=3.;p.emission_shape=CPUParticles3D.EMISSION_SHAPE_SPHERE;p.emission_sphere_radius=18.
@@ -192,7 +197,7 @@ func _emerge(lair: Dictionary,b: Vector3) -> void:
 	lair.pos=b+away*35.+Vector3(0,-34. if lair.kind=="serpente" else -14.,0)
 	lair.state="caca";lair.clock=0.;lair.strike=6.;lair.watched=0.
 	(lair.node as Node3D).visible=true;(lair.node as Node3D).position=lair.pos
-	var text: Dictionary={"kraken":"O KRAKEN emerge ao lado do barco! Apague as luzes e vá devagar…","serpente":"Uma SERPENTE MARINHA rodeia o barco!","leviata":"Uma sombra colossal passa sob o casco… o LEVIATÃ!"}
+	var text: Dictionary={"kraken":"O KRAKEN emerge ao lado do barco! Apague as luzes e vá devagar…","serpente":"Uma SERPENTE MARINHA rodeia o barco!","leviata":"Uma sombra colossal passa sob o casco… o LEVIATÃ!","megalodonte":"Uma barbatana enorme corta a água em volta do barco… o MEGALODONTE!"}
 	game.hud.notify(text.get(lair.kind,"Algo enorme emerge!"))
 	game.audio.cue_at("roar",(lair.pos as Vector3)+Vector3(0,14,0))
 
@@ -200,13 +205,13 @@ func _hunt(lair: Dictionary,delta: float,b: Vector3,boat: Node3D,stealthy: bool)
 	var node: Node3D=lair.node
 	var kind: String=lair.kind
 	var t: float=lair.clock
-	lair.angle=float(lair.angle)+delta*(.12 if kind=="kraken" else (.1 if kind=="serpente" else .08))
-	var orbit:={"kraken":38.,"serpente":30.,"leviata":55.}
+	lair.angle=float(lair.angle)+delta*{"kraken":.12,"serpente":.1,"megalodonte":.22}.get(kind,.08)
+	var orbit:={"kraken":38.,"serpente":40.,"leviata":55.,"megalodonte":26.}
 	var r: float=orbit.get(kind,30.)
 	var want:=b+Vector3(cos(float(lair.angle)),0,sin(float(lair.angle)))*r
 	var surface:=Waves.height_at(want)
 	var rise:=smoothstep(0.,5.,t)
-	var depth: float={"kraken":-2.5,"serpente":0.,"leviata":-1.2}.get(kind,-2.)
+	var depth: float={"kraken":-2.5,"serpente":-.9,"leviata":-1.2,"megalodonte":-3.8}.get(kind,-2.)
 	want.y=lerpf(surface-(34. if kind=="serpente" else 14.),surface+depth,rise)
 	# It chases at a limited speed: a boat on turbo can open the gap and leave the territory.
 	var p: Vector3=lair.pos
@@ -276,7 +281,7 @@ func _strike(lair: Dictionary,b: Vector3,boat: Node3D) -> void:
 		var side: float=1. if _rng.randf()<.5 else -1.
 		_boarding_arm(boat,side,_rng.randf_range(-2.,2.))
 		if _rng.randf()<.6:_boarding_arm(boat,-side,_rng.randf_range(-2.5,2.5))
-	var damage: float={"kraken":.08,"serpente":.06,"leviata":.05}.get(kind,.06)
+	var damage: float={"kraken":.08,"serpente":.06,"leviata":.05,"megalodonte":.09}.get(kind,.06)
 	var kick:=(.42 if kind=="leviata" else .3)*(1. if _rng.randf()<.5 else -1.)
 	boat.take_hit(damage,kick)
 	lair.hits=int(lair.hits)+1
@@ -284,7 +289,7 @@ func _strike(lair: Dictionary,b: Vector3,boat: Node3D) -> void:
 	if fx!=null:
 		var side:=b+boat.global_basis.x*(3. if kick>0. else -3.)
 		fx.splash(side,2.2,true);fx.splash(b,1.4,true)
-	var text: Dictionary={"kraken":"Um tentáculo golpeia o casco! (%d%%)","serpente":"A serpente investe contra o barco! (%d%%)","leviata":"O leviatã salta: a onda joga o barco! (%d%%)"}
+	var text: Dictionary={"kraken":"Um tentáculo golpeia o casco! (%d%%)","serpente":"A serpente investe contra o barco! (%d%%)","leviata":"O leviatã salta: a onda joga o barco! (%d%%)","megalodonte":"O megalodonte morde o casco! (%d%%)"}
 	game.hud.notify(str(text.get(kind,"Impacto! (%d%%)"))%int(boat.integrity*100.))
 	game.audio.cue_at("slam",b+boat.global_basis.x*(3. if kick>0. else -3.))
 	lair["slam"]=1.2
@@ -298,12 +303,13 @@ func _animate(lair: Dictionary,t: float) -> void:
 			# The arms move in the shader; a strike whips the first arm down onto the water.
 			var arms: Array=node.get_meta("arms")
 			(arms[0] as ShaderMaterial).set_shader_parameter("slam",clampf(slam/1.2,0.,1.))
-		"serpente":
-			# Swaying while it watches; a strike throws the head forward onto the boat and back.
-			var body: GeometryInstance3D=node.get_meta("body")
-			var strike:=clampf(slam/1.2,0.,1.)
-			body.set_instance_shader_parameter("lunge",sin(strike*PI))
-			body.set_instance_shader_parameter("sway",lerpf(.6,1.4,.5+.5*sin(t*.37)))
+		"megalodonte":
+			# Low in the water, fin up; a strike rears the head out and opens the jaw on the hull.
+			var bite:=sin(clampf(slam/1.2,0.,1.)*PI)
+			for part: GeometryInstance3D in node.get_meta("parts"):
+				part.set_instance_shader_parameter("raise",bite*.55)
+				part.set_instance_shader_parameter("lunge",bite*.5)
+				part.set_instance_shader_parameter("jaw",.05+bite*.7)
 		_:
 			# Head held up out of the water, swaying; a strike lunges at the boat with the jaw wide open.
 			var strike:=sin(clampf(slam/1.2,0.,1.)*PI)
@@ -319,7 +325,7 @@ func _nest(lair: Dictionary) -> void:
 	var c: Vector3=lair.center
 	var floor_y:=-Waves.depth_at(Vector2(c.x,c.z))
 	var nest:=Node3D.new();nest.name="Ninho";nest.position=Vector3(c.x,floor_y,c.z);add_child(nest)
-	var color: Color={"kraken":Color("ff7a5a"),"serpente":Color("8aff7a"),"leviata":Color("7fe6ff")}.get(lair.kind,Color("ffd27d"))
+	var color: Color={"kraken":Color("ff7a5a"),"serpente":Color("8aff7a"),"leviata":Color("7fe6ff"),"megalodonte":Color("e8e8f0")}.get(lair.kind,Color("ffd27d"))
 	var egg:=_glow(color,2.2)
 	for k: int in 7:
 		var a:=float(k)*TAU/7.
