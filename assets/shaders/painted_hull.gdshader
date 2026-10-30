@@ -8,6 +8,10 @@ uniform float strake=.17;        // plank width on the sides (m)
 uniform float deck_plank=.11;    // plank width on deck (m)
 uniform float wear=.55;          // how worn the paint is (0 new … 1 old)
 uniform vec3 wood_tint:source_color=vec3(.55,.38,.22);
+// Livery (the boatyard's colours): vertex alpha 1 takes livery_hull, .5 takes livery_top, 0 stays as painted.
+// White by default, so models without a livery look as modelled.
+instance uniform vec3 livery_hull:source_color=vec3(1.);
+instance uniform vec3 livery_top:source_color=vec3(1.);
 varying vec3 mpos;
 varying vec3 mnrm;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -17,6 +21,7 @@ float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*noise(p);p*=2.03;a*=
 void vertex(){mpos=VERTEX;mnrm=NORMAL;}
 void fragment(){
 	vec3 paint=COLOR.rgb;
+	if(COLOR.a>.75)paint*=livery_hull;else if(COLOR.a>.25)paint*=livery_top;
 	bool deck=abs(mnrm.y)>.75;
 	// Plank coordinate across the planks (v) and along them (u).
 	float v=deck?mpos.x/deck_plank:mpos.y/strake+abs(mpos.x)*.6;

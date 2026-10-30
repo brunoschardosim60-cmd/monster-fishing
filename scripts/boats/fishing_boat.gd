@@ -8,6 +8,8 @@ const G = preload("res://scripts/world/geometry.gd")
 @export var hydrodynamics: Resource=preload("res://data/boats/coastal_launch.tres")
 var water_effects: Node3D
 var imported_model: Node3D
+const LAUNCH_GLB: String="res://assets/boats/ships/lancha.glb"
+var launch_model: Node3D
 var bucket: Marker3D
 var integrity: float=1.
 ## Sea water that has come aboard (kg): over the rail when a wave rises past it, or with a breaking sea.
@@ -587,6 +589,16 @@ func _build_external_visual() -> void:
 	hydrodynamics=preload("res://data/boats/tripo_fishing_boat.tres").duplicate()
 	_hull=Node3D.new(); _hull.name="WaveFollowingHull"; add_child(_hull)
 	imported_model=preload("res://scenes/models/fishing_boat_model.tscn").instantiate(); _hull.add_child(imported_model)
+	# The launch modelled in Blender (tools/blender/launch.py) replaces the imported meshes; the scene's
+	# markers (helm, deck centre, boarding points) stay.
+	if ResourceLoader.exists(LAUNCH_GLB):
+		for mi: MeshInstance3D in imported_model.find_children("*","MeshInstance3D",true,false):mi.visible=false
+		launch_model=load(LAUNCH_GLB).instantiate();launch_model.name="Lancha";_hull.add_child(launch_model)
+		var SM:=preload("res://scripts/boats/ship_models.gd")
+		for mi: MeshInstance3D in launch_model.find_children("*","MeshInstance3D",true,false):
+			for k: int in mi.mesh.get_surface_count():
+				var src: Material=mi.mesh.surface_get_material(k)
+				mi.set_surface_override_material(k,SM._material(str(src.resource_name) if src!=null else ""))
 	var fittings:=preload("res://scripts/boats/boat_outfitting.gd").new();fittings.name="TeakAndDeckFittings";_hull.add_child(fittings)
 	_propeller=Node3D.new(); _hull.add_child(_propeller)
 	var metal:=Materials.surface("paint",Color("253e43"),3.,false)
@@ -695,6 +707,10 @@ func set_livery(hull_color: Color,top_color: Color,scale_value: float) -> void:
 	if is_instance_valid(_hull):_hull.scale=Vector3.ONE*scale_value
 	# The physical hull grows with the visible one (docks, rocks and the camera meet the real size).
 	if _collision_box!=null:_collision_box.size=Vector3(_base_box.x*scale_value,_base_box.y,_base_box.z*scale_value)
+	if launch_model!=null and is_instance_valid(launch_model):
+		for mi: MeshInstance3D in launch_model.find_children("*","MeshInstance3D",true,false):
+			mi.set_instance_shader_parameter("livery_hull",hull_color);mi.set_instance_shader_parameter("livery_top",top_color.lerp(Color.WHITE,.25))
+		return
 	if imported_model==null or not "meshes" in imported_model:return
 	for part: MeshInstance3D in imported_model.meshes:
 		var box:=part.get_aabb();var height:=box.get_center().y
