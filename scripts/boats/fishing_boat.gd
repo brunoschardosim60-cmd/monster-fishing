@@ -719,18 +719,21 @@ func set_hull_model(model: String,seed_value: int=11) -> void:
 		var length: float=float(hull_spec.model_length)
 		_alt_body=VesselModels.build(str(hull_spec.kind),length,_model_seed);_alt_body.name="CascoDoJogador";_hull.add_child(_alt_body)
 		var wheel: Array=hull_spec.wheel
-		if float(wheel[3])<0.:helm_wheel=_build_rabeta(_alt_body,wheel[0])
+		if hull_spec.get("model_wheel",false) and _alt_body.has_meta("wheel"):helm_wheel=_alt_body.get_meta("wheel")
+		elif float(wheel[3])<0.:helm_wheel=_build_rabeta(_alt_body,wheel[0])
 		else:
 			var brass:=G.material(Color("8a6a3a"),.4)
 			var deck_y: float=float(hull_spec.deck.y)
 			G.cylinder(_alt_body,Vector3(wheel[0].x,(deck_y+wheel[0].y)*.5,wheel[0].z+.12),.07,wheel[0].y-deck_y,brass)
 			helm_wheel=_build_helm_wheel(_alt_body,wheel[0],float(wheel[1]),float(wheel[2]))
 		_build_bucket(_alt_body,hull_spec.bucket)
-		for roof: Dictionary in hull_spec.deck.get("roofs",[]):_build_ladder(_alt_body,roof)
+		var modelled: bool=preload("res://scripts/boats/ship_models.gd").has(str(hull_spec.kind))
+		if not modelled:
+			for roof: Dictionary in hull_spec.deck.get("roofs",[]):_build_ladder(_alt_body,roof)
 		cabin_node=null
 		if hull_spec.has("cabin"):
 			cabin_node=preload("res://scripts/boats/cabin_interior.gd").build(_alt_body,hull_spec.cabin,str(hull_spec.kind))
-			_build_hatch(_alt_body,hull_spec.cabin.hatch)
+			if not hull_spec.cabin.get("door",false):_build_hatch(_alt_body,hull_spec.cabin.hatch)
 		crew.clear()
 		var crew_index: int=0
 		for c: Dictionary in hull_spec.get("crew",[]):

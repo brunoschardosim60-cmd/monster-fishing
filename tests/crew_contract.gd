@@ -17,7 +17,9 @@ func run() -> void:
 	var hold0: int=inv.hold_limit
 	var reply: String=crew.hire()
 	check(crew.aboard()==1 and inv.money==1000-crew.HIRE_PRICE,"a sailor is hired at the inn (%s)"%reply)
-	check(crew.hire().begins_with("Não há mais beliches"),"the launch has one berth")
+	var second: String=crew.hire()
+	check(crew.aboard()==2 and crew.hire().begins_with("Não há mais beliches"),"the launch has two berths (%s)"%second)
+	crew.dismiss();inv.money=1000-crew.HIRE_PRICE
 	check(inv.hold_limit==hold0+2,"the crew keeps the catch in order: +2 places in the hold")
 	var s: Node3D=crew.sailors[0]
 	await frames(30)
@@ -130,8 +132,8 @@ func run() -> void:
 	check(absf(float(boat.autopilot.get("throttle",1.)))<.01 and game.hud.toast.text.contains("Terra à frente"),"land ahead: he stops the engine (%s)"%game.hud.toast.text)
 	game.toggle_deck();await frames(3)
 	check(boat.autopilot.is_empty(),"take the wheel back and the helmsman lets go")
-	# A canoe has no berth.
+	# A canoe takes the skipper and one hand.
 	inv.owned_boats.append("canoa");inv.boat_id="canoa";Economy.apply(inv,boat,game.fishing);await frames(5)
-	check(crew.aboard()==0 and crew.hire().contains("não tem lugar"),"a canoe carries no crew")
+	check(crew.aboard()==1 and crew.hire().contains("Não há mais beliches"),"a canoe carries one hand at most")
 	print("CREW %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

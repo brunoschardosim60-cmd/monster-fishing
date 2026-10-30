@@ -82,10 +82,41 @@ static func build(parent: Node3D,spec: Dictionary,kind: String) -> Node3D:
 	var blocks: Array[Rect2]=[]
 	match kind:
 		"veleiro":_saloon(root,r,y0,y1,teak,cloth,white,brass,dark,blocks)
+		"chalupa":_captain_cabin(root,r,y0,y1,blocks)
 		"escuna":_lower_deck(root,r,y0,y1,teak,cloth,white,brass,dark,blocks)
 	root.set_meta("blocks",blocks)
 	root.visible=false
 	return root
+
+## The sloop's captain's cabin under the helm deck (Sea of Thieves style): entered by the door forward;
+## the captain's table with the chart and chairs in the middle, the bunk along the starboard side,
+## a sea chest and shelves to port, lanterns, under the stern windows a bench. The doorway stays clear.
+static func _captain_cabin(root: Node3D,r: Rect2,y0: float,y1: float,blocks: Array[Rect2]) -> void:
+	var F=preload("res://scripts/visuals/furniture.gd")
+	var x0: float=r.position.x;var x1: float=r.end.x;var z0: float=r.position.y;var z1: float=r.end.y
+	var cz: float=(z0+z1)*.5+.4
+	F.table(root,Vector3(0,y0,cz),0.,Vector3(1.6,.78,1.0),false)
+	_chart(root,Vector3(0,y0+.785,cz),Vector2(.9,.65))
+	root.set_meta("chart",Vector3(0,y0,cz-1.))
+	for k: int in 2:F.chair(root,Vector3(-.5+float(k),y0,cz-.85),PI)
+	F.chair(root,Vector3(0,y0,cz+.85),0.)
+	F.oil_lamp(root,Vector3(.5,y0+.79,cz+.25))
+	blocks.append(Rect2(-.9,cz-.6,1.8,1.2))
+	F.bed(root,Vector3(x1-.55,y0,z1-1.3),0.,Vector2(.95,2.0))
+	blocks.append(Rect2(x1-1.05,z1-2.35,1.05,2.1))
+	F.drawers(root,Vector3(x0+.3,y0,z1-.8),PI*.5,Vector3(.9,.8,.5),3)
+	blocks.append(Rect2(x0,z1-1.3,.6,1.))
+	# Sea chest with iron bands.
+	var wood: Material=F.mat("weathered_wood",Color("6b4a2c"));var iron: Material=F.mat("flat",Color("2a2622"),.5,.5)
+	G.box(root,Vector3(x0+.4,y0+.25,cz-.4),Vector3(.55,.5,.9),wood)
+	for k: int in 3:G.box(root,Vector3(x0+.4,y0+.25,cz-.75+float(k)*.35),Vector3(.58,.52,.05),iron)
+	blocks.append(Rect2(x0,cz-.9,.7,1.))
+	F.shelf(root,Vector3(x0+.12,y0+1.5,cz),PI*.5,1.2)
+	F.picture(root,Vector3(x1-.08,y0+1.55,z1-1.3),-PI*.5,Vector2(.8,.6))
+	# Bench under the stern windows.
+	G.box(root,Vector3(0,y0+.25,z1-.3),Vector3(r.size.x-1.3,.5,.45),wood)
+	blocks.append(Rect2(x0+.6,z1-.55,r.size.x-1.2,.55))
+	F.rug(root,Vector3(0,y0,cz),0.,Vector2(2.,1.4))
 
 static func _saloon(root: Node3D,r: Rect2,y0: float,y1: float,teak: Material,cloth: Material,white: Material,brass: Material,dark: Material,blocks: Array[Rect2]) -> void:
 	var x0: float=r.position.x;var x1: float=r.end.x;var z0: float=r.position.y;var z1: float=r.end.y

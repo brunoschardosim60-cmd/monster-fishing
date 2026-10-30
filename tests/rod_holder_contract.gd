@@ -63,6 +63,6 @@ func run() -> void:
 	for id: String in ["canoa","veleiro","escuna"]:
 		game.inventory.owned_boats.append(id);game.inventory.boat_id=id;Economy.apply(game.inventory,boat,game.fishing);await frames(3)
 		counts[id]=holders.holders.size()
-	check(counts.canoa==1 and counts.veleiro==2 and counts.escuna==4,"holders by hull: canoe 1, sailboat 2, schooner 4 (%s)"%str(counts))
+	check(counts.canoa==1 and counts.veleiro==3 and counts.escuna==4,"holders by hull: canoe 1, sloop 3, schooner 4 (%s)"%str(counts))
 	print("ROD_HOLDERS %d checks / %d failures"%[checks,failures])
 	quit(1 if failures>0 else 0)

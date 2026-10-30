@@ -26,12 +26,16 @@ const SPECS: Dictionary={
 		"holders":[{"at":Vector3(.36,.42,1.4),"yaw":-2.2}],
 		# The sea is kept out of the whole open hull, bow and stern included (narrow there, so the width still fits).
 		"cut":Vector2(-2.95,2.95)},
-	"veleiro":{"immersion":.8,"gunwale":1.38,"kind":"veleiro","model_length":11.,"length":10.4,"beam":3.5,"mass":6500.,"draft":.0,"heave":210000.,"angular":3.,"tilt":.38,
-		"deck":{"y":1.1,"x":1.35,"z0":-4.5,"z1":4.6,"start":Vector3(.9,1.1,2.4),"blocks":[Rect2(-.99,-1.87,1.98,3.3)],
-			"roofs":[{"rect":Rect2(-.85,-1.75,1.7,3.05),"y":1.7,"ladder":Vector3(.5,1.1,1.75),"top":Vector3(.5,1.7,1.15)}]},
-		"cabin":{"rect":Rect2(-.92,-1.85,1.84,3.25),"floor":-.18,"ceiling":1.62,"hatch":Vector3(0.,1.12,1.78),"foot":Vector3(0.,-.18,1.05)},
-		"helm":Vector3(0,1.1,4.35),"wheel":[Vector3(0,1.95,3.75),.38,PI*.3,1.5],"bucket":Vector3(-.9,1.1,2.6),"sails":.55,
-		"holders":[{"at":Vector3(1.4,1.45,4.4),"yaw":-2.2},{"at":Vector3(-1.4,1.45,4.4),"yaw":2.2}]},
+	# The sloop (Chalupa), built in Blender (assets/boats/ships/chalupa.*): 16 m, a main deck amidships,
+	# a raised helm deck aft reached by stairs on both sides, the captain's cabin under it (door from the
+	# main deck), a capstan forward. Room for the skipper and three hands.
+	"veleiro":{"immersion":1.5,"gunwale":2.0,"kind":"chalupa","model_length":16.,"length":15.,"beam":5.2,"mass":24000.,"draft":.0,"heave":820000.,"angular":2.2,"tilt":.3,
+		"deck":{"y":1.0,"x":1.95,"z0":-6.2,"z1":3.0,"start":Vector3(1.2,1.0,.8),
+			"blocks":[Rect2(-.85,-.75,1.7,1.5),Rect2(-.35,-1.95,.7,.7),Rect2(-.55,-5.95,1.1,1.1),Rect2(1.4,-1.3,.8,1.),Rect2(-2.2,-1.3,.8,1.)],
+			"roofs":[{"rect":Rect2(-1.6,3.4,3.2,4.0),"y":3.3,"ladder":Vector3(1.9,1.0,1.5),"top":Vector3(1.9,3.3,3.5)}]},
+		"cabin":{"rect":Rect2(-1.9,3.45,3.8,3.9),"floor":1.0,"ceiling":3.15,"hatch":Vector3(0.,1.0,2.4),"foot":Vector3(0.,1.0,4.0),"door":true},
+		"helm":Vector3(0,3.3,6.6),"wheel":[Vector3(0,4.45,6.08),.65,0.,1.5],"model_wheel":true,"bucket":Vector3(-1.5,1.0,-2.6),"sails":.6,
+		"holders":[{"at":Vector3(2.2,1.95,.8),"yaw":-2.2},{"at":Vector3(-2.2,1.95,.8),"yaw":2.2},{"at":Vector3(1.75,4.1,7.2),"yaw":-2.6}]},
 	"escuna":{"immersion":1.4,"gunwale":2.5,"kind":"escuna","model_length":20.,"length":19.,"beam":5.,"mass":32000.,"draft":.05,"heave":1100000.,"angular":1.9,"tilt":.24,
 		"deck":{"y":2.2,"x":2.05,"z0":-8.6,"z1":8.6,"start":Vector3(1.5,2.2,-1.),"blocks":[Rect2(-1.45,3.35,2.9,3.3),Rect2(-.3,-4.3,.6,.6),Rect2(-.3,1.3,.6,.6)],
 			"roofs":[{"rect":Rect2(-1.3,3.5,2.6,3.),"y":3.3,"ladder":Vector3(.8,2.2,3.05),"top":Vector3(.8,3.3,3.75)}]},

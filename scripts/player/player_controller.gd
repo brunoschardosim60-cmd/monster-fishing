@@ -147,6 +147,8 @@ func _physics_process(delta: float) -> void:
 			deck_local.y=float(cabin.floor)
 			var node: Node3D=deck_boat.get("cabin_node")
 			if node!=null:deck_local=preload("res://scripts/boats/hull_classes.gd").resolve_blocks(deck_local,node.get_meta("blocks",[]),.2)
+			# Pushed off a piece of furniture, still never through a wall.
+			deck_local.x=clampf(deck_local.x,room.position.x+.22,room.end.x-.22);deck_local.z=clampf(deck_local.z,room.position.y+.22,room.end.y-.22)
 			jump_buffer=0.
 		elif deck_level>=0 and deck_level<roofs.size():
 			# On a cabin roof: its edges are the limit; Space by the ladder climbs back down.

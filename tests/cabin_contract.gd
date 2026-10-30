@@ -30,9 +30,13 @@ func run() -> void:
 			await physics_frame
 			var l: Vector3=game.player.deck_local
 			var r: Rect2=c.rect
-			if l.x<r.position.x or l.x>r.end.x or l.z<r.position.y or l.z>r.end.y:inside_ok=false
+			if l.x<r.position.x or l.x>r.end.x or l.z<r.position.y or l.z>r.end.y:
+				if inside_ok:print("%s outside rect %s at %s"%[id,r,l])
+				inside_ok=false
 			for b: Rect2 in node.get_meta("blocks",[]):
-				if b.grow(-.15).has_point(Vector2(l.x,l.z)):inside_ok=false
+				if b.grow(-.15).has_point(Vector2(l.x,l.z)):
+					if inside_ok:print("%s inside block %s at %s"%[id,b,l])
+					inside_ok=false
 		check(inside_ok,"%s: walking about stays inside the walls and off the furniture"%id)
 		check(not game.can_cast(),"%s: no casting from below decks"%id)
 		var cam_y: float=game.player.camera.global_position.y

@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -919,3 +919,23 @@ func _conferir_mar() -> void:
 	var b: CharacterBody3D=game.boat;b.global_position=s+Vector3(20,0,0);b.rotation=Vector3.ZERO
 	for i: int in 60:await physics_frame
 	await shot("conferir_barco",b.global_position+Vector3(6,6,8),b.global_position,1)
+
+## The new sloop (Blender model) as the player's boat: outside, on deck, at the helm, in the cabin.
+func _chalupa() -> void:
+	var w=game.world;w.ocean.cycle_enabled=false;w.ocean.hour=15.;w.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat;var inv=game.inventory;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	inv.owned_boats.append("veleiro");inv.boat_id="veleiro";load("res://scripts/inventory/harbor_economy.gd").apply(inv,b,game.fishing)
+	for i: int in 30:await physics_frame
+	await shot("chalupa_frente",p+Vector3(18,7,-16),p+Vector3(0,4,0),1)
+	await shot("chalupa_popa",p+Vector3(-14,6,20),p+Vector3(0,4,0),1)
+	await shot("chalupa_lado",p+Vector3(28,4,2),p+Vector3(0,5,0),1)
+	if not game.player.on_deck:game.toggle_deck()
+	for i: int in 10:await process_frame
+	await shot("chalupa_conves",b._hull.to_global(Vector3(1.4,2.8,-4.5)),b._hull.to_global(Vector3(-.5,2.,3.)),1)
+	await shot("chalupa_leme",b._hull.to_global(Vector3(1.2,5.2,7.6)),b._hull.to_global(Vector3(0,3.5,-3.)),1)
+	game.player.deck_local=b.hull_spec.cabin.hatch;game.interact()
+	for i: int in 20:await process_frame
+	var eye: Transform3D=game.player.camera.global_transform
+	await shot("chalupa_cabine",b._hull.to_global(Vector3(1.2,2.7,3.7)),b._hull.to_global(Vector3(-.3,1.4,6.3)),1)

@@ -17,6 +17,8 @@ const FLAGS: Array=[[Color("009c3b"),Color("ffdf00"),Color("002776")],[Color("d5
 	[Color("000000"),Color("dd0000"),Color("ffce00")],[Color("ffffff"),Color("0038a8"),Color("ffffff")],[Color("006847"),Color("ffffff"),Color("ce1126")],[Color("c60b1e"),Color("ffc400"),Color("c60b1e")]]
 
 static func build(kind: String,length_m: float,seed_value: int=1) -> Node3D:
+	# Ships modelled in Blender come from their GLB.
+	if preload("res://scripts/boats/ship_models.gd").has(kind):return preload("res://scripts/boats/ship_models.gd").build(kind)
 	var rng:=RandomNumberGenerator.new();rng.seed=seed_value
 	var root:=Node3D.new();root.name="Casco_"+kind
 	root.set_meta("rails",[]);root.set_meta("seats",[]);root.set_meta("sails",[]);root.set_meta("oars",[])

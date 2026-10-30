@@ -24,6 +24,7 @@ static func rig(model: Node3D) -> RefCounted:
 		for boom: Node3D in booms:
 			if boom.get_parent()!=pivot and _flat(boom.get_meta("from",Vector3.ZERO)).distance_to(_flat(tack))<.6:
 				boom.reparent(pivot,false);boom.position-=tack
+		if sail.has_meta("square"):pivot.set_meta("square",true)
 		out.pivots.append(pivot)
 	return out
 
@@ -54,6 +55,14 @@ func update(delta: float,local_wind: Vector3,strength: float,target_hoist: float
 	var drawing:=drive(angle)
 	fill=lerpf(fill,.25+.75*drawing,1.-exp(-delta*3.))
 	for pivot: Node3D in pivots:
+		if pivot.has_meta("square"):
+			# Square sail: the yard is braced round (never more than ~35°), the cloth bellies forward when
+			# drawing and hangs slack and shivering when not; it hoists from the yard down.
+			var brace: float=clampf(trim*.7,-.6,.6)
+			var full: float=lerpf(.35,1.,fill) if drawing>=.15 else .3+sin(_clock*15.+pivot.position.y)*.08
+			pivot.basis=Basis(Vector3.UP,brace)*Basis.from_scale(Vector3(1.,maxf(hoist,.04),full))
+			pivot.visible=true
+			continue
 		var belly: float=-from_side*fill
 		if drawing<.15:belly=sin(_clock*17.+pivot.position.z)*.25*(.3+strength)
 		pivot.basis=Basis(Vector3.UP,trim)*Basis.from_scale(Vector3(belly if absf(belly)>.04 else .04,maxf(hoist,.04),1.))
