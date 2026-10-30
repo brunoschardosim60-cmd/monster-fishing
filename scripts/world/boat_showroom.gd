@@ -9,7 +9,7 @@ const Economy=preload("res://scripts/inventory/harbor_economy.gd")
 const Waves=preload("res://scripts/world/wave_field.gd")
 const Layout=preload("res://scripts/world/archipelago_layout.gd")
 const G=preload("res://scripts/world/geometry.gd")
-const ORDER: Array[String]=["canoa","aurora","veloz","expedicao","traineira","veleiro","escuna","bergantim","galeao"]
+const ORDER: Array[String]=["canoa","aurora","veloz","expedicao","traineira","veleiro","escuna","submarino","bergantim","galeao"]
 const REACH: float=3.2
 
 ## id -> {node, board (Label3D), at (pier point, world), draft}

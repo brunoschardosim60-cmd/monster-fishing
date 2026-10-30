@@ -4,7 +4,7 @@ extends RefCounted
 ## seams and patches, rope, iron, brass, glowing stern windows), and reads the layout JSON beside it
 ## (decks, helm, cabin, stairs, mast) so the boat systems know where things are.
 const M=preload("res://scripts/visuals/materials.gd")
-const KINDS: Dictionary={"chalupa":"res://assets/boats/ships/chalupa.glb","galeao_sot":"res://assets/boats/ships/galeao.glb","bergantim_sot":"res://assets/boats/ships/bergantim.glb"}
+const KINDS: Dictionary={"chalupa":"res://assets/boats/ships/chalupa.glb","galeao_sot":"res://assets/boats/ships/galeao.glb","bergantim_sot":"res://assets/boats/ships/bergantim.glb","submarino_sot":"res://assets/boats/ships/submarino.glb"}
 static var _layouts: Dictionary={}
 static var _mats: Dictionary={}
 

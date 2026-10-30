@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas","galeao","bergantim"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas","galeao","bergantim","submarino"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -1037,3 +1037,17 @@ func _bergantim() -> void:
 	for i: int in 20:await process_frame
 	print("porao bergantim: ",game.player.cabin.get("hold",false))
 	await shot("bergantim_porao",b._hull.to_global(Vector3(1.4,.9,3.6)),b._hull.to_global(Vector3(-.4,0.,-4.)),1)
+
+func _submarino() -> void:
+	var w=game.world;w.ocean.cycle_enabled=false;w.ocean.hour=14.;w.ocean.weather.settle(1)
+	var b: CharacterBody3D=game.boat;var inv=game.inventory;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	inv.owned_boats.append("submarino");inv.boat_id="submarino";load("res://scripts/inventory/harbor_economy.gd").apply(inv,b,game.fishing)
+	for i: int in 40:await physics_frame
+	await shot("sub_superficie",p+Vector3(14,5,-12),p+Vector3(0,1,0),1)
+	b.dive_target=10.;b.dive_depth=9.5
+	for i: int in 40:await physics_frame
+	print("sub depth ",b.dive_depth," hull y ",b._hull.global_position.y)
+	await shot("sub_fundo",b._hull.to_global(Vector3(8,1,-10)),b._hull.to_global(Vector3(0,0,0)),1)
+	await shot("sub_frente",b._hull.to_global(Vector3(0,1.5,-14)),b._hull.to_global(Vector3(0,0,0)),1)

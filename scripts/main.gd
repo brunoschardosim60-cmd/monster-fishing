@@ -348,6 +348,10 @@ func _process(delta: float) -> void:
 	fishing_visual.update_line(player.rod_tip(), fishing.state, delta)
 	hud.stats.text = "%d moedas · %d peixes" % [inventory.money, inventory.count()]
 	hud.sea_label.text = "%02d:%02d  /  %s"%[int(world.ocean.hour),int(fposmod(world.ocean.hour,1.)*60.),world.ocean.weather.LABELS[world.ocean.weather.state]]
+	if player.in_boat and boat.dive_depth>.3:hud.sea_label.text+="  /  SUBMERSO %.0f m (K desce · I sobe)"%boat.dive_depth
+	# Submerged, the helmsman is inside the conning tower.
+	if bool(boat.hull_spec.get("submersible",false)):player.visual.visible=not (player.in_boat and boat.dive_depth>1.6)
+	elif not player.visual.visible:player.visual.visible=true
 	var heading := wrapf(rad_to_deg(-player.yaw), 0, 360)
 	var directions := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 	hud.compass.text = "%s  ·  %03d°" % [directions[int((heading + 22.5) / 45.0) % 8], int(heading)]
@@ -505,6 +509,7 @@ func interact() -> void:
 
 func toggle_deck() -> void:
 	if not player.in_boat:return
+	if boat.dive_depth>.8 and not player.on_deck:hud.notify("Submerso: suba (I) antes de sair para o convés.");return
 	fishing.cancel()
 	_leave_cabin()
 	player.on_deck=not player.on_deck;player.deck_boat=boat

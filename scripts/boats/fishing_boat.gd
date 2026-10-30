@@ -20,6 +20,12 @@ var deck_wash: Node3D
 var cabin_node: Node3D
 ## The hold below the main deck (hull_classes "hold"), if the ship has one.
 var hold_node: Node3D
+## Submarine (hull_classes "submersible"): how deep the hull rides below the surface (m), and where the
+## helmsman wants it (K dives, I rises). Never deeper than the seabed allows.
+var dive_depth: float=0.
+var dive_target: float=0.
+const DIVE_MAX: float=28.
+var _sub_light: SpotLight3D
 var _water_note: int=0
 ## Boost (SHIFT at the helm): a few seconds of extra power to outrun a monster, then the engine cools.
 var boost: float=0.
@@ -159,6 +165,20 @@ func _physics_process(delta: float) -> void:
 		if Input.is_physical_key_pressed(KEY_O): light_yaw=clampf(light_yaw-aim_step,-1.2,1.2)
 		if Input.is_physical_key_pressed(KEY_I): light_pitch=clampf(light_pitch+aim_step*.7,-.9,.25)
 		if Input.is_physical_key_pressed(KEY_K): light_pitch=clampf(light_pitch-aim_step*.7,-.9,.25)
+	if bool(hull_spec.get("submersible",false)):
+		if occupied and controls_enabled:
+			if Input.is_physical_key_pressed(KEY_K):dive_target+=4.*delta
+			if Input.is_physical_key_pressed(KEY_I):dive_target-=4.*delta
+		var floor_depth: float=Waves.depth_at(Vector2(global_position.x,global_position.z))
+		dive_target=clampf(dive_target,0.,minf(DIVE_MAX,maxf(0.,floor_depth-4.)))
+		dive_depth=move_toward(dive_depth,dive_target,delta*2.2)
+		if _hull!=null and (_sub_light==null or not is_instance_valid(_sub_light)):
+			_sub_light=SpotLight3D.new();_sub_light.name="FarolSubmarino";_sub_light.light_color=Color("fff2c0")
+			_sub_light.spot_range=45.;_sub_light.spot_angle=26.;_sub_light.light_energy=6.;_sub_light.position=Vector3(0,1.4,-4.9)
+			_hull.add_child(_sub_light)
+		if _sub_light!=null and is_instance_valid(_sub_light):_sub_light.visible=dive_depth>1.5
+	else:
+		dive_depth=0.;dive_target=0.
 	light_yaw=clampf(light_yaw,-1.2,1.2);light_pitch=clampf(light_pitch,-.9,.25)
 	if searchlight!=null:
 		searchlight.rotation=Vector3(-.16+light_pitch,light_yaw,0.)
@@ -256,7 +276,7 @@ var _wave_hit_clock: float=8.
 var wave_damage_scale: float=1.
 func _wave_hits(delta: float,here: Vector2) -> void:
 	var rough:=maxf(Waves.storm_factor(here),smoothstep(.68,1.,Waves.energy))*Waves.exposure(here)
-	if rough<.25 or not occupied:return
+	if rough<.25 or not occupied or dive_depth>1.5:return
 	_wave_hit_clock-=delta*(1.+absf(speed)*.08)
 	if _wave_hit_clock>0.:return
 	_wave_hit_clock=randf_range(6.,13.)/rough
@@ -285,6 +305,7 @@ func bail() -> float:
 
 ## Water over the rail: wherever the sea at the hull's edge stands above the rail, it pours in.
 func _ship_water(delta: float,heights: Array[float],xs: Array[float],zs: Array[float],m: float) -> void:
+	if bool(hull_spec.get("submersible",false)):return   # sealed hull
 	var gunwale: float=float(hull_spec.get("gunwale",float(hull_spec.deck.y)+.3))*size_factor
 	var y: float=_hull.position.y;var pitch: float=_hull.rotation.x;var roll: float=_hull.rotation.z
 	var inflow:=0.;var n:=0;var worst:=-1;var worst_over:=0.
@@ -362,6 +383,7 @@ func _debris_kinds() -> Array:
 	match hull_model:
 		"canoa":return ["plank","plank","paddle","plank","rope"]
 		"veleiro":return ["plank","ring","crate","plank","rope","plank"]
+		"submarino":return ["ring","crate","rope","barrel"]
 		"galeao","bergantim":return ["plank","barrel","crate","plank","rope","plank","barrel","ring"]
 		"escuna":return ["plank","barrel","crate","plank","rope","barrel","plank"]
 	return ["plank","tire","ring","crate","plank","tire"]
@@ -932,6 +954,10 @@ func _simulate_hull(delta: float) -> void:
 	var heights: Array[float]=[]
 	for z: float in zs:
 		for x: float in xs:heights.append(Waves.height_at(global_position+right*x+back*z))
+	# A submarine trims down to its depth; the deeper it goes, the less the waves above move it.
+	if dive_depth>0.:
+		var calm: float=smoothstep(0.,7.,dive_depth)
+		for i: int in heights.size():heights[i]=lerpf(heights[i],0.,calm)-dive_depth
 	var kp: float=k*6.*pow(L*.45,2.);var kr: float=k*6.*pow(B*.42,2.)
 	# Natural periods grow with size (topsides, rig and cargo add inertia): a canoe snaps back in about a
 	# second and a half, a schooner rolls over three and a half.
