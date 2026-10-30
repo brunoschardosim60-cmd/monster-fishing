@@ -89,10 +89,10 @@ static func creature_mesh(kind: String) -> ArrayMesh:
 	if meshes.has(kind):return meshes[kind]
 	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	match kind:
-		"gaivota":_bird(st,Color("f2f3f1"),Color("b7bcc4"),Color("f0b13a"),1.)
-		"corvo":_bird(st,Color("1d1c24"),Color("2e2d3a"),Color("3a3a40"),.9)
-		"papagaio":_bird(st,Color("d9322f"),Color("2d6fd6"),Color("f5c02e"),.7)
-		"urubu":_bird(st,Color("4a3a30"),Color("2d2420"),Color("c9b38a"),1.5)
+		"gaivota":_bird(st,Color("f2f3f1"),Color("b7bcc4"),Color("f0c23a"),1.)
+		"corvo":_bird(st,Color("1d1c24"),Color("2e2d3a"),Color("3a3a40"),.85,Color("15151a"))
+		"papagaio":_bird(st,Color("d9322f"),Color("2d6fd6"),Color("f5e6c0"),.75,Color("f5c02e"))
+		"urubu":_bird(st,Color("2a2420"),Color("2d2420"),Color("c9b38a"),1.6,Color("6a5d52"))
 		"capivara":_quadruped(st,Color("8a6a46"),Color("6e5238"),.95,.5,.04,0,.06)
 		"cabra":_quadruped(st,Color("e8e4da"),Color("c9c4b8"),.95,.75,.22,2,.1)
 		"cervo":_quadruped(st,Color("b07a4b"),Color("e7d3b0"),1.3,1.1,.5,2,.14)
@@ -103,16 +103,39 @@ static func creature_mesh(kind: String) -> ArrayMesh:
 		"pinguim":_penguin(st)
 	st.generate_normals();meshes[kind]=st.commit();return meshes[kind]
 
-static func _bird(st: SurfaceTool,body: Color,wing: Color,beak: Color,size: float) -> void:
-	Flora._blob(st,Vector3.ZERO,Vector3(.5,.16,.16),_col(body.darkened(.1)),_col(body))
-	Flora._frustum(st,Vector3(.45,.04,0),Vector3(.7,.04,0),.05,0.,_col(beak),_col(beak),4)
-	Flora._frustum(st,Vector3(-.4,0,0),Vector3(-.85,.0,0),.12,.02,_col(body),_col(body),4)
+## Bird built to life size (size 1 = a gull: ~0.6 m long, ~1.4 m wingspan), head towards +X:
+## a lofted, tapering body with a rounded head and a hooked beak, a fanned tail, and wings in two
+## parts — a broad arm out to the elbow and a long swept hand with dark primaries at the tip.
+## Vertex alpha drives the flap in island_creature.gdshader (1 rigid body … 0 wing tip).
+static func _bird(st: SurfaceTool,body: Color,wing: Color,beak: Color,size: float,tip: Color=Color("2a2a2e")) -> void:
+	var prof: Array=[[-.24,.012],[-.18,.045],[-.08,.075],[.04,.08],[.13,.065],[.19,.055],[.25,.052],[.3,.04],[.33,.0]]
+	var seg:=8
+	for i: int in prof.size()-1:
+		var x0: float=prof[i][0];var r0: float=prof[i][1];var x1: float=prof[i+1][0];var r1: float=prof[i+1][1]
+		for k: int in seg:
+			var a0:=float(k)/float(seg)*TAU;var a1:=float(k+1)/float(seg)*TAU
+			var c0:=body.darkened(.18) if sin(a0)<-.2 else body;var c1:=body.darkened(.18) if sin(a1)<-.2 else body
+			var p00:=Vector3(x0,sin(a0)*r0*.95,cos(a0)*r0)*size;var p01:=Vector3(x0,sin(a1)*r0*.95,cos(a1)*r0)*size
+			var p10:=Vector3(x1,sin(a0)*r1*.95,cos(a0)*r1)*size;var p11:=Vector3(x1,sin(a1)*r1*.95,cos(a1)*r1)*size
+			for v: Array in [[p00,c0],[p10,c0],[p11,c1],[p00,c0],[p11,c1],[p01,c1]]:
+				st.set_color(_col(v[1]));st.add_vertex(v[0])
+	# Beak (slightly hooked) and dark eyes.
+	Flora._frustum(st,Vector3(.31,.01,0)*size,Vector3(.4,-.005,0)*size,.018*size,.004*size,_col(beak),_col(beak.darkened(.2)),5)
+	for sz: float in [-1.,1.]:Flora._blob(st,Vector3(.27,.025,sz*.04)*size,Vector3(.012,.012,.006)*size,_col(Color("111111")),_col(Color("111111")),5)
+	# Tail fan.
+	for v: Array in [[Vector3(-.17,.01,0),1.],[Vector3(-.31,.005,-.07),1.],[Vector3(-.31,.005,.07),1.]]:
+		st.set_color(_col(body.darkened(.05),float(v[1])));st.add_vertex(Vector3(v[0])*size)
 	for sz: float in [-1.,1.]:
-		var root:=Vector3(.12,.1,sz*.12);var mid:=Vector3(-.05,.14,sz*.8);var tip:=Vector3(-.5,.1,sz*1.5);var back:=Vector3(-.32,.05,sz*.18)
-		for v: Array in [[root,1.],[mid,.5],[back,1.],[mid,.5],[tip,0.],[back,1.]]:
-			st.set_color(_col(wing,float(v[1])));st.add_vertex(Vector3(v[0])*size)
-		for v: Array in [[back,1.],[mid,.5],[root,1.],[back,1.],[tip,0.],[mid,.5]]:
-			st.set_color(_col(wing.darkened(.1),float(v[1])));st.add_vertex(Vector3(v[0])*size)
+		# Arm: leading edge from the shoulder out to the wrist, trailing edge broad.
+		var sh_l:=Vector3(.07,.04,sz*.05);var sh_t:=Vector3(-.09,.035,sz*.05)
+		var el_l:=Vector3(.06,.06,sz*.36);var el_t:=Vector3(-.12,.05,sz*.34)
+		# Hand: swept back to a pointed tip.
+		var tip_p:=Vector3(-.16,.04,sz*.72);var hand_t:=Vector3(-.17,.04,sz*.52)
+		var quads: Array=[[sh_l,1.,wing],[el_l,.55,wing],[el_t,.55,wing],[sh_t,1.,wing]]
+		for tri: Array in [[0,1,2],[0,2,3]]:
+			for idx: int in tri:st.set_color(_col(quads[idx][2],float(quads[idx][1])));st.add_vertex(Vector3(quads[idx][0])*size)
+		for v: Array in [[el_l,.55,wing],[tip_p,0.,tip],[hand_t,.2,tip],[el_l,.55,wing],[hand_t,.2,tip],[el_t,.55,wing]]:
+			st.set_color(_col(v[2],float(v[1])));st.add_vertex(Vector3(v[0])*size)
 
 static func _penguin(st: SurfaceTool) -> void:
 	Flora._blob(st,Vector3(0,.42,0),Vector3(.2,.38,.17),_col(Color("f1f1ee")),_col(Color("1f2430")))
@@ -128,7 +151,7 @@ static func make_birds(parent: Node3D,kind: String,centre: Vector3,radius: float
 	for i: int in count:
 		mm.set_instance_transform(i,Transform3D(Basis.IDENTITY,Vector3.ZERO))
 		var dir:=1. if i%5!=0 else -1.
-		mm.set_instance_custom_data(i,Color(radius*rng.randf_range(.45,1.1),dir*rng.randf_range(.05,.11)*(60./maxf(radius,40.)),rng.randf()*TAU,rng.randf_range(2.2,3.0)))
+		mm.set_instance_custom_data(i,Color(radius*rng.randf_range(.45,1.1),dir*rng.randf_range(.09,.17)*(60./maxf(radius,40.)),rng.randf()*TAU,rng.randf_range(.85,1.15)))
 	var mat:=ShaderMaterial.new();mat.shader=CREATURE;mat.set_shader_parameter("fly",1.)
 	var node:=MultiMeshInstance3D.new();node.add_to_group("aves");node.name="aves_"+kind;node.multimesh=mm;node.material_override=mat;node.position=centre
 	node.custom_aabb=AABB(Vector3(-radius*1.3,-20,-radius*1.3),Vector3(radius*2.6,60,radius*2.6));node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

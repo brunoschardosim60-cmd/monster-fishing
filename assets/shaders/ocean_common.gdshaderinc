@@ -15,6 +15,34 @@ float storm_factor(vec2 p){
 	for(int i=0;i<4;i++){vec4 c=storm_cell[i];if(c.w<=0.)continue;s=max(s,c.w*(1.-smoothstep(c.z*.55,c.z*1.25,length(p-c.xy))));}
 	return s;
 }
+// A storm stirs the sea well beyond its rain: a wide halo where the swell builds as it comes.
+float storm_halo(vec2 p){
+	float s=0.;
+	for(int i=0;i<4;i++){vec4 c=storm_cell[i];if(c.w<=0.)continue;s=max(s,c.w*(1.-smoothstep(c.z*.9,c.z*2.6,length(p-c.xy))));}
+	return s;
+}
+// Sea state varies over kilometres and drifts slowly: swell groups higher here, lower there, so the
+// sea never repeats the same pattern block after block (wave_field.gd sea_groups mirrors this).
+float sea_groups(vec2 p,int i){
+	float fi=float(i);
+	float s1=sin(p.x*.0031+p.y*.0017+sea_time*.011+fi*.6);
+	float s2=sin(-p.x*.0019+p.y*.0043-sea_time*.007+fi*1.3);
+	float s3=sin(p.x*.0057-p.y*.0023+sea_time*.013+fi*.4);
+	return mix(.5,1.4,.5+.5*(s1*.5+s2*.35+s3*.15));
+}
+// Short waves fade out with distance from the camera before the grid gets too coarse to carry them,
+// otherwise they alias into long streaks and lattices across the sea. Visual only: wave_field.gd keeps
+// them everywhere, and near the camera (where anything floats in view) the two agree.
+float sea_detail_fade(float reach,int i){
+	if(i<3)return 1.;
+	float len=2.*3.14159265/length(wave_data[i].xy);
+	return 1.-smoothstep(len*6.,len*14.,reach);
+}
+// Crest lines bend and wander so the same wave train never reads as a straight repeating stripe.
+float sea_warp(vec2 p,vec4 w,int i){
+	float fi=float(i);
+	return sin(dot(p,vec2(-w.y,w.x))*.0105+fi*1.7)*1.3+sin(dot(p,vec2(.0047,-.0063))+fi*.9)*1.1+sin(dot(p,vec2(.021,-.017))+fi*2.3)*(i<3?.4:1.2);
+}
 #include "res://assets/shaders/archipelago_coast.gdshaderinc"
 float sea_exposure(vec2 p,vec4 c) {
 	float lee=smoothstep(-.2,.65,dot(c.yz,wind_direction))*(1.-smoothstep(2.,38.,c.x));
@@ -35,11 +63,12 @@ vec3 sea_surface(vec2 p) {
 	vec3 result=vec3(0);
 	// Rough seas sharpen the crests (stronger second harmonic): peaked waves with flat troughs.
 	float storm=storm_factor(p);
-	float sharp=.15+.3*smoothstep(.4,1.,swell_energy)+.2*storm;
+	float halo=storm_halo(p);
+	float sharp=.15+.3*smoothstep(.4,1.,swell_energy)+.2*storm+.08*halo;
 	for(int i=0;i<8;i++) {
 		vec4 w=wave_data[i]; float bend=dot(p,vec2(.019,.027))+float(i);
-		float phase=dot(p,w.xy)-w.w+sin(bend)*.37;
-		float a=w.z*mix(i<3?.32:.1,1.,exposed)*shore*(1.-channel*(i<3?.2:.65))*(i<3?lod_long*(1.+open_sea*1.2):lod*(1.+open_sea*.4))*(1.+storm*(i<3?1.5:.35));
+		float phase=dot(p,w.xy)-w.w+sin(bend)*.37+sea_warp(p,w,i);
+		float a=w.z*mix(i<3?.32:.1,1.,exposed)*shore*(1.-channel*(i<3?.2:.65))*(i<3?lod_long*(1.+open_sea*1.2):lod*(1.+open_sea*.4))*(1.+storm*(i<3?1.5:.35))*sea_groups(p,i)*(1.+halo*(i<3?.8:.35))*sea_detail_fade(reach,i);
 		vec2 gradient=(w.xy+cos(bend)*vec2(.019,.027)*.37)*(cos(phase)+2.*sharp*cos(2.*phase))*a;
 		result+=vec3(-gradient.x,(sin(phase)+sharp*sin(2.*phase))*a,-gradient.y);
 	}

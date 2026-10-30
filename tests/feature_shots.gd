@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -809,3 +809,85 @@ func _tesouro() -> void:
 	for i: int in 10:await process_frame
 	var chart: Vector3=b._hull.to_global(b.cabin_node.get_meta("chart"))
 	await shot("tesouro_carta",chart+Vector3(0,1.5,0)+b.global_basis.z*.3,chart+b.global_basis.x*.4+Vector3(0,.8,0),1)
+
+## The open sea from high up: swell groups vary over kilometres (no repeating blocks), and the sea
+## builds towards a storm on the horizon.
+func _mar_alto() -> void:
+	var w=game.world;w.ocean.hour=13.;w.ocean.weather.settle(0)
+	var p:=_sea_point()+Vector3(300,0,-300)
+	await shot("mar_alto_calmo",p+Vector3(0,90,0),p+Vector3(200,0,-260),2)
+	w.storms.spawn_at(p+Vector3(500,0,-700))
+	for i: int in 60:await process_frame
+	await shot("mar_alto_tempestade",p+Vector3(0,60,0),p+Vector3(400,0,-600),2)
+	await shot("mar_baixo_tempestade",p+Vector3(250,6,-350),p+Vector3(450,0,-650),2)
+
+## Harbour gulls in flight: real size, flapping and gliding.
+func _aves() -> void:
+	game.world.ocean.hour=9.;game.world.ocean.weather.settle(0)
+	for i: int in 30:await process_frame
+	var gulls: MultiMeshInstance3D=null
+	for n in game.world.find_children("aves_gaivota","MultiMeshInstance3D",true,false):
+		if (n as Node3D).global_position.distance_to(Vector3(0,17,-28))<5.:gulls=n
+	var c: Vector3=gulls.global_position if gulls!=null else Vector3(0,17,-28)
+	await shot("aves_0",c+Vector3(0,25,60),c,1)
+	for i: int in 12:await process_frame
+	await shot("aves_1",c+Vector3(0,25,60),c,1)
+	# Close to one bird: work out where instance 0 is from its custom data (as the shader does).
+	if gulls!=null:
+		var d: Color=gulls.multimesh.get_instance_custom_data(0)
+		var t: float=float(Time.get_ticks_msec())*.001
+		var a: float=d.b+t*d.g
+		var bird:=c+Vector3(cos(a),0,sin(a))*d.r
+		await shot("aves_perto",bird+Vector3(4,1.5,4),bird,1)
+
+## Fishing up close: the rod loading and whipping on the cast, the float landing, a nibble, the take
+## (float pulled under), the fish thrashing on the line, and flapping in the hand.
+func _pesca() -> void:
+	game.world.ocean.hour=10.;game.world.ocean.weather.settle(0)
+	var pl=game.player;var f=game.fishing;var fv=game.fishing_visual
+	pl.global_position=Vector3(0,1.55,-23);pl.yaw=0.;pl.velocity=Vector3.ZERO
+	for i: int in 20:await physics_frame
+	var p: Vector3=pl.global_position
+	var side:=p+Vector3(3.,1.2,1.5)
+	game.fish_action()
+	for k: int in 3:
+		for i: int in [5,7,25][k]:await process_frame
+		await shot("pesca_lance_%d"%k,side,p+Vector3(0,1.5,-3),1)
+	while f.state==f.State.CASTING:await process_frame
+	for i: int in 20:await process_frame
+	var bob: Vector3=fv.bobber.global_position
+	await shot("pesca_boia",bob+Vector3(1.,.6,1.4),bob,1)
+	fv.nibble(1.)
+	for i: int in 4:await process_frame
+	await shot("pesca_belisco",bob+Vector3(1.,.6,1.4),bob,1)
+	while f.state!=f.State.BITE:f.advance(.25)
+	for i: int in 14:await process_frame
+	await shot("pesca_mordida",bob+Vector3(1.,.6,1.4),bob,1)
+	f.strike()
+	for i: int in 60:
+		f.set_reeling(f.tension<.5);await process_frame
+	f.fight_phase="shake"
+	for i: int in 20:await process_frame
+	var h: Vector3=game.hooked.global_position
+	await shot("pesca_debatendo",h+Vector3(2.2,1.4,2.2),h,1)
+	f.progress=.99;f.tension=.3
+	for i: int in 40:
+		f.set_reeling(true);await process_frame
+		if f.state!=f.State.REELING:break
+	f.set_reeling(false)
+	for i: int in 50:await process_frame
+	for k: int in 2:
+		await shot("pesca_mao_%d"%k,p+Vector3(.9,1.8,-1.6),p+Vector3(0,1.3,0),1)
+		for i: int in 5:await process_frame
+
+## The boat breaking up as it sinks: planks, a tyre, the life ring and crates thrown off and floating.
+func _naufragio() -> void:
+	game.world.ocean.hour=11.;game.world.ocean.weather.settle(0)
+	var b: CharacterBody3D=game.boat;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO;b.speed=0.
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	for i: int in 10:await physics_frame
+	b.integrity=.02;b.take_hit(.2,.3)
+	for k: int in 3:
+		for i: int in [40,90,140][k]:await physics_frame
+		await shot("naufragio_%d"%k,p+Vector3(10,5,12),p+Vector3(0,.5,0),1)

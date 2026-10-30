@@ -800,7 +800,14 @@ func _rod_load() -> float:
 	match fishing.state:
 		Fishing.State.BITE:return .22+.18*maxf(0.,sin(Time.get_ticks_msec()*.025))
 		Fishing.State.REELING:return clampf(.15+fishing.tension*.95+(.15 if fishing.surging else 0.),0.,1.)
-		Fishing.State.WAITING:return .04
+		Fishing.State.WAITING:return .04+fishing_visual._nibble*.14*absf(sin(Time.get_ticks_msec()*.022))
+		Fishing.State.CASTING:
+			# The rod loads as it comes over (the blank bends back under the weight of the float), then the
+			# tip whips through past straight as the line is let go, and settles.
+			var t: float=fishing_visual.cast_elapsed;var release: float=fishing_visual.RELEASE_AT
+			if t<release:return lerpf(.1,.8,t/release)
+			if t<release+.3:return -.5*sin((t-release)/.3*PI)
+			return .02
 	return 0.
 
 ## A following wind carries the cast further, a headwind shortens it (up to about a fifth in a gale).

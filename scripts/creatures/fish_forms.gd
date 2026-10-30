@@ -89,6 +89,11 @@ static func material(id: String,use_time: bool=false) -> ShaderMaterial:
 	elif big:mat.set_shader_parameter("scale_size",.02)
 	materials[key]=mat;return mat
 
+## Own copy of the swimming material for one fish that struggles (on the line, in the hand): the
+## caller drives `wag` and `time_speed` to make it beat its tail hard or lie still.
+static func struggle_material(id: String) -> ShaderMaterial:
+	return material(id,true).duplicate() as ShaderMaterial
+
 static func _cr(p0: float,p1: float,p2: float,p3: float,t: float) -> float:
 	return .5*((2.*p1)+(-p0+p2)*t+(2.*p0-5.*p1+4.*p2-p3)*t*t+(-p0+3.*p1-3.*p2+p3)*t*t*t)
 

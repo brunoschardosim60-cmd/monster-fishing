@@ -61,7 +61,12 @@ void fragment() {
 	vec3 n1=texture(normal_tex,p*.055+sea_time*vec2(.017,.009)).xyz*2.-1.;
 	vec3 n2=texture(normal_tex,p*.12+sea_time*vec2(-.011,.022)).xyz*2.-1.;
 	float distance_fade=1.-smoothstep(70.,280.,length(VERTEX));
-	vec3 detail=vec3((n1.x+n2.x),0,(n1.y+n2.y))*(.09+wind_strength*.23)*mix(.3,1.,distance_fade)*mix(.35,1.,exposure);
+	// A third, rotated layer at another scale so the ripple texture never lines up into a grid, and
+	// wind gusts: patches where the ripples are rougher or almost flat (cat's paws), drifting downwind.
+	vec2 pr=mat2(vec2(.8,-.6),vec2(.6,.8))*p;
+	vec3 n3=texture(normal_tex,pr*.031+sea_time*vec2(.006,-.013)).xyz*2.-1.;
+	float gust=smoothstep(.25,.75,texture(foam_tex,p*.0035-wind_direction*sea_time*.004).r);
+	vec3 detail=vec3((n1.x+n2.x+n3.x*.8),0,(n1.y+n2.y+n3.y*.8))*(.08+wind_strength*.2)*mix(.45,1.45,gust)*mix(.3,1.,distance_fade)*mix(.35,1.,exposure);
 	vec2 cell=floor(p*3.); vec2 local=fract(p*3.)-.5;
 	float random=fract(sin(dot(cell,vec2(127.1,311.7)))*43758.5453);
 	float age=fract(sea_time*1.3+random);

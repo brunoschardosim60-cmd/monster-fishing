@@ -11,18 +11,12 @@ var jump_clock: float=12.
 var chirp_clock: float=4.
 var birdsong: AudioStreamPlayer3D
 func _ready() -> void:
-	var white:=G.material(Color("c9c8b8"));var dark:=G.material(Color("3c423a"))
-	for i: int in 16:
-		var bird:=Node3D.new();add_child(bird);var small:=i>=8
-		G.sphere(bird,Vector3.ZERO,Vector3(.10,.09,.24),dark if small else white,12)
-		G.sphere(bird,Vector3(0,.04,-.2),Vector3(.075,.065,.10),dark if small else white,12)
-		var wings: Array[Node3D]=[]
-		for side: float in [-1.,1.]:
-			var wing:=Node3D.new();bird.add_child(wing);wings.append(wing)
-			var mat: StandardMaterial3D=(dark if small else white).duplicate();mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-			G.mesh_node(wing,G.polygon_mesh(PackedVector3Array([Vector3(0,0,-.12),Vector3(side*.48,.04,-.16),Vector3(side*.8,0,.08),Vector3(side*.3,0,.13)]),PackedInt32Array([0,1,3,1,2,3])),mat,Vector3.ZERO)
-		bird.scale=Vector3.ONE*(.42 if small else 1.)
-		birds.append({"node":bird,"wings":wings,"small":small,"phase":float(i)*1.74})
+	# Harbour gulls wheeling over the bay and a flock of small dark birds over the meadows behind the
+	# town: GPU flocks with real-size, flapping-and-gliding birds (island_life.make_birds).
+	var Life=preload("res://scripts/world/island_life.gd")
+	var rng:=RandomNumberGenerator.new();rng.seed=4417
+	Life.make_birds(self,"gaivota",Vector3(0,17,-28),40.,9,rng)
+	Life.make_birds(self,"corvo",Vector3(-20,maxf(0.,Layout.ground(Vector2(-20,105)))+9.,105),18.,7,rng)
 	wild_fish=preload("res://scripts/fishing/surface_fish.gd").new();add_child(wild_fish);wild_fish.effects=world.ocean.effects
 	for i: int in [0,2,5,8]:
 		var b: Node3D=world.village.buildings[i];var p:=CPUParticles3D.new();p.amount=14;p.lifetime=5.;p.direction=Vector3.UP;p.spread=14.;p.initial_velocity_min=.35;p.initial_velocity_max=.65;p.gravity=Vector3(.1,.08,.03);p.scale_amount_min=.2;p.scale_amount_max=.5
@@ -41,16 +35,6 @@ func _process(delta: float) -> void:
 	clock+=delta;jump_clock-=delta;chirp_clock-=delta
 	var camera:=get_viewport().get_camera_3d()
 	if camera==null:return
-	for item: Dictionary in birds:
-		var phase: float=clock*(.19 if item.small else .09)+item.phase
-		var centre:=Vector3(-20,0,105) if item.small else Vector3(0,0,-28)
-		var radius: float=18. if item.small else 40.
-		var p:=centre+Vector3(cos(phase)*radius,0,sin(phase)*radius)
-		p.y=maxf(0.,Layout.ground(Vector2(p.x,p.z)))+(8. if item.small else 17.)+sin(phase*3.)*2.
-		item.node.position=p;item.node.rotation.y=-phase
-		item.node.visible=world.ocean.weather.rain<.55 and world.ocean.daylight>.2 and p.distance_squared_to(camera.global_position)<40000.
-		item.wings[0].rotation.z=sin(clock*(12. if item.small else 4.)+item.phase)*.4
-		item.wings[1].rotation.z=-item.wings[0].rotation.z
 	# Island birds (GPU flocks, group "aves") roost at night and in heavy rain too.
 	if int(clock*2.)!=int((clock-delta)*2.):
 		var flying: bool=world.ocean.daylight>.2 and world.ocean.weather.rain<.55

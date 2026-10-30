@@ -27,7 +27,8 @@ var day: int=0
 const SEASONS: Array[String]=["Estação Calma","Estação da Migração","Estação das Tempestades"]
 signal season_changed(name: String)
 func season() -> int:return (day/3)%3
-var day_length_seconds: float=1800.
+## A whole day-night cycle in real seconds (one hour: ~45 min of daylight, ~15 min of night).
+var day_length_seconds: float=3600.
 var daylight: float=1.
 var cycle_enabled: bool=true
 var moon: DirectionalLight3D
@@ -117,7 +118,11 @@ func is_ice(at: Vector3) -> bool:
 func _physics_process(delta: float) -> void:
 	if cycle_enabled:
 		var before:=hour
-		hour=fposmod(hour+delta*24./day_length_seconds,24.)
+		# Daylight lasts: of a full day, about three quarters of the real time is spent between 6 h and
+		# 19 h; the night passes quicker.
+		var day_hours: bool=hour>=6. and hour<19.
+		var rate: float=(13./(day_length_seconds*.75)) if day_hours else (11./(day_length_seconds*.25))
+		hour=fposmod(hour+delta*rate,24.)
 		if hour<before:
 			var old:=season();day+=1
 			if season()!=old:season_changed.emit(SEASONS[season()])

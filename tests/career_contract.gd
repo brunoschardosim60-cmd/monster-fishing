@@ -50,6 +50,9 @@ func run() -> void:
 	while t<60*90 and not boat.sinking:
 		Waves.advance(1./60.,.95,1.,0.,Vector2(0,1));await physics_frame;t+=1
 	check(boat.sinking,"a storm swamps or breaks the canoe within 90 s (%.0f s, integrity %.2f, water %.0f%%)"%[t/60.,boat.integrity,boat.water_fraction()*100.])
+	for i: int in 30:await physics_frame
+	var debris=root.get_tree().get_first_node_in_group("destrocos")
+	check(debris!=null and debris.pieces.size()>=4,"the canoe comes apart as it sinks: planks and the paddle float off (%d pieces)"%(debris.pieces.size() if debris!=null else 0))
 	inv.money=30
 	while not sank[0] and t<60*120:
 		Waves.advance(1./60.,.95,1.,0.,Vector2(0,1));await physics_frame;t+=1

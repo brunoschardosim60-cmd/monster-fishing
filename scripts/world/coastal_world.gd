@@ -721,15 +721,7 @@ func _make_lighthouse(pos: Vector3) -> void:
 	lighthouse=preload("res://scripts/world/navigation_lighthouse.gd").new();lighthouse.world=self;lighthouse.position=pos;lighthouse.name="FarolDaAurora";lighthouse.tower_height=26.;lighthouse.style="preto";lighthouse.period=18.;lighthouse.beam_angles=[0.];lighthouse.phase=4.;lighthouse.tint=Color("f6f3e6");lighthouse.scale=Vector3.ONE*2.;add_child(lighthouse)
 
 func _make_wildlife() -> void:
-	var white := G.material(Color("eee6cf"))
-	for i: int in range(7):
-		var gull := Node3D.new()
-		add_child(gull)
-		var vertices := PackedVector3Array([Vector3(0,0,-0.25),Vector3(-0.9,0.1,0.18),Vector3(-0.4,0.03,0.05),Vector3(0,0,0.15),Vector3(0.9,0.1,0.18),Vector3(0.4,0.03,0.05)])
-		var mat := white.duplicate() as StandardMaterial3D
-		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		G.mesh_node(gull,G.polygon_mesh(vertices,PackedInt32Array([0,1,2,0,2,3,0,3,5,0,5,4])),mat,Vector3.ZERO)
-		gulls.append(gull)
+	pass  # the harbour gulls are a GPU flock in coastal_life.gd
 
 func _make_buoy(pos: Vector3) -> void:
 	var buoy := Node3D.new()
@@ -748,11 +740,6 @@ func _make_sign() -> void:
 func _process(delta: float) -> void:
 	elapsed += delta
 	preload("res://scripts/world/nature_library.gd").wind(Waves.time,Waves.wind,Waves.direction)
-	for i: int in range(gulls.size()):
-		var phase := elapsed * (0.14 + i * 0.006) + i * 1.8
-		gulls[i].position = Vector3(cos(phase) * (20 + i * 4), 13 + i * 1.8 + sin(elapsed * 0.5 + i), -25 + sin(phase) * (18 + i * 4))
-		gulls[i].rotation.y = -phase
-		gulls[i].rotation.z = sin(elapsed * 2.0 + i) * 0.08
 	for i: int in range(buoys.size()):
 		buoys[i].position.y = Waves.height_at(buoys[i].global_position)
 		buoys[i].rotation.z = sin(elapsed + i) * 0.05

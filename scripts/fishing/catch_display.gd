@@ -5,6 +5,8 @@ var remaining: float = 0.0
 var fish_root: Node3D
 var _elapsed: float = 0.0
 var held: bool=false
+## Tail-beat material of the fish in hand (fish_form.gdshader), so it flaps.
+var _beat: ShaderMaterial
 const Forms=preload("res://scripts/creatures/fish_forms.gd")
 
 func _ready() -> void:
@@ -26,7 +28,7 @@ func show_catch(data: Dictionary) -> void:
 	fish_root.scale = Vector3.ONE * size_factor
 	if Forms.has_form(species):
 		# Procedural species: the same painted body that swims in the sea, scaled to a readable trophy size.
-		var shown:=MeshInstance3D.new();shown.mesh=Forms.mesh(species);shown.material_override=Forms.material(species,true)
+		var shown:=MeshInstance3D.new();shown.mesh=Forms.mesh(species);_beat=Forms.struggle_material(species);shown.material_override=_beat
 		var tail:=1.+float(Forms.FORMS[species].get("tail_len",.17))
 		shown.scale=Vector3.ONE*clampf(Forms.length_of(species),.9,1.5)/tail*1.35
 		shown.rotation.y=PI;fish_root.add_child(shown);fish_root.scale=Vector3.ONE
@@ -44,7 +46,17 @@ func show_catch(data: Dictionary) -> void:
 func _process(delta: float) -> void:
 	if held:
 		_elapsed+=delta
-		if fish_root!=null: fish_root.rotation.z=sin(_elapsed*7.)*.035
+		# Out of the water a fish fights in bursts: a few hard flaps that throw its body side to side and
+		# make it jump in the hand, a pause, again; weaker as the seconds go by.
+		var tire: float=exp(-_elapsed/9.)
+		var k: float=fmod(_elapsed,1.7)
+		var burst: float=(1.-smoothstep(.55,.75,k))*smoothstep(0.,.08,k)*tire
+		if _beat!=null:
+			_beat.set_shader_parameter("wag",.08+.7*burst);_beat.set_shader_parameter("time_speed",lerpf(4.,24.,burst))
+		if fish_root!=null:
+			fish_root.rotation.z=sin(_elapsed*24.)*.22*burst+sin(_elapsed*3.)*.03
+			fish_root.rotation.x=sin(_elapsed*13.)*.12*burst
+			fish_root.position.y=absf(sin(_elapsed*12.))*.05*burst
 		return
 	if remaining <= 0.0:
 		return

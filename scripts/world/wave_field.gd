@@ -25,6 +25,27 @@ static func storm_factor(v: Vector2) -> float:
 		s=maxf(s,c.w*(1.-smoothstep(c.z*.55,c.z*1.25,v.distance_to(Vector2(c.x,c.y)))))
 	return s
 
+## A storm stirs the sea well beyond its rain (ocean_common storm_halo).
+static func storm_halo(v: Vector2) -> float:
+	var s:=0.
+	for c: Vector4 in storm_cells:
+		if c.w<=0.:continue
+		s=maxf(s,c.w*(1.-smoothstep(c.z*.9,c.z*2.6,v.distance_to(Vector2(c.x,c.y)))))
+	return s
+
+## Swell groups varying over kilometres (ocean_common sea_groups).
+static func sea_groups(v: Vector2,i: int) -> float:
+	var fi:=float(i)
+	var s1:=sin(v.x*.0031+v.y*.0017+time*.011+fi*.6)
+	var s2:=sin(-v.x*.0019+v.y*.0043-time*.007+fi*1.3)
+	var s3:=sin(v.x*.0057-v.y*.0023+time*.013+fi*.4)
+	return lerpf(.5,1.4,.5+.5*(s1*.5+s2*.35+s3*.15))
+
+## Wandering crest lines (ocean_common sea_warp).
+static func sea_warp(v: Vector2,w: Vector4,i: int) -> float:
+	var fi:=float(i)
+	return sin(v.dot(Vector2(-w.y,w.x))*.0105+fi*1.7)*1.3+sin(v.dot(Vector2(.0047,-.0063))+fi*.9)*1.1+sin(v.dot(Vector2(.021,-.017))+fi*2.3)*(.4 if i<3 else 1.2)
+
 ## Depth of the whirlpool funnel at a point (negative), plus its ripple; 0 outside every whirlpool.
 static func whirl_offset(v: Vector2) -> float:
 	var y:=0.
@@ -57,7 +78,7 @@ static func advance(delta: float, w: float, e: float, r: float, d: Vector2) -> v
 	time+=delta; wind=w; energy=e; rain=r; direction=d
 	waves.clear()
 	for i: int in 8:
-		var angle: float=[.10,-.56,.61,-.28,1.1,-1.3,.8,-.7][i]
+		var angle: float=[.10,-.56,.61,-.35,.48,-.62,.3,-.27][i]
 		var heading:=Vector2(.9,.43).normalized().lerp(d,.25 if i<3 else .8).normalized().rotated(angle)
 		var k: float=TAU/LENGTHS[i]
 		phases[i]=fposmod(phases[i]+sqrt(9.81*k)*delta,TAU)
@@ -94,11 +115,12 @@ static func height_at(p: Vector3) -> float:
 	var open_sea:=smoothstep(80.,350.,c.x)*smoothstep(.45,1.,energy)
 	var h:=0.
 	var storm:=storm_factor(v)
-	var sharp:=.15+.3*smoothstep(.4,1.,energy)+.2*storm
+	var halo:=storm_halo(v)
+	var sharp:=.15+.3*smoothstep(.4,1.,energy)+.2*storm+.08*halo
 	for i: int in 8:
 		var w:=waves[i]
-		var phase:=v.dot(Vector2(w.x,w.y))-w.w+sin(v.dot(Vector2(.019,.027))+float(i))*.37
-		var fade:=(lod_long*(1.+open_sea*1.2) if i<3 else lod*(1.+open_sea*.4))*(1.+storm*(1.5 if i<3 else .35))
+		var phase:=v.dot(Vector2(w.x,w.y))-w.w+sin(v.dot(Vector2(.019,.027))+float(i))*.37+sea_warp(v,w,i)
+		var fade:=(lod_long*(1.+open_sea*1.2) if i<3 else lod*(1.+open_sea*.4))*(1.+storm*(1.5 if i<3 else .35))*sea_groups(v,i)*(1.+halo*(.8 if i<3 else .35))
 		h+=(sin(phase)+sharp*sin(2.*phase))*w.z*lerpf(.32 if i<3 else .1,1.,exposed)*(1.-channel*(.2 if i<3 else .65))*fade
 	var wash:=sin(c.x*.85-time*1.15)*.12*(.3+energy)*(1.-smoothstep(0.,9.,c.x))*smoothstep(-1.4,0.,c.x)
 	var swash_s:=fposmod(time/7.5+sin(v.x*.031)*.35+cos(v.y*.027)*.35-c.x*.012,1.)

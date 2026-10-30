@@ -182,7 +182,7 @@ func update_animation(speed: float,fishing: bool,delta: float) -> void:
 		var hand: Transform3D=skeleton.global_transform*_bone_global(rod_hand)
 		_rod.global_transform=Transform3D(hand.basis*rod_grip_basis,hand.origin)
 		# Bend toward the line: each joint turns a little more than the one below it.
-		_bend_now=lerpf(_bend_now,rod_bend,1.-exp(-delta*9.))
+		_bend_now=lerpf(_bend_now,rod_bend,1.-exp(-delta*16.))
 		for i: int in _rod_joints.size():
 			_rod_joints[i].rotation.x=-_bend_now*.32*pow(float(i+1)/float(ROD_JOINTS),1.6) if i>0 else _rod_joints[i].rotation.x
 func _apply_haul(delta: float) -> void:

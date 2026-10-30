@@ -23,6 +23,8 @@ var _velocity:=Vector3.ZERO
 var _from:=Vector3.ZERO
 var _to:=Vector3.ZERO
 var _thrash_clock: float=0.
+## The fish's own tail-beat material (fish_form.gdshader wag/time_speed), driven by the fight.
+var _beat: ShaderMaterial
 var _roll: float=0.
 ## Where the line ties on (the fish's mouth), for the line renderer.
 var mouth:=Vector3.ZERO
@@ -40,7 +42,7 @@ func _build(species: Resource) -> void:
 	var id: String=str(species.id) if species!=null else "sardine"
 	if Forms.has_form(id):
 		length_m=Forms.length_of(id)
-		var mesh:=MeshInstance3D.new();mesh.mesh=Forms.mesh(id);mesh.material_override=Forms.material(id,true)
+		var mesh:=MeshInstance3D.new();mesh.mesh=Forms.mesh(id);_beat=Forms.struggle_material(id);mesh.material_override=_beat
 		mesh.scale=Vector3.ONE*length_m;body.add_child(mesh)
 	elif id in ["mackerel","tuna","lanternfish"]:
 		var imported:=preload("res://scripts/creatures/marine_visual.gd").new();imported.species=id;imported.face_forward=false;body.add_child(imported)
@@ -103,6 +105,11 @@ func fight(delta: float,player_pos: Vector3,tension: float,progress: float,surgi
 	var pitch: float=clampf(_velocity.y*.15,-.6,.6)
 	if fight_phase=="jump":pitch=lerpf(.7,-.7,clampf(_phase_clock/.65,0.,1.))
 	_orient(heading,_roll,pitch)
+	# The tail beats hard on a run or while it shakes and jumps, slower as it tires near the boat.
+	if _beat!=null:
+		var effort: float=1. if fight_phase in ["run","shake","jump"] or shaking else (.55 if fight_phase=="dive" else .3)
+		effort*=lerpf(1.,.6,clampf(progress,0.,1.))
+		_beat.set_shader_parameter("wag",lerpf(.16,.6,effort));_beat.set_shader_parameter("time_speed",lerpf(7.,22.,effort))
 	_thrash_clock-=delta
 	if shaking and _depth<.3 and _thrash_clock<=0.:
 		_thrash_clock=randf_range(.25,.6) if fight_phase=="shake" else randf_range(.35,.8)

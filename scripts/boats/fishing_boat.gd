@@ -343,6 +343,8 @@ func _publish_hull() -> void:
 func take_hit(damage: float,kick: float) -> void:
 	if sinking:return
 	integrity=maxf(0.,integrity-damage*hull_protection)
+	# A hard blow on a weakened hull knocks a piece off.
+	if integrity<.6 and damage*hull_protection>.025:_shed_piece(.7)
 	kick_roll=clampf(kick_roll+absf(kick),0.,.55)
 	# The blow is felt as a jolt: the hull is thrown up and rolled, then the water settles it.
 	heave_velocity+=absf(kick)*2.5
@@ -353,7 +355,33 @@ func take_hit(damage: float,kick: float) -> void:
 		if audio!=null:audio.cue("sink")
 
 ## Going down: the stern floods first, the hull lists and slips under in about seven seconds.
+## What breaks off this hull as it goes: pieces drawn from its own fittings.
+func _debris_kinds() -> Array:
+	match hull_model:
+		"canoa":return ["plank","plank","paddle","plank","rope"]
+		"veleiro":return ["plank","ring","crate","plank","rope","plank"]
+		"escuna":return ["plank","barrel","crate","plank","rope","barrel","plank"]
+	return ["plank","tire","ring","crate","plank","tire"]
+
+## One piece torn off the hull: from a random spot along the rail, thrown up and outwards.
+func _shed_piece(force: float=1.) -> void:
+	if not is_inside_tree():return
+	var d:=preload("res://scripts/boats/wreck_debris.gd").get_or_make(self)
+	var kinds: Array=_debris_kinds()
+	var half: float=float(hull_spec.beam)*.5*size_factor;var len: float=float(hull_spec.length)*.5*size_factor
+	var side: float=1. if randf()<.5 else -1.
+	var local:=Vector3(side*half*randf_range(.6,1.),float(hull_spec.get("gunwale",1.))*size_factor,randf_range(-len,len)*.85)
+	var at: Vector3=_hull.to_global(local) if is_instance_valid(_hull) else global_position+Vector3.UP
+	var out: Vector3=global_basis.x*side
+	d.spawn(str(kinds[randi()%kinds.size()]),at,(out*randf_range(1.5,4.)+Vector3.UP*randf_range(2.5,5.))*force,livery_hull)
+
+var _shed_clock: float=0.
 func _sink(delta: float) -> void:
+	# Coming apart as it goes down: a burst of wreckage at once, then a piece every half second.
+	if sink_clock==0.:
+		for k: int in 4:_shed_piece(1.2)
+	_shed_clock-=delta
+	if _shed_clock<=0.:_shed_clock=randf_range(.3,.6);_shed_piece()
 	sink_clock+=delta;speed=0.;velocity=Vector3.ZERO
 	if is_instance_valid(_hull):
 		_hull.position.y-=delta*(.25+sink_clock*.12)
