@@ -330,6 +330,7 @@ func _process(delta: float) -> void:
 	fishing.set_reeling(Input.is_action_pressed("fish"))
 	if fishing.state==Fishing.State.REELING:
 		hooked.fight(delta,player.global_position,fishing.tension,fishing.progress,fishing.surging,fishing.fight_phase)
+		_fight_cue(delta)
 	fishing_visual.tension=fishing.tension
 	if fishing.state in [Fishing.State.CASTING,Fishing.State.WAITING]:fishing.conditions=_fishing_conditions()
 	# Signs on the water while waiting: over a school small fish now and then jump near the float.
@@ -411,7 +412,10 @@ func fish_action() -> void:
 		fishing.feed_bonus=.55 if fed else 0.
 		fishing.start_cast(marine.region_at(target),marine.school_at(target))
 	else:
+		var was: int=fishing.state
 		fishing.strike()
+		# The strike's quality, or the scare of pulling at a nibble, is said straight away.
+		if was==Fishing.State.BITE or fishing.last_message.begins_with("Cedo"):hud.notify(fishing.last_message.get_slice(" Segure",0))
 
 ## Down the companionway into the cabin, or back up on deck (E at the hatch / at the foot of the ladder).
 func _cabin_hint() -> String:
@@ -649,6 +653,17 @@ func _interaction_hint() -> String:
 	if not discovery.is_empty():return "E · "+str(discovery.title)
 	return ""
 
+## One short line when the fight turns, so the angler knows what to do without reading the gauge.
+const FIGHT_CUES: Dictionary={"run":"Ele arrancou! Solte a linha.","dive":"Mergulhou fundo: segure firme, sem forçar.","shake":"Está se debatendo! Puxe aos poucos.","jump":"Saltou! Mantenha a linha esticada."}
+var _last_phase: String="calm"
+var _cue_cooldown: float=0.
+func _fight_cue(delta: float) -> void:
+	_cue_cooldown=maxf(0.,_cue_cooldown-delta)
+	var phase: String=fishing.fight_phase
+	if phase!=_last_phase and FIGHT_CUES.has(phase) and _cue_cooldown<=0.:
+		hud.notify(FIGHT_CUES[phase]);_cue_cooldown=2.5
+	_last_phase=phase
+
 func _on_caught(data: Dictionary) -> void:
 	if stow_tween!=null: stow_tween.kill()
 	stowing=false;catch_display.scale=Vector3.ONE
@@ -662,7 +677,15 @@ func _on_caught(data: Dictionary) -> void:
 		catch_display.show_catch(data)
 		catch_display.held=true
 		catch_display.visible=not hooked.landing()
-	hud.notify("Captura!")
+	# A first of its kind, or the heaviest yet, is celebrated.
+	var key: String=str(data.get("species_id",data.get("id","")))
+	var known: Dictionary=inventory.encyclopedia.get(key,{})
+	if known.is_empty() or int(known.get("count",0))==0:
+		hud.notify("NOVA ESPÉCIE! %s · %.2f kg — registrada na enciclopédia (J)."%[data.get("name",key),float(data.get("weight",0.))])
+	elif float(data.get("weight",0.))>float(known.get("record",0.)):
+		hud.notify("Recorde! %s de %.2f kg (o maior até agora era %.2f kg)."%[data.get("name",key),float(data.get("weight",0.)),float(known.get("record",0.))])
+	else:
+		hud.notify("Captura! %s · %.2f kg"%[data.get("name",key),float(data.get("weight",0.))])
 
 func finish_catch(release: bool) -> void:
 	if pending_catch.is_empty():return

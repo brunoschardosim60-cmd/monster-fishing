@@ -80,6 +80,13 @@ const STYLES: Dictionary={"tuna":"runner","atum_rei":"runner","mackerel":"runner
 	"peixe_serra":"shaker","pargo":"diver","sargo":"diver","cirurgiao":"diver","lanternfish":"diver","seabass":"jumper","baiacu":"steady","peixe_lua":"steady",
 	"tainha":"jumper","garoupa":"diver","anchova":"runner","dourado":"jumper","marlim":"jumper","espadarte":"diver"}
 var fight_phase: String="calm"
+## How well the fish was struck (0 weak … 1 perfect): a fast strike starts the fight ahead and holds better
+## when it jumps; a late one is a lip hook that shakes free more easily.
+var hook_quality: float=.7
+const PERFECT_STRIKE: float=.55
+const GOOD_STRIKE: float=1.5
+## Seconds since the float last nibbled: pulling then scares the fish off for a while.
+var nibble_age: float=99.
 var stamina: float=1.
 var fish_weight: float=1.
 ## Fish weight over tackle capacity: above 1 the gear is too light (tension climbs faster, the line breaks).
@@ -149,14 +156,20 @@ func bite_rate() -> float:
 
 func strike() -> void:
 	if state == State.BITE:
+		var took: float=BITE_WINDOW-bite_time_remaining
+		hook_quality=1. if took<PERFECT_STRIKE else (.7 if took<GOOD_STRIKE else .35)
 		tension = 0.2
-		progress = 0.06
+		progress = 0.06+.025*(hook_quality-.35)/.65
 		_slack_time = 0.0
 		stamina=1.;fight_phase="calm";_phase_left=rng.randf_range(.6,1.4);_slack_jump=0.
 		overload=fish_weight/tackle_capacity()
 		gear_warning=overload>1.
 		_change_state(State.REELING)
-		_message("Fisgou! Segure para recolher. Solte para aliviar a tensão.")
+		_message(("Fisgada perfeita!" if hook_quality>=1. else ("Bem fisgado!" if hook_quality>=.7 else "Fisgada fraca: o anzol pegou de raspão."))+" Segure para recolher, solte para aliviar.")
+	elif state == State.WAITING and nibble_age<1.2:
+		# Struck at a nibble: the fish felt the hook and backs off; the wait starts over.
+		state_time=0.;nibble_age=99.
+		_message("Cedo demais! O peixe só beliscou e se assustou. Espere a boia afundar de vez.")
 	elif state == State.WAITING or state == State.CASTING:
 		_message("Espere a boia afundar antes de fisgar.")
 
@@ -196,7 +209,9 @@ func advance(delta: float) -> void:
 			# Before a real bite fish often nibble, so the float tells the angler something is there.
 			if state_time >= QUIET_AFTER_LANDING:
 				var rate: float=bite_rate()
-				if rng.randf() < rate*1.6*delta:nibble.emit(rng.randf_range(.25,.7))
+				nibble_age+=delta
+				if rng.randf() < rate*1.6*delta:
+					nibble.emit(rng.randf_range(.25,.7));nibble_age=0.
 				if rng.randf() < 1.-exp(-rate*delta):
 					species_current=_pick_species()
 					fish_weight=snappedf(rng.randf_range(float(species_current.min_weight), float(species_current.max_weight)), 0.01)
@@ -240,7 +255,7 @@ func _update_fight(delta: float) -> void:
 	var difficulty: float = float(species_current.difficulty)
 	_phase_left-=delta
 	if _phase_left<=0.:
-		if fight_phase=="jump" and _slack_jump>.45 and rng.randf()<.35:
+		if fight_phase=="jump" and _slack_jump>.45 and rng.randf()<.35*(1.3-hook_quality):
 			_escape("O peixe saltou e soltou o anzol. Mantenha a linha esticada no salto.");return
 		_slack_jump=0.;_next_phase()
 	surging=fight_phase in ["run","dive"]

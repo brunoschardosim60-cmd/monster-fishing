@@ -162,6 +162,20 @@ func _run() -> void:
 		seen_by_rod.append(seen)
 	var small_only: bool=not (seen_by_rod[0].has("pargo") or seen_by_rod[0].has("tuna") or seen_by_rod[0].has("marlim"))
 	check_rods(small_only and seen_by_rod[1].has("marlim") and seen_by_rod[1].has("dourado") and seen_by_rod[1].size()>seen_by_rod[0].size()+6,seen_by_rod)
+	# Strike timing: a fast strike is "perfect", a late one weak; pulling at a nibble scares the fish.
+	fishing.rod_bonus=0.;fishing.conditions={"rate":3.,"depth":20.,"hour":12.}
+	fishing.cancel();fishing.state=0;fishing.start_cast("coast");_wait_for_bite(fishing)
+	fishing.advance(.1);fishing.strike()
+	_check(fishing.hook_quality>=1. and fishing.last_message.begins_with("Fisgada perfeita"),"a strike in the first half second is perfect (%s)"%fishing.last_message)
+	fishing.cancel();fishing.state=0;fishing.start_cast("coast");_wait_for_bite(fishing)
+	fishing.advance(2.);fishing.strike()
+	_check(fishing.hook_quality<.5,"a strike late in the bite window is weak (quality %.2f)"%fishing.hook_quality)
+	fishing.cancel();fishing.state=0;fishing.start_cast("coast")
+	while fishing.state!=Fishing.State.WAITING:fishing.advance(.05)
+	fishing.advance(2.);fishing.nibble_age=.3
+	var waited: float=fishing.state_time
+	fishing.strike()
+	_check(fishing.state==Fishing.State.WAITING and fishing.state_time<waited and fishing.last_message.begins_with("Cedo"),"pulling at a nibble scares the fish: the wait starts over")
 	fishing.queue_free()
 	print("FISHING TESTS: ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(0 if failures == 0 else 1)
