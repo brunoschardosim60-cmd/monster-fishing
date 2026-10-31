@@ -19,5 +19,5 @@ void fragment(){
 	float d=length(uv)*2.+(n-.5)*.6;
 	float a=(1.-smoothstep(.3,1.,d))*smoothstep(.25,.6,n+.2);
 	ALBEDO=COLOR.rgb*vec3(light,light,min(1.,light*1.15));
-	ALPHA=a*COLOR.a*.75*mix(.6,1.,light);
+	ALPHA=a*COLOR.a*.55*mix(.6,1.,light);
 }

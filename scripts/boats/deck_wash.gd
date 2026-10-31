@@ -97,7 +97,7 @@ func spray(at: Vector3,out: Vector3,power: float) -> void:
 	# The fine spray hanging after the hit: soft puffs from the sea-spray system, carried by the wind.
 	var puffs:=get_tree().get_first_node_in_group("wind_spray")
 	if puffs!=null:
-		for k: int in int(3.+power*4.):
+		for k: int in int(1.+power*3.):
 			var v: Vector3=out.normalized()*randf_range(.5,1.5)+Vector3.UP*randf_range(1.5,3.)*(.6+power)+wind*2.+Vector3(randf_range(-.8,.8),0.,randf_range(-.8,.8))
 			puffs.burst(at+Vector3.UP*.3+Vector3(randf_range(-.4,.4),0.,randf_range(-.4,.4)),v,.6+power*.8)
 
@@ -175,7 +175,9 @@ func _slaps(delta: float) -> void:
 		if drive>.55 and rel>-.35 and _slap_cool[i]<=0. and delta>0.:
 			_slap_cool[i]=randf_range(.35,.6)
 			slaps+=1
-			var hard: float=clampf((drive-.55)/2.5,0.,1.)
+			# Spray and the knock come from hard slaps only (as hard as before the softer sea); the lighter
+			# ones are heard, not seen, so a seaway does not wrap the boat in a cloud of spray.
+			var hard: float=clampf((drive-.75)/2.5,0.,1.)
 			if game!=null:
 				var ear: float=game.player.global_position.distance_to(side_world)
 				if ear<60.:game.audio.cue_at("slap",side_world,-8.+hard*10.)

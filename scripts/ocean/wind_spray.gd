@@ -40,8 +40,11 @@ func _physics_process(delta: float) -> void:
 	if Engine.get_physics_frames()%15==0 and _mat!=null:
 		var game:=get_tree().get_first_node_in_group("game")
 		var day: float=1.
-		if game!=null and game.get("world")!=null:day=float(game.world.ocean.daylight)
-		_mat.set_shader_parameter("light",lerpf(.09,1.,clampf(day,0.,1.)))
+		var overcast: float=0.
+		if game!=null and game.get("world")!=null:
+			day=float(game.world.ocean.daylight);overcast=clampf(float(game.world.ocean.weather.cloud),0.,1.)
+		# Unshaded, so it follows the light by hand: dimmer at night and under a grey sky.
+		_mat.set_shader_parameter("light",lerpf(.09,1.,clampf(day,0.,1.))*lerpf(1.,.62,overcast))
 	var camera:=get_viewport().get_camera_3d()
 	var wind: float=Waves.wind
 	var dir:=Vector3(Waves.direction.x,0.,Waves.direction.y)

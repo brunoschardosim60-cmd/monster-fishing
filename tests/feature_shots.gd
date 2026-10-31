@@ -25,7 +25,7 @@ func run() -> void:
 	game.world.ocean.cycle_enabled=false;game.world.ocean.hour=15.5
 	for i: int in 30:await process_frame
 	var wanted:=args.slice(1)
-	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas","galeao","bergantim","submarino","hud"]:
+	for id: String in ["fleet","rowboat","serpent","creatures","trap","whale","squid","night","clouds","kraken","storm","whirl","home","marks","helm","classes","escuna","fight","reef","reefdbg","poses","farois","kit2","kit3","kit4","kit5","ilhaA","mar2","mar3","mar4","cabine","canoa","vitrine","detalhe","casa","raio","peixes","monstros","tentaculo","piratas","tesouro","mar_alto","aves","pesca","naufragio","noite_tempestade","conferir_mar","chalupa","vila","ilhas","galeao","bergantim","submarino","hud","spray"]:
 		if wanted.is_empty() or id in wanted:await call("_"+id)
 	quit(0)
 
@@ -1086,3 +1086,15 @@ func _hud() -> void:
 	for i: int in 5:await process_frame
 	await shot("hud_caderno",eye,at,1)
 	view.size=Vector2i(960,560)
+
+## Choppy sea under a grey sky, the boat seen from a distance: spray must not wrap it in a white cloud.
+func _spray() -> void:
+	var w=game.world;w.ocean.hour=13.;w.ocean.weather.settle(2)
+	var b: CharacterBody3D=game.boat;var p:=_sea_point()
+	b.global_position=p;b.rotation=Vector3.ZERO
+	game.player.global_position=p+Vector3(0,1.5,0);game.interact()
+	b.speed=5.
+	for i: int in 240:await physics_frame
+	var at: Vector3=b.global_position
+	await shot("spray_longe",at+Vector3(40,6,30),at+Vector3(0,1,0),1)
+	await shot("spray_perto",at+Vector3(12,4,9),at+Vector3(0,1,0),1)
