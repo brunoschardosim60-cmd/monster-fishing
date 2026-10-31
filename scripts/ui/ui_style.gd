@@ -1,8 +1,8 @@
 extends RefCounted
 ## The game's interface style, after the painted world (Sea of Thieves, Dredge): parchment panels with a
 ## dark brown edge and brown ink; wooden buttons with cream lettering; text laid straight over the scene in
-## cream with a brown outline so it reads on sea, sky or sand. Titles in Pirata One, the rest in IM FELL
-## English (assets/fonts, SIL OFL).
+## cream with a brown outline so it reads on sea, sky or sand. Titles in Pirata One, the rest in EB
+## Garamond with lining figures (assets/fonts, SIL OFL).
 const PARCHMENT:=Color("ecdfbf")
 const PARCHMENT_EDGE:=Color("4a3018")
 const INK:=Color("3b2614")
@@ -16,15 +16,21 @@ const CREAM:=Color("f5e9cc")
 const GOLD:=Color("e8c27a")
 const DANGER:=Color("c0392b")
 static var _title: FontFile
-static var _body: FontFile
+static var _body: Font
 static var _theme: Theme
 
 static func title_font() -> Font:
 	if _title==null:_title=load("res://assets/fonts/pirata_one.woff2")
 	return _title
 
+## Body text: EB Garamond with lining figures (numbers all cap height, so "15:30" and prices read at a
+## glance). IM FELL's old-style numerals were charming but hard to read in the HUD.
 static func body_font() -> Font:
-	if _body==null:_body=load("res://assets/fonts/im_fell_english.woff2")
+	if _body==null:
+		var fv:=FontVariation.new();fv.base_font=load("res://assets/fonts/eb_garamond.woff2")
+		var ts:=TextServerManager.get_primary_interface()
+		fv.opentype_features={ts.name_to_tag("lnum"):1,ts.name_to_tag("pnum"):1}
+		_body=fv
 	return _body
 
 ## Parchment panel: warm paper, a 2 px brown edge, slightly rounded, a soft drop shadow.

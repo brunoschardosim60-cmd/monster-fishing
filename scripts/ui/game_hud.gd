@@ -368,7 +368,7 @@ func _label(parent: Node, text_value: String, font_size: int, color: Color) -> L
 	parent.add_child(label)
 	# Parchment panels take brown ink; text over the scene stays cream with a brown outline.
 	var paper: bool = UI.on_parchment(parent)
-	var header: bool = color == GOLD and font_size >= 16
+	var header: bool = color == GOLD and (font_size >= 18 or (paper and font_size >= 16))
 	if paper:
 		color = {CREAM: UI.INK, GOLD: UI.RUST, SEA: UI.SEA_INK}.get(color, color)
 	else:

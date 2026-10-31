@@ -600,6 +600,8 @@ func _build_external_visual() -> void:
 				var src: Material=mi.mesh.surface_get_material(k)
 				mi.set_surface_override_material(k,SM._material(str(src.resource_name) if src!=null else ""))
 	var fittings:=preload("res://scripts/boats/boat_outfitting.gd").new();fittings.name="TeakAndDeckFittings";_hull.add_child(fittings)
+	# The Blender launch carries its own fenders, rails and deck: the old fittings would sit on top of it.
+	if launch_model!=null:fittings.visible=false
 	_propeller=Node3D.new(); _hull.add_child(_propeller)
 	var metal:=Materials.surface("paint",Color("253e43"),3.,false)
 	G.cylinder(_hull,Vector3(0,1.55,.85),.06,.85,metal)
