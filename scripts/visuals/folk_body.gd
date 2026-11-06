@@ -25,7 +25,7 @@ static func _build(skeleton: Skeleton3D,path: String) -> Dictionary:
 	if _material==null:
 		_material=StandardMaterial3D.new();_material.vertex_color_use_as_albedo=true;_material.roughness=.85
 	var scene: Node3D=load(path).instantiate()
-	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES);st.set_skin_weight_count(SurfaceTool.SKIN_4_WEIGHTS)
+	var st:=SurfaceTool.new();st.set_skin_weight_count(SurfaceTool.SKIN_4_WEIGHTS);st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var skin:=Skin.new()
 	for b: int in skeleton.get_bone_count():skin.add_named_bind(skeleton.get_bone_name(b),skeleton.get_bone_global_rest(b).affine_inverse())
 	var base:=0
